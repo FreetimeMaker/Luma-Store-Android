@@ -1,6 +1,7 @@
 package com.freetime.lumastore.data
 
 import android.content.Context
+import android.net.Uri
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -14,6 +15,7 @@ import java.util.TimeZone
 
 private const val SUPABASE_URL = "https://ndlaevedujqxhygbyxfh.supabase.co"
 private const val SUPABASE_PUBLISHABLE_KEY = "sb_publishable_HlppI4ILiXV7DZkpyrDEhQ_ytb2vV6g"
+private const val OAUTH_REDIRECT = "lumastore://auth/callback"
 
 data class DeveloperSession(
     val accessToken: String,
@@ -74,28 +76,52 @@ class DeveloperRepository(context: Context) {
         )
     }
 
-    fun signIn(email: String, password: String): DeveloperSession {
-        val response = requestJson(
-            method = "POST",
-            url = "$SUPABASE_URL/auth/v1/token?grant_type=password",
-            body = JSONObject().put("email", email.trim()).put("password", password),
-            accessToken = null
+    fun oauthUrl(provider: String): String {
+        val normalizedProvider = provider.lowercase(Locale.US)
+        require(normalizedProvider == "github" || normalizedProvider == "gitlab") {
+            "Nicht unterstützter Login-Anbieter."
+        }
+        return "$SUPABASE_URL/auth/v1/authorize?provider=${encode(normalizedProvider)}&redirect_to=${encode(OAUTH_REDIRECT)}"
+    }
+
+    fun handleOAuthCallback(uri: Uri): DeveloperSession? {
+        if (uri.scheme != "lumastore" || uri.host != "auth" || uri.path != "/callback") return null
+
+        val values = mutableMapOf<String, String>()
+        uri.fragment?.split("&")?.forEach { part ->
+            val index = part.indexOf('=')
+            if (index > 0) {
+                val key = Uri.decode(part.substring(0, index))
+                val value = Uri.decode(part.substring(index + 1))
+                values[key] = value
+            }
+        }
+        uri.queryParameterNames.forEach { key ->
+            uri.getQueryParameter(key)?.let { values[key] = it }
+        }
+
+        val errorDescription = values["error_description"] ?: values["error"]
+        if (!errorDescription.isNullOrBlank()) error(errorDescription)
+
+        val accessToken = values["access_token"] ?: return null
+        val refreshToken = values["refresh_token"]
+        val userJson = requestJson(
+            method = "GET",
+            url = "$SUPABASE_URL/auth/v1/user",
+            body = null,
+            accessToken = accessToken
         )
-        val user = response.optJSONObject("user") ?: error(response.optString("msg", "Login fehlgeschlagen."))
         val session = DeveloperSession(
-            accessToken = response.getString("access_token"),
-            refreshToken = response.optString("refresh_token").takeIf { it.isNotBlank() && it != "null" },
-            userId = user.getString("id"),
-            email = user.optString("email").takeIf { it.isNotBlank() }
+            accessToken = accessToken,
+            refreshToken = refreshToken,
+            userId = userJson.getString("id"),
+            email = userJson.optString("email").takeIf { it.isNotBlank() && it != "null" }
         )
-        preferences.edit()
-            .putString("access_token", session.accessToken)
-            .putString("refresh_token", session.refreshToken)
-            .putString("user_id", session.userId)
-            .putString("email", session.email)
-            .apply()
+        saveSession(session)
         return session
     }
+
+    fun consumePendingSession(): DeveloperSession? = savedSession()
 
     fun signOut(session: DeveloperSession?) {
         if (session != null) {
@@ -135,6 +161,15 @@ class DeveloperRepository(context: Context) {
             accessToken = session.accessToken,
             prefer = "return=minimal"
         )
+    }
+
+    private fun saveSession(session: DeveloperSession) {
+        preferences.edit()
+            .putString("access_token", session.accessToken)
+            .putString("refresh_token", session.refreshToken)
+            .putString("user_id", session.userId)
+            .putString("email", session.email)
+            .apply()
     }
 
     private fun loadSubmissions(session: DeveloperSession): List<DeveloperSubmission> {
