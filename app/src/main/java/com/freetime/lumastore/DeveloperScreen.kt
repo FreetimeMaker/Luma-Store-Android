@@ -37,6 +37,7 @@ import com.freetime.lumastore.data.DeveloperRepository
 import com.freetime.lumastore.data.DeveloperSession
 import com.freetime.lumastore.data.DeveloperSubmission
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -73,7 +74,12 @@ fun DeveloperScreen(
     }
 
     LaunchedEffect(session?.accessToken) {
-        session?.let { reload(it) }
+        val current = session ?: return@LaunchedEffect
+        reload(current)
+        while (session?.accessToken == current.accessToken) {
+            delay(30_000)
+            reload(current)
+        }
     }
 
     if (session == null) {
