@@ -26,11 +26,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.freetime.lumastore.data.AppRepository
+import com.freetime.lumastore.data.DeveloperRepository
 import com.freetime.lumastore.install.ApkInstaller
 import com.freetime.lumastore.ui.theme.LumaStoreTheme
 
+private enum class MainScreen {
+    STORE,
+    DEVELOPER,
+    SETTINGS
+}
+
 class MainActivity : ComponentActivity() {
     private val repository by lazy { AppRepository(applicationContext) }
+    private val developerRepository by lazy { DeveloperRepository(applicationContext) }
     private val installedAppsRevision = mutableIntStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,17 +46,22 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val revision = installedAppsRevision.intValue
-            var showSettings by rememberSaveable { mutableStateOf(false) }
+            var screen by rememberSaveable { mutableStateOf(MainScreen.STORE) }
 
             LumaStoreTheme {
-                if (showSettings) {
-                    SettingsScreen(
+                when (screen) {
+                    MainScreen.SETTINGS -> SettingsScreen(
                         repository = repository,
-                        onBack = { showSettings = false },
+                        onBack = { screen = MainScreen.STORE },
                         onSourcesChanged = { }
                     )
-                } else {
-                    Column(modifier = Modifier.fillMaxSize()) {
+
+                    MainScreen.DEVELOPER -> DeveloperScreen(
+                        repository = developerRepository,
+                        onBack = { screen = MainScreen.STORE }
+                    )
+
+                    MainScreen.STORE -> Column(modifier = Modifier.fillMaxSize()) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -56,7 +69,10 @@ class MainActivity : ComponentActivity() {
                                 .padding(horizontal = 8.dp),
                             horizontalArrangement = Arrangement.End
                         ) {
-                            TextButton(onClick = { showSettings = true }) {
+                            TextButton(onClick = { screen = MainScreen.DEVELOPER }) {
+                                Text("Developer")
+                            }
+                            TextButton(onClick = { screen = MainScreen.SETTINGS }) {
                                 Text("Einstellungen")
                             }
                         }
