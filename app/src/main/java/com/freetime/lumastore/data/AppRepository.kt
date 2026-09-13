@@ -1,6 +1,7 @@
 package com.freetime.lumastore.data
 
 import android.content.Context
+import com.freetime.lumastore.R
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -57,11 +58,12 @@ private data class ClosedSourceMetadata(
 )
 
 class AppRepository(context: Context) {
-    private val cachePreferences = context.applicationContext.getSharedPreferences(
+    private val appContext = context.applicationContext
+    private val cachePreferences = appContext.getSharedPreferences(
         CACHE_PREFERENCES,
         Context.MODE_PRIVATE
     )
-    private val sourcePreferences = context.applicationContext.getSharedPreferences(
+    private val sourcePreferences = appContext.getSharedPreferences(
         SOURCE_PREFERENCES,
         Context.MODE_PRIVATE
     )
@@ -104,20 +106,20 @@ class AppRepository(context: Context) {
 
     fun addCustomSource(name: String, repositoryUrl: String): Result<AppSource> = runCatching {
         val cleanName = name.trim()
-        require(cleanName.isNotBlank()) { "Bitte gib einen Namen für die Quelle ein." }
+        require(cleanName.isNotBlank()) { appContext.getString(R.string.source_name_required) }
 
         val indexUrl = normalizeFdroidUrl(repositoryUrl)
         val parsed = URL(indexUrl)
         require(parsed.protocol == "https" || parsed.protocol == "http") {
-            "Die URL muss mit http:// oder https:// beginnen."
+            appContext.getString(R.string.repository_url_invalid_scheme)
         }
 
         val existingSources = sources
         require(existingSources.none { it.name.equals(cleanName, ignoreCase = true) }) {
-            "Eine Quelle mit diesem Namen existiert bereits."
+            appContext.getString(R.string.source_name_exists)
         }
         require(existingSources.none { it.indexUrl.equals(indexUrl, ignoreCase = true) }) {
-            "Dieses Repository wurde bereits hinzugefügt."
+            appContext.getString(R.string.repository_already_added)
         }
 
         val source = AppSource(
@@ -171,7 +173,7 @@ class AppRepository(context: Context) {
 
         if (successfulSources == 0) {
             val cached = loadCachedApps()
-            check(cached.isNotEmpty()) { "Keine aktivierte App-Quelle konnte geladen werden und es ist kein Cache verfügbar." }
+            check(cached.isNotEmpty()) { appContext.getString(R.string.no_source_cache_available) }
             return@runCatching cached
         }
 
@@ -220,7 +222,7 @@ class AppRepository(context: Context) {
 
     private fun normalizeFdroidUrl(rawUrl: String): String {
         val clean = rawUrl.trim()
-        require(clean.isNotBlank()) { "Bitte gib eine Repository-URL ein." }
+        require(clean.isNotBlank()) { appContext.getString(R.string.repository_url_required) }
         return when {
             clean.endsWith("/index-v1.json", ignoreCase = true) -> clean
             clean.endsWith("index-v1.json", ignoreCase = true) -> clean
@@ -332,7 +334,9 @@ class AppRepository(context: Context) {
             connection.setRequestProperty("User-Agent", "Luma-Store/1.0")
 
             val responseCode = connection.responseCode
-            check(responseCode in 200..299) { "HTTP $responseCode für $url" }
+            check(responseCode in 200..299) {
+                appContext.getString(R.string.http_request_failed, responseCode, url)
+            }
 
             return connection.inputStream.bufferedReader().use { it.readText() }
         } finally {
@@ -441,7 +445,7 @@ class AppRepository(context: Context) {
 
             val apiDescription = app.optString("description")
             val name = meta["Name"]?.takeIf { it.isNotBlank() }
-                ?: app.optString("name").ifBlank { "Unbenannte App" }
+                ?: app.optString("name").ifBlank { appContext.getString(R.string.unnamed_app) }
             val description = metadata?.description?.takeIf { it.isNotBlank() } ?: apiDescription
             val summary = metadata?.summary?.takeIf { it.isNotBlank() }
                 ?: firstNonBlank(app.optString("short_description"), app.optString("summary"))
@@ -593,7 +597,7 @@ class AppRepository(context: Context) {
 
     private fun preferredLocalized(metadata: JSONObject): Pair<String, JSONObject>? {
         val localized = metadata.optJSONObject("localized") ?: return null
-        val locales = listOf("de-DE", "de", "en-US", "en")
+        val locales = listOf("en-US", "en", "de-DE", "de")
         locales.forEach { locale ->
             localized.optJSONObject(locale)?.let { return locale to it }
         }
