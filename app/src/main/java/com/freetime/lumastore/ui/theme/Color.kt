@@ -2,10 +2,16 @@ package com.freetime.lumastore.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+// F-Droid-inspired palette: blue for primary actions, green for open-source accents.
+val LumaBlueLight = Color(0xFF8DCDFF)
+val LumaBlue = Color(0xFF0B6FA4)
+val LumaBlueDark = Color(0xFF00506F)
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+val LumaGreenLight = Color(0xFFB9E58B)
+val LumaGreen = Color(0xFF5F8D21)
+val LumaGreenDark = Color(0xFF3F6710)
+
+val LumaSurfaceLight = Color(0xFFF7F8FA)
+val LumaSurfaceVariantLight = Color(0xFFE8EEF2)
+val LumaSurfaceDark = Color(0xFF111416)
+val LumaSurfaceVariantDark = Color(0xFF252A2D)
