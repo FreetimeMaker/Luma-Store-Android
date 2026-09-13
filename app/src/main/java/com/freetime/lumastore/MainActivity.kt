@@ -27,6 +27,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.freetime.lumastore.data.AppRepository
 import com.freetime.lumastore.data.DeveloperRepository
@@ -37,11 +38,7 @@ import com.freetime.lumastore.notifications.SystemNotificationManager
 import com.freetime.lumastore.ui.theme.LumaStoreTheme
 import io.github.jan.supabase.auth.handleDeeplinks
 
-private enum class MainScreen {
-    STORE,
-    DEVELOPER,
-    SETTINGS
-}
+private enum class MainScreen { STORE, DEVELOPER, SETTINGS }
 
 class MainActivity : ComponentActivity() {
     private val repository by lazy { AppRepository(applicationContext) }
@@ -56,62 +53,31 @@ class MainActivity : ComponentActivity() {
         setContent {
             val revision = installedAppsRevision.intValue
             var screen by rememberSaveable {
-                mutableStateOf(
-                    if (intent.getBooleanExtra(SystemNotificationManager.EXTRA_OPEN_DEVELOPER, false)) {
-                        MainScreen.DEVELOPER
-                    } else {
-                        MainScreen.STORE
-                    }
-                )
+                mutableStateOf(if (intent.getBooleanExtra(SystemNotificationManager.EXTRA_OPEN_DEVELOPER, false)) MainScreen.DEVELOPER else MainScreen.STORE)
             }
-
             LumaStoreTheme {
                 when (screen) {
-                    MainScreen.SETTINGS -> SettingsScreen(
-                        repository = repository,
-                        onBack = { screen = MainScreen.STORE },
-                        onSourcesChanged = { }
-                    )
-
-                    MainScreen.DEVELOPER -> DeveloperScreen(
-                        repository = developerRepository,
-                        onBack = { screen = MainScreen.STORE }
-                    )
-
-                    MainScreen.STORE -> Column(modifier = Modifier.fillMaxSize()) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .statusBarsPadding()
-                                .padding(horizontal = 8.dp),
-                            horizontalArrangement = Arrangement.End
-                        ) {
-                            TextButton(onClick = { screen = MainScreen.DEVELOPER }) {
-                                Text("Developer")
-                            }
-                            TextButton(onClick = { screen = MainScreen.SETTINGS }) {
-                                Text("Einstellungen")
-                            }
+                    MainScreen.SETTINGS -> SettingsScreen(repository, { screen = MainScreen.STORE }, { })
+                    MainScreen.DEVELOPER -> DeveloperScreen(developerRepository) { screen = MainScreen.STORE }
+                    MainScreen.STORE -> Column(Modifier.fillMaxSize()) {
+                        Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.End) {
+                            TextButton(onClick = { screen = MainScreen.DEVELOPER }) { Text(stringResource(R.string.developer)) }
+                            TextButton(onClick = { screen = MainScreen.SETTINGS }) { Text(stringResource(R.string.settings)) }
                         }
-
-                        Box(modifier = Modifier.weight(1f)) {
+                        Box(Modifier.weight(1f)) {
                             StoreScreen(
                                 repository = repository,
                                 installedAppsRevision = revision,
-                                installedVersionCode = { packageName -> installedVersionCode(packageName) },
-                                installedVersionName = { packageName -> installedVersionName(packageName) },
-                                openInstalledApp = { packageName -> openInstalledApp(packageName) },
+                                installedVersionCode = { installedVersionCode(it) },
+                                installedVersionName = { installedVersionName(it) },
+                                openInstalledApp = { openInstalledApp(it) },
                                 canInstallPackages = { canInstallUnknownApps() },
                                 requestInstallPermission = { openInstallPermission() },
                                 install = { app, onProgress, onReady, onError ->
-                                    ApkInstaller.downloadAndInstall(
-                                        context = this@MainActivity,
-                                        packageName = app.id,
-                                        apkUrl = app.apkUrl,
-                                        onProgress = { runOnUiThread { onProgress(it) } },
-                                        onReady = { runOnUiThread(onReady) },
-                                        onError = { error -> runOnUiThread { onError(error) } }
-                                    )
+                                    ApkInstaller.downloadAndInstall(this@MainActivity, app.id, app.apkUrl,
+                                        { runOnUiThread { onProgress(it) } },
+                                        { runOnUiThread(onReady) },
+                                        { error -> runOnUiThread { onError(error) } })
                                 }
                             )
                         }
@@ -121,63 +87,23 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        supabase.handleDeeplinks(intent)
-    }
-
-    override fun onResume() {
-        super.onResume()
-        installedAppsRevision.intValue++
-    }
+    override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); supabase.handleDeeplinks(intent) }
+    override fun onResume() { super.onResume(); installedAppsRevision.intValue++ }
 
     private fun scheduleNotificationSync() {
         val scheduler = getSystemService(JobScheduler::class.java)
         val component = ComponentName(this, NotificationSyncJobService::class.java)
-        val job = JobInfo.Builder(NOTIFICATION_SYNC_JOB_ID, component)
-            .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
-            .setPeriodic(15 * 60 * 1000L)
-            .build()
-        scheduler.schedule(job)
+        scheduler.schedule(JobInfo.Builder(NOTIFICATION_SYNC_JOB_ID, component).setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY).setPeriodic(15 * 60 * 1000L).build())
     }
 
     private fun installedVersionCode(packageName: String): Long? = runCatching {
         val info = packageManager.getPackageInfo(packageName, 0)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            info.longVersionCode
-        } else {
-            @Suppress("DEPRECATION")
-            info.versionCode.toLong()
-        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) info.longVersionCode else { @Suppress("DEPRECATION") info.versionCode.toLong() }
     }.getOrNull()
+    private fun installedVersionName(packageName: String): String? = runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull()
+    private fun openInstalledApp(packageName: String): Boolean { val i = packageManager.getLaunchIntentForPackage(packageName) ?: return false; i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); startActivity(i); return true }
+    private fun canInstallUnknownApps() = Build.VERSION.SDK_INT < Build.VERSION_CODES.O || packageManager.canRequestPackageInstalls()
+    private fun openInstallPermission() { if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName"))) }
 
-    private fun installedVersionName(packageName: String): String? = runCatching {
-        packageManager.getPackageInfo(packageName, 0).versionName
-    }.getOrNull()
-
-    private fun openInstalledApp(packageName: String): Boolean {
-        val intent = packageManager.getLaunchIntentForPackage(packageName) ?: return false
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        startActivity(intent)
-        return true
-    }
-
-    private fun canInstallUnknownApps(): Boolean =
-        Build.VERSION.SDK_INT < Build.VERSION_CODES.O || packageManager.canRequestPackageInstalls()
-
-    private fun openInstallPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startActivity(
-                Intent(
-                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                    Uri.parse("package:$packageName")
-                )
-            )
-        }
-    }
-
-    companion object {
-        private const val NOTIFICATION_SYNC_JOB_ID = 4201
-    }
+    companion object { private const val NOTIFICATION_SYNC_JOB_ID = 4201 }
 }
