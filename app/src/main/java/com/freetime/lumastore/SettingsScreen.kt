@@ -1,187 +1,73 @@
 package com.freetime.lumastore
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.freetime.lumastore.data.AppRepository
 import com.freetime.lumastore.data.AppSource
 
 @Composable
-fun SettingsScreen(
-    repository: AppRepository,
-    onBack: () -> Unit,
-    onSourcesChanged: () -> Unit
-) {
+fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChanged: () -> Unit) {
     var sourceList by remember { mutableStateOf(repository.sources) }
     var sourceName by remember { mutableStateOf("") }
     var sourceUrl by remember { mutableStateOf("") }
     var addSourceError by remember { mutableStateOf<String?>(null) }
+    val sourceAddFailed = stringResource(R.string.source_add_failed)
+    val enabledStates = remember { mutableStateMapOf<String, Boolean>().apply { repository.sources.forEach { this[it.name] = repository.isSourceEnabled(it) } } }
+    fun refreshSources() { sourceList = repository.sources; sourceList.forEach { enabledStates[it.name] = repository.isSourceEnabled(it) } }
 
-    val enabledStates = remember {
-        mutableStateMapOf<String, Boolean>().apply {
-            repository.sources.forEach { source ->
-                this[source.name] = repository.isSourceEnabled(source)
-            }
-        }
-    }
-
-    fun refreshSources() {
-        sourceList = repository.sources
-        sourceList.forEach { source ->
-            enabledStates[source.name] = repository.isSourceEnabled(source)
-        }
-    }
-
-    Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
-        ) {
+    Scaffold(Modifier.fillMaxSize()) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             Spacer(Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Settings", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                    Text("Configure Luma Store", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.settings), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.configure_luma_store), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                TextButton(onClick = onBack) { Text("Back") }
+                TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
             }
-
             Spacer(Modifier.height(24.dp))
-            Text("Manage sources", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-            Text("Enable only the repositories you want to load apps from.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.manage_sources), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.manage_sources_description), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(12.dp))
-
             sourceList.forEach { source ->
-                SourceCard(
-                    source = source,
-                    enabled = enabledStates[source.name] ?: true,
-                    removable = repository.isCustomSource(source),
-                    onEnabledChange = { checked ->
-                        enabledStates[source.name] = checked
-                        repository.setSourceEnabled(source, checked)
-                        onSourcesChanged()
-                    },
-                    onRemove = {
-                        if (repository.removeCustomSource(source)) {
-                            enabledStates.remove(source.name)
-                            refreshSources()
-                            onSourcesChanged()
-                        }
-                    }
-                )
+                SourceCard(source, enabledStates[source.name] ?: true, repository.isCustomSource(source), { checked -> enabledStates[source.name] = checked; repository.setSourceEnabled(source, checked); onSourcesChanged() }, { if (repository.removeCustomSource(source)) { enabledStates.remove(source.name); refreshSources(); onSourcesChanged() } })
                 Spacer(Modifier.height(10.dp))
             }
-
-            if (enabledStates.values.none { it }) {
-                Text("No source is enabled. The store will not show any apps until you enable at least one source again.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
-                Spacer(Modifier.height(12.dp))
-            }
-
+            if (enabledStates.values.none { it }) { Text(stringResource(R.string.no_source_enabled), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error); Spacer(Modifier.height(12.dp)) }
             Spacer(Modifier.height(14.dp))
-            Text("Add another source", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-            Text("F-Droid repositories with index-v1.json are supported. You can enter either the repository URL or the direct index-v1.json URL.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.add_another_source), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.fdroid_source_description), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(12.dp))
-
-            OutlinedTextField(
-                value = sourceName,
-                onValueChange = { sourceName = it; addSourceError = null },
-                label = { Text("Name") },
-                placeholder = { Text("My F-Droid Repository") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
+            OutlinedTextField(sourceName, { sourceName = it; addSourceError = null }, label = { Text(stringResource(R.string.name)) }, placeholder = { Text(stringResource(R.string.source_name_placeholder)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(10.dp))
-            OutlinedTextField(
-                value = sourceUrl,
-                onValueChange = { sourceUrl = it; addSourceError = null },
-                label = { Text("Repository URL") },
-                placeholder = { Text("https://example.org/repo") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            addSourceError?.let { message ->
-                Spacer(Modifier.height(8.dp))
-                Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-            }
-
+            OutlinedTextField(sourceUrl, { sourceUrl = it; addSourceError = null }, label = { Text(stringResource(R.string.repository_url)) }, placeholder = { Text(stringResource(R.string.repository_url_placeholder)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            addSourceError?.let { Spacer(Modifier.height(8.dp)); Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
             Spacer(Modifier.height(12.dp))
-            Button(
-                onClick = {
-                    repository.addCustomSource(sourceName, sourceUrl)
-                        .onSuccess { source ->
-                            sourceName = ""
-                            sourceUrl = ""
-                            addSourceError = null
-                            enabledStates[source.name] = true
-                            refreshSources()
-                            onSourcesChanged()
-                        }
-                        .onFailure { error -> addSourceError = error.message ?: "The source could not be added." }
-                },
-                enabled = sourceName.isNotBlank() && sourceUrl.isNotBlank(),
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Add source") }
+            Button(onClick = { repository.addCustomSource(sourceName, sourceUrl).onSuccess { source -> sourceName = ""; sourceUrl = ""; addSourceError = null; enabledStates[source.name] = true; refreshSources(); onSourcesChanged() }.onFailure { addSourceError = it.message ?: sourceAddFailed } }, enabled = sourceName.isNotBlank() && sourceUrl.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.add_source)) }
             Spacer(Modifier.height(28.dp))
         }
     }
 }
 
 @Composable
-private fun SourceCard(
-    source: AppSource,
-    enabled: Boolean,
-    removable: Boolean,
-    onEnabledChange: (Boolean) -> Unit,
-    onRemove: () -> Unit
-) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
-                    Text(source.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    if (removable) {
-                        Text("Custom source", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                    }
-                    Text(source.indexUrl, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Switch(checked = enabled, onCheckedChange = onEnabledChange)
+private fun SourceCard(source: AppSource, enabled: Boolean, removable: Boolean, onEnabledChange: (Boolean) -> Unit, onRemove: () -> Unit) {
+    Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+            Column(Modifier.weight(1f).padding(end = 16.dp)) {
+                Text(source.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                if (removable) Text(stringResource(R.string.custom_source), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                Text(source.indexUrl, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            if (removable) {
-                TextButton(onClick = onRemove, modifier = Modifier.align(Alignment.End)) { Text("Remove") }
-            }
+            Switch(enabled, onEnabledChange)
         }
-    }
+        if (removable) TextButton(onClick = onRemove, modifier = Modifier.align(Alignment.End)) { Text(stringResource(R.string.remove)) }
+    } }
 }
