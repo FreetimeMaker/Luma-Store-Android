@@ -6,6 +6,8 @@ import io.github.jan.supabase.auth.providers.Gitlab
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.text.SimpleDateFormat
@@ -60,6 +62,11 @@ data class DeveloperDashboard(
 )
 
 class DeveloperRepository {
+
+    fun sessionFlow(): Flow<DeveloperSession?> =
+        supabase.auth.sessionStatus.map {
+            supabase.auth.currentSessionOrNull()?.toDeveloperSession()
+        }
 
     suspend fun savedSession(): DeveloperSession? {
         supabase.auth.awaitInitialization()
