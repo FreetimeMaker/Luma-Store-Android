@@ -33,6 +33,7 @@
     <string name="no_description_available">No description available.</string>
     <string name="categories">Categories: %1$s</string>
     <string name="screenshots">Screenshots</string>
+    <string name="screenshot">Screenshot</string>
     <string name="tap_to_enlarge">Tap to enlarge</string>
     <string name="screenshot_of">Screenshot of %1$s</string>
     <string name="app_information">App information</string>
@@ -61,6 +62,11 @@
     <string name="update">Update</string>
     <string name="open">Open</string>
     <string name="icon_of">Icon of %1$s</string>
+    <string name="source_version">%1$s • %2$s</string>
+    <string name="store_results_summary">%1$d Apps • %2$s • %3$s</string>
+    <string name="app_version_source">%1$s • %2$s</string>
+    <string name="app_version_source_installed">%1$s • %2$s • installed: %3$s</string>
+    <string name="install_progress">%1$d%%</string>
 
     <string name="developer_login">Developer Login</string>
     <string name="developer_login_description">Sign in through Supabase with GitHub or GitLab.</string>
