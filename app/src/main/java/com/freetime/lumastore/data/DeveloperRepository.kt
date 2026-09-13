@@ -7,6 +7,10 @@ import java.net.HttpURLConnection
 import java.net.URLEncoder
 import java.net.URL
 import java.nio.charset.StandardCharsets
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
 private const val SUPABASE_URL = "https://ndlaevedujqxhygbyxfh.supabase.co"
 private const val SUPABASE_PUBLISHABLE_KEY = "sb_publishable_HlppI4ILiXV7DZkpyrDEhQ_ytb2vV6g"
@@ -121,7 +125,9 @@ class DeveloperRepository(context: Context) {
     }
 
     fun markNotificationRead(session: DeveloperSession, notificationId: String) {
-        val now = java.time.Instant.now().toString()
+        val now = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+        }.format(Date())
         requestRaw(
             method = "PATCH",
             url = "$SUPABASE_URL/rest/v1/luma_developer_notifications?id=eq.${encode(notificationId)}",
