@@ -16,7 +16,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -29,7 +28,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.freetime.lumastore.data.DeveloperDashboard
 import com.freetime.lumastore.data.DeveloperNotification
@@ -44,15 +42,13 @@ import kotlinx.coroutines.withContext
 @Composable
 fun DeveloperScreen(
     repository: DeveloperRepository,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onOpenAuth: (String) -> Unit
 ) {
     var session by remember { mutableStateOf(repository.savedSession()) }
     var dashboard by remember { mutableStateOf<DeveloperDashboard?>(null) }
     var loading by remember { mutableStateOf(session != null) }
     var error by remember { mutableStateOf<String?>(null) }
-    var email by remember { mutableStateOf(session?.email.orEmpty()) }
-    var password by remember { mutableStateOf("") }
-    var loggingIn by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     suspend fun reload(currentSession: DeveloperSession) {
@@ -82,6 +78,10 @@ fun DeveloperScreen(
         }
     }
 
+    LaunchedEffect(Unit) {
+        repository.consumePendingSession()?.let { session = it }
+    }
+
     if (session == null) {
         Column(
             modifier = Modifier.fillMaxSize().padding(20.dp),
@@ -90,46 +90,21 @@ fun DeveloperScreen(
             TextButton(onClick = onBack) { Text("← Zurück zum Store") }
             Text("Developer Login", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             Text(
-                "Melde dich mit demselben Supabase-Konto an, das du auch im Luma Developer Dashboard verwendest.",
+                "Melde dich mit GitHub oder GitLab an.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
-                label = { Text("E-Mail") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = { Text("Passwort") },
-                visualTransformation = PasswordVisualTransformation(),
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
             )
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Button(
-                onClick = {
-                    scope.launch {
-                        loggingIn = true
-                        error = null
-                        runCatching {
-                            withContext(Dispatchers.IO) { repository.signIn(email, password) }
-                        }.onSuccess {
-                            password = ""
-                            session = it
-                        }.onFailure {
-                            error = it.message ?: "Login fehlgeschlagen."
-                        }
-                        loggingIn = false
-                    }
-                },
-                enabled = email.isNotBlank() && password.isNotBlank() && !loggingIn,
+                onClick = { onOpenAuth(repository.oauthUrl("github")) },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                if (loggingIn) CircularProgressIndicator(strokeWidth = 2.dp)
-                else Text("Einloggen")
+                Text("Mit GitHub anmelden")
+            }
+            OutlinedButton(
+                onClick = { onOpenAuth(repository.oauthUrl("gitlab")) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Mit GitLab anmelden")
             }
         }
         return
