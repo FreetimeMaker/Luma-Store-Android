@@ -12,99 +12,54 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.freetime.lumastore.MainActivity
+import com.freetime.lumastore.R
 import com.freetime.lumastore.data.DeveloperNotification
 
 class SystemNotificationManager(context: Context) {
     private val appContext = context.applicationContext
-    private val preferences = appContext.getSharedPreferences(
-        "luma_store_system_notifications",
-        Context.MODE_PRIVATE
-    )
+    private val preferences = appContext.getSharedPreferences("luma_store_system_notifications", Context.MODE_PRIVATE)
 
-    init {
-        createChannel()
-    }
+    init { createChannel() }
 
     fun showNewNotifications(notifications: List<DeveloperNotification>) {
         if (!canPostNotifications()) return
-
         val knownIds = preferences.getStringSet(KEY_KNOWN_IDS, emptySet()).orEmpty().toMutableSet()
-
         if (!preferences.getBoolean(KEY_INITIALIZED, false)) {
             knownIds += notifications.map { it.id }
-            preferences.edit()
-                .putStringSet(KEY_KNOWN_IDS, knownIds)
-                .putBoolean(KEY_INITIALIZED, true)
-                .apply()
+            preferences.edit().putStringSet(KEY_KNOWN_IDS, knownIds).putBoolean(KEY_INITIALIZED, true).apply()
             return
         }
-
-        notifications
-            .asSequence()
-            .filter { it.readAt == null }
-            .filter { it.id !in knownIds }
-            .forEach { notification ->
-                show(notification)
-                knownIds += notification.id
-            }
-
+        notifications.asSequence().filter { it.readAt == null }.filter { it.id !in knownIds }.forEach { show(it); knownIds += it.id }
         preferences.edit().putStringSet(KEY_KNOWN_IDS, knownIds).apply()
     }
 
-    fun reset() {
-        preferences.edit().clear().apply()
-    }
+    fun reset() { preferences.edit().clear().apply() }
 
     private fun show(notification: DeveloperNotification) {
+        val fallback = appContext.getString(R.string.developer_notification_fallback)
         val launchIntent = Intent(appContext, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(EXTRA_OPEN_DEVELOPER, true)
             putExtra(EXTRA_NOTIFICATION_ID, notification.id)
         }
-        val pendingIntent = PendingIntent.getActivity(
-            appContext,
-            notification.id.hashCode(),
-            launchIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
+        val pendingIntent = PendingIntent.getActivity(appContext, notification.id.hashCode(), launchIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val systemNotification = NotificationCompat.Builder(appContext, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_notify_more)
-            .setContentTitle(notification.title.ifBlank { "Luma Store" })
-            .setContentText(notification.message ?: "New developer notification")
-            .setStyle(
-                NotificationCompat.BigTextStyle()
-                    .bigText(notification.message ?: "New developer notification")
-            )
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setAutoCancel(true)
-            .setContentIntent(pendingIntent)
-            .build()
-
-        NotificationManagerCompat.from(appContext)
-            .notify(notification.id.hashCode(), systemNotification)
+            .setContentTitle(notification.title.ifBlank { appContext.getString(R.string.app_name) })
+            .setContentText(notification.message ?: fallback)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(notification.message ?: fallback))
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT).setAutoCancel(true).setContentIntent(pendingIntent).build()
+        NotificationManagerCompat.from(appContext).notify(notification.id.hashCode(), systemNotification)
     }
 
-    private fun canPostNotifications(): Boolean =
-        Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-            ContextCompat.checkSelfPermission(
-                appContext,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
+    private fun canPostNotifications() = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || ContextCompat.checkSelfPermission(appContext, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
 
     private fun createChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            "Developer notifications",
-            NotificationManager.IMPORTANCE_DEFAULT
-        ).apply {
-            description = "Status updates and review messages for submitted apps"
+        val channel = NotificationChannel(CHANNEL_ID, appContext.getString(R.string.developer_notification_channel), NotificationManager.IMPORTANCE_DEFAULT).apply {
+            description = appContext.getString(R.string.developer_notification_channel_description)
         }
-
-        appContext.getSystemService(NotificationManager::class.java)
-            .createNotificationChannel(channel)
+        appContext.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
     companion object {
