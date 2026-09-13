@@ -104,6 +104,14 @@
     <string name="repository_url">Repository URL</string>
     <string name="repository_url_placeholder" translatable="false">https://example.org/repo</string>
     <string name="source_add_failed">The source could not be added.</string>
+    <string name="source_name_required">Enter a name for the source.</string>
+    <string name="repository_url_required">Enter a repository URL.</string>
+    <string name="repository_url_invalid_scheme">The URL must start with http:// or https://.</string>
+    <string name="source_name_exists">A source with this name already exists.</string>
+    <string name="repository_already_added">This repository has already been added.</string>
+    <string name="no_source_cache_available">No enabled app source could be loaded and no cache is available.</string>
+    <string name="http_request_failed">HTTP %1$d for %2$s</string>
+    <string name="unnamed_app">Unnamed app</string>
     <string name="add_source">Add source</string>
     <string name="custom_source">Custom source</string>
     <string name="remove">Remove</string>
