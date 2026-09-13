@@ -14,12 +14,19 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -81,23 +88,23 @@ class MainActivity : ComponentActivity() {
                     containerColor = MaterialTheme.colorScheme.background,
                     bottomBar = {
                         NavigationBar {
-                            NavigationBarItem(
+                            FdroidNavigationItem(
                                 selected = screen == MainScreen.MY_APPS,
                                 onClick = { screen = MainScreen.MY_APPS },
-                                icon = { Text("↓") },
-                                label = { Text(stringResource(R.string.my_apps)) }
+                                label = stringResource(R.string.my_apps),
+                                icon = { Icon(Icons.Filled.Apps, contentDescription = stringResource(R.string.my_apps)) }
                             )
-                            NavigationBarItem(
+                            FdroidNavigationItem(
                                 selected = screen == MainScreen.DEVELOPER,
                                 onClick = { screen = MainScreen.DEVELOPER },
-                                icon = { Text("</>") },
-                                label = { Text(stringResource(R.string.developer)) }
+                                label = stringResource(R.string.developer),
+                                icon = { Icon(Icons.Filled.Code, contentDescription = stringResource(R.string.developer)) }
                             )
-                            NavigationBarItem(
+                            FdroidNavigationItem(
                                 selected = screen == MainScreen.SEARCH,
                                 onClick = { screen = MainScreen.SEARCH },
-                                icon = { Text("⌕") },
-                                label = { Text(stringResource(R.string.search)) }
+                                label = stringResource(R.string.search),
+                                icon = { Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.search)) }
                             )
                         }
                     }
@@ -144,6 +151,26 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    @Composable
+    private fun FdroidNavigationItem(
+        selected: Boolean,
+        onClick: () -> Unit,
+        label: String,
+        icon: @Composable () -> Unit
+    ) {
+        NavigationBarItem(
+            selected = selected,
+            onClick = onClick,
+            icon = icon,
+            label = { Text(label) },
+            colors = NavigationBarItemDefaults.colors(
+                indicatorColor = MaterialTheme.colorScheme.primary,
+                selectedTextColor = MaterialTheme.colorScheme.primary,
+                selectedIconColor = contentColorFor(MaterialTheme.colorScheme.primary)
+            )
+        )
     }
 
     @Composable
