@@ -1,5 +1,8 @@
 package com.freetime.lumastore
 
+import android.app.job.JobInfo
+import android.app.job.JobScheduler
+import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -29,6 +32,8 @@ import com.freetime.lumastore.data.AppRepository
 import com.freetime.lumastore.data.DeveloperRepository
 import com.freetime.lumastore.data.supabase
 import com.freetime.lumastore.install.ApkInstaller
+import com.freetime.lumastore.notifications.NotificationSyncJobService
+import com.freetime.lumastore.notifications.SystemNotificationManager
 import com.freetime.lumastore.ui.theme.LumaStoreTheme
 import io.github.jan.supabase.auth.handleDeeplinks
 
@@ -46,10 +51,19 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         supabase.handleDeeplinks(intent)
+        scheduleNotificationSync()
         enableEdgeToEdge()
         setContent {
             val revision = installedAppsRevision.intValue
-            var screen by rememberSaveable { mutableStateOf(MainScreen.STORE) }
+            var screen by rememberSaveable {
+                mutableStateOf(
+                    if (intent.getBooleanExtra(SystemNotificationManager.EXTRA_OPEN_DEVELOPER, false)) {
+                        MainScreen.DEVELOPER
+                    } else {
+                        MainScreen.STORE
+                    }
+                )
+            }
 
             LumaStoreTheme {
                 when (screen) {
@@ -118,6 +132,16 @@ class MainActivity : ComponentActivity() {
         installedAppsRevision.intValue++
     }
 
+    private fun scheduleNotificationSync() {
+        val scheduler = getSystemService(JobScheduler::class.java)
+        val component = ComponentName(this, NotificationSyncJobService::class.java)
+        val job = JobInfo.Builder(NOTIFICATION_SYNC_JOB_ID, component)
+            .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+            .setPeriodic(15 * 60 * 1000L)
+            .build()
+        scheduler.schedule(job)
+    }
+
     private fun installedVersionCode(packageName: String): Long? = runCatching {
         val info = packageManager.getPackageInfo(packageName, 0)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -151,5 +175,9 @@ class MainActivity : ComponentActivity() {
                 )
             )
         }
+    }
+
+    companion object {
+        private const val NOTIFICATION_SYNC_JOB_ID = 4201
     }
 }
