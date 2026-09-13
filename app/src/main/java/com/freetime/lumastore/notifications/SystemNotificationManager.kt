@@ -71,10 +71,10 @@ class SystemNotificationManager(context: Context) {
         val systemNotification = NotificationCompat.Builder(appContext, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_notify_more)
             .setContentTitle(notification.title.ifBlank { "Luma Store" })
-            .setContentText(notification.message ?: "Neue Developer-Benachrichtigung")
+            .setContentText(notification.message ?: "New developer notification")
             .setStyle(
                 NotificationCompat.BigTextStyle()
-                    .bigText(notification.message ?: "Neue Developer-Benachrichtigung")
+                    .bigText(notification.message ?: "New developer notification")
             )
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
