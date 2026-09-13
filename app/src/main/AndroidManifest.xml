@@ -27,6 +27,11 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <service
+            android:name=".notifications.NotificationSyncJobService"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:exported="false" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
