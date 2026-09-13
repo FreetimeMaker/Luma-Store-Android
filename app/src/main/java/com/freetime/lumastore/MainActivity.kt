@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -48,7 +49,7 @@ import com.freetime.lumastore.notifications.SystemNotificationManager
 import com.freetime.lumastore.ui.theme.LumaStoreTheme
 import io.github.jan.supabase.auth.handleDeeplinks
 
-private enum class MainScreen { MY_APPS, DEVELOPER, SEARCH }
+private enum class MainScreen { DISCOVER, SEARCH, MY_APPS, DEVELOPER }
 
 class MainActivity : ComponentActivity() {
     private val repository by lazy { AppRepository(applicationContext) }
@@ -68,18 +69,20 @@ class MainActivity : ComponentActivity() {
                     if (intent.getBooleanExtra(SystemNotificationManager.EXTRA_OPEN_DEVELOPER, false)) {
                         MainScreen.DEVELOPER
                     } else {
-                        MainScreen.SEARCH
+                        MainScreen.DISCOVER
                     }
                 )
             }
+            var searchMounted by rememberSaveable { mutableStateOf(screen == MainScreen.SEARCH) }
             var myAppsMounted by rememberSaveable { mutableStateOf(screen == MainScreen.MY_APPS) }
             var developerMounted by rememberSaveable { mutableStateOf(screen == MainScreen.DEVELOPER) }
 
             LaunchedEffect(screen) {
                 when (screen) {
+                    MainScreen.SEARCH -> searchMounted = true
                     MainScreen.MY_APPS -> myAppsMounted = true
                     MainScreen.DEVELOPER -> developerMounted = true
-                    MainScreen.SEARCH -> Unit
+                    MainScreen.DISCOVER -> Unit
                 }
             }
 
@@ -89,31 +92,56 @@ class MainActivity : ComponentActivity() {
                     bottomBar = {
                         NavigationBar {
                             FdroidNavigationItem(
-                                selected = screen == MainScreen.MY_APPS,
-                                onClick = { screen = MainScreen.MY_APPS },
-                                label = stringResource(R.string.my_apps),
-                                icon = { Icon(Icons.Filled.Apps, contentDescription = stringResource(R.string.my_apps)) }
-                            )
-                            FdroidNavigationItem(
-                                selected = screen == MainScreen.DEVELOPER,
-                                onClick = { screen = MainScreen.DEVELOPER },
-                                label = stringResource(R.string.developer),
-                                icon = { Icon(Icons.Filled.Code, contentDescription = stringResource(R.string.developer)) }
+                                selected = screen == MainScreen.DISCOVER,
+                                onClick = { screen = MainScreen.DISCOVER },
+                                label = stringResource(R.string.discover),
+                                icon = {
+                                    Icon(
+                                        Icons.Filled.Explore,
+                                        contentDescription = stringResource(R.string.discover)
+                                    )
+                                }
                             )
                             FdroidNavigationItem(
                                 selected = screen == MainScreen.SEARCH,
                                 onClick = { screen = MainScreen.SEARCH },
                                 label = stringResource(R.string.search),
-                                icon = { Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.search)) }
+                                icon = {
+                                    Icon(
+                                        Icons.Filled.Search,
+                                        contentDescription = stringResource(R.string.search)
+                                    )
+                                }
+                            )
+                            FdroidNavigationItem(
+                                selected = screen == MainScreen.MY_APPS,
+                                onClick = { screen = MainScreen.MY_APPS },
+                                label = stringResource(R.string.my_apps),
+                                icon = {
+                                    Icon(
+                                        Icons.Filled.Apps,
+                                        contentDescription = stringResource(R.string.my_apps)
+                                    )
+                                }
+                            )
+                            FdroidNavigationItem(
+                                selected = screen == MainScreen.DEVELOPER,
+                                onClick = { screen = MainScreen.DEVELOPER },
+                                label = stringResource(R.string.developer),
+                                icon = {
+                                    Icon(
+                                        Icons.Filled.Code,
+                                        contentDescription = stringResource(R.string.developer)
+                                    )
+                                }
                             )
                         }
                     }
                 ) { padding ->
                     Box(Modifier.fillMaxSize().padding(padding)) {
-                        PersistentScreen(visible = screen == MainScreen.SEARCH) {
-                            FdroidStoreScreen(
+                        PersistentScreen(visible = screen == MainScreen.DISCOVER) {
+                            FdroidDiscoverScreen(
                                 repository = repository,
-                                installedAppsRevision = revision,
                                 installedVersionCode = { installedVersionCode(it) },
                                 installedVersionName = { installedVersionName(it) },
                                 openInstalledApp = { openInstalledApp(it) },
@@ -121,6 +149,21 @@ class MainActivity : ComponentActivity() {
                                 requestInstallPermission = { openInstallPermission() },
                                 install = installerCallback()
                             )
+                        }
+
+                        if (searchMounted) {
+                            PersistentScreen(visible = screen == MainScreen.SEARCH) {
+                                FdroidSearchScreen(
+                                    repository = repository,
+                                    installedVersionCode = { installedVersionCode(it) },
+                                    installedVersionName = { installedVersionName(it) },
+                                    openInstalledApp = { openInstalledApp(it) },
+                                    canInstallPackages = { canInstallUnknownApps() },
+                                    requestInstallPermission = { openInstallPermission() },
+                                    install = installerCallback(),
+                                    onBack = { screen = MainScreen.DISCOVER }
+                                )
+                            }
                         }
 
                         if (myAppsMounted) {
@@ -142,7 +185,7 @@ class MainActivity : ComponentActivity() {
                             PersistentScreen(visible = screen == MainScreen.DEVELOPER) {
                                 DeveloperScreen(
                                     repository = developerRepository,
-                                    onBack = { screen = MainScreen.SEARCH },
+                                    onBack = { screen = MainScreen.DISCOVER },
                                     active = screen == MainScreen.DEVELOPER
                                 )
                             }
