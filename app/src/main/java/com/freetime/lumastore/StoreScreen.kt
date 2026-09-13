@@ -20,9 +20,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -432,82 +430,55 @@ fun StoreScreen(
         val app = variants.firstOrNull { it.sourceName == selectedSource } ?: variants.maxByOrNull { it.versionCode }
 
         if (app != null) {
-            AlertDialog(
-                onDismissRequest = { selectedAppId = null },
-                title = { Text(app.name) },
-                text = {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.fillMaxWidth().heightIn(max = 600.dp).verticalScroll(rememberScrollState())
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            AppIcon(app = app, size = 72)
-                            Spacer(Modifier.width(12.dp))
-                            Column {
-                                Text(app.version, style = MaterialTheme.typography.bodyMedium)
-                                Text(app.sourceName, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                            }
+            val installedCode = installedCodes[app.id] ?: installedVersionCode(app.id)
+            val installedName = installedNames[app.id] ?: installedVersionName(app.id)
+            val action = when {
+                installedCode == null -> AppAction.INSTALL
+                app.versionCode > installedCode -> AppAction.UPDATE
+                else -> AppAction.OPEN
+            }
+            val currentInstallKey = variantKey(app)
+            val actionLabel = when (action) {
+                AppAction.INSTALL -> stringResource(R.string.install)
+                AppAction.UPDATE -> stringResource(R.string.update)
+                AppAction.OPEN -> stringResource(R.string.open)
+            }
+
+            AppDetailsScreen(
+                app = app,
+                variants = variants,
+                installedVersionName = installedName,
+                actionLabel = actionLabel,
+                installing = installingKey == currentInstallKey,
+                progress = installProgress,
+                onBack = { selectedAppId = null },
+                onAction = {
+                    if (action == AppAction.OPEN) {
+                        if (!openInstalledApp(app.id)) {
+                            error = context.getString(R.string.app_not_launchable, app.name)
                         }
-                        Text(
-                            if (app.closedSource) stringResource(R.string.closed_source) else stringResource(R.string.open_source),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = if (app.closedSource) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary,
-                            fontWeight = FontWeight.SemiBold
+                    } else if (!canInstallPackages()) {
+                        requestInstallPermission()
+                    } else {
+                        installingKey = currentInstallKey
+                        installProgress = 0
+                        install(
+                            app,
+                            { installProgress = it },
+                            { installProgress = 100; installingKey = null },
+                            {
+                                installingKey = null
+                                error = context.getString(
+                                    R.string.download_failed,
+                                    it.message ?: context.getString(R.string.unknown_error)
+                                )
+                            }
                         )
-
-                        if (variants.size > 1 && selectedSourceFilter == null) {
-                            Text(stringResource(R.string.choose_source), fontWeight = FontWeight.SemiBold)
-                            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                items(variants, key = { it.sourceName }) { variant ->
-                                    FilterChip(
-                                        selected = variant.sourceName == app.sourceName,
-                                        onClick = { selectSource(appId, variant.sourceName) },
-                                        label = { Text(stringResource(R.string.source_version, variant.sourceName, variant.version)) }
-                                    )
-                                }
-                            }
-                        }
-
-                        Text(app.description.ifBlank { app.summary.ifBlank { stringResource(R.string.no_description_available) } })
-
-                        if (app.categories.isNotEmpty()) {
-                            Text(stringResource(R.string.categories, app.categories.joinToString()), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                        }
-
-                        if (app.screenshotUrls.isNotEmpty()) {
-                            Text(stringResource(R.string.screenshots), fontWeight = FontWeight.SemiBold)
-                            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                items(app.screenshotUrls) { url ->
-                                    AsyncImage(
-                                        model = url,
-                                        contentDescription = stringResource(R.string.screenshot_of, app.name),
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.width(140.dp).height(250.dp).clip(RoundedCornerShape(12.dp)).clickable { selectedScreenshotUrl = url }
-                                    )
-                                }
-                            }
-                        }
-
-                        HorizontalDivider()
-                        app.authorName?.let { MetadataValue(stringResource(R.string.author), it) }
-                        app.authorEmail?.let { MetadataValue(stringResource(R.string.email), it) }
-                        app.authorWebsite?.let { MetadataLink(stringResource(R.string.author_website), it) { uriHandler.openUri(it) } }
-                        app.websiteUrl?.let { MetadataLink(stringResource(R.string.website), it) { uriHandler.openUri(it) } }
-                        app.sourceCodeUrl?.let { MetadataLink(stringResource(R.string.source_code), it) { uriHandler.openUri(it) } }
-                        app.issueTrackerUrl?.let { MetadataLink(stringResource(R.string.issue_tracker), it) { uriHandler.openUri(it) } }
-                        app.translationUrl?.let { MetadataLink(stringResource(R.string.translation), it) { uriHandler.openUri(it) } }
-                        app.changelogUrl?.let { MetadataLink(stringResource(R.string.changelog), it) { uriHandler.openUri(it) } }
-                        app.license?.let { MetadataValue(stringResource(R.string.license), it) }
-                        if (app.antiFeatures.isNotEmpty()) {
-                            MetadataValue(stringResource(R.string.anti_features), app.antiFeatures.joinToString(", "))
-                        }
-                        HorizontalDivider()
-                        Text(stringResource(R.string.package_label, app.id))
-                        Text(stringResource(R.string.version_with_code, app.version, app.versionCode))
-                        Text(stringResource(R.string.source_value, app.sourceName))
                     }
                 },
-                confirmButton = { TextButton(onClick = { selectedAppId = null }) { Text(stringResource(R.string.close)) } }
+                onSourceSelected = { variant -> selectSource(appId, variant.sourceName) },
+                onScreenshotSelected = { selectedScreenshotUrl = it },
+                onOpenUri = { uriHandler.openUri(it) }
             )
         }
     }
@@ -598,22 +569,6 @@ private fun AppListItem(
                 else LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
         }
-    }
-}
-
-@Composable
-private fun MetadataValue(label: String, value: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style = MaterialTheme.typography.bodyMedium)
-    }
-}
-
-@Composable
-private fun MetadataLink(label: String, value: String, onClick: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.clickable(onClick = onClick))
     }
 }
 
