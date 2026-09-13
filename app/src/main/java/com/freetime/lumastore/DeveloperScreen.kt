@@ -23,7 +23,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
-fun DeveloperScreen(repository: DeveloperRepository, onBack: () -> Unit) {
+fun DeveloperScreen(
+    repository: DeveloperRepository,
+    onBack: () -> Unit,
+    active: Boolean = true
+) {
     val context = LocalContext.current
     val systemNotifications = remember(context) { SystemNotificationManager(context) }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -42,54 +46,206 @@ fun DeveloperScreen(repository: DeveloperRepository, onBack: () -> Unit) {
     val notificationError = stringResource(R.string.notification_update_failed)
 
     suspend fun reload(current: DeveloperSession) {
-        loading = true; error = null
-        runCatching { repository.loadDashboard(current) }.onSuccess { dashboard = it; systemNotifications.showNewNotifications(it.notifications) }.onFailure { error = it.message ?: developerLoadError }
+        loading = true
+        error = null
+        runCatching { repository.loadDashboard(current) }
+            .onSuccess {
+                dashboard = it
+                systemNotifications.showNewNotifications(it.notifications)
+            }
+            .onFailure { error = it.message ?: developerLoadError }
         loading = false
     }
+
     LaunchedEffect(Unit) {
-        runCatching { repository.savedSession() }.onSuccess { session = it; authLoading = false }.onFailure { error = it.message ?: authLoadError; authLoading = false }
-        repository.sessionFlow().collect { session = it; if (it == null) dashboard = null; loggingIn = false; authLoading = false }
+        runCatching { repository.savedSession() }
+            .onSuccess {
+                session = it
+                authLoading = false
+            }
+            .onFailure {
+                error = it.message ?: authLoadError
+                authLoading = false
+            }
+        repository.sessionFlow().collect {
+            session = it
+            if (it == null) dashboard = null
+            loggingIn = false
+            authLoading = false
+        }
     }
-    LaunchedEffect(session?.accessToken) {
+
+    LaunchedEffect(session?.accessToken, active) {
+        if (!active) return@LaunchedEffect
         val current = session ?: return@LaunchedEffect
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        reload(current); while (session?.accessToken == current.accessToken) { delay(30_000); reload(current) }
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        reload(current)
+        while (active && session?.accessToken == current.accessToken) {
+            delay(30_000)
+            reload(current)
+        }
     }
-    if (authLoading) { Column(Modifier.fillMaxSize(), Arrangement.Center, Alignment.CenterHorizontally) { CircularProgressIndicator() }; return }
+
+    if (authLoading) {
+        Column(Modifier.fillMaxSize(), Arrangement.Center, Alignment.CenterHorizontally) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
     if (session == null) {
         Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            TextButton(onClick = onBack) { Text(stringResource(R.string.back_to_store)) }
             Text(stringResource(R.string.developer_login), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             Text(stringResource(R.string.developer_login_description), color = MaterialTheme.colorScheme.onSurfaceVariant)
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            Button(onClick = { scope.launch { loggingIn = true; error = null; runCatching { repository.signInWithGitHub() }.onFailure { error = it.message ?: githubError; loggingIn = false } } }, enabled = !loggingIn, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.sign_in_github)) }
-            OutlinedButton(onClick = { scope.launch { loggingIn = true; error = null; runCatching { repository.signInWithGitLab() }.onFailure { error = it.message ?: gitlabError; loggingIn = false } } }, enabled = !loggingIn, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.sign_in_gitlab)) }
-        }; return
+            Button(
+                onClick = {
+                    scope.launch {
+                        loggingIn = true
+                        error = null
+                        runCatching { repository.signInWithGitHub() }
+                            .onFailure { error = it.message ?: githubError; loggingIn = false }
+                    }
+                },
+                enabled = !loggingIn,
+                modifier = Modifier.fillMaxWidth()
+            ) { Text(stringResource(R.string.sign_in_github)) }
+            OutlinedButton(
+                onClick = {
+                    scope.launch {
+                        loggingIn = true
+                        error = null
+                        runCatching { repository.signInWithGitLab() }
+                            .onFailure { error = it.message ?: gitlabError; loggingIn = false }
+                    }
+                },
+                enabled = !loggingIn,
+                modifier = Modifier.fillMaxWidth()
+            ) { Text(stringResource(R.string.sign_in_gitlab)) }
+        }
+        return
     }
+
     val current = session ?: return
     val data = dashboard
     val unread = data?.notifications?.count { it.readAt == null } ?: 0
     val comments = data?.comments?.groupBy { it.submissionId }.orEmpty()
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { Row(Modifier.fillMaxWidth().padding(top = 12.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-            TextButton(onClick = onBack) { Text(stringResource(R.string.store_back)) }
-            TextButton(onClick = { scope.launch { runCatching { repository.signOut() }.onFailure { error = it.message ?: signOutError } } }) { Text(stringResource(R.string.sign_out)) }
-        } }
-        item { Text(stringResource(R.string.developer_area), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold); Text(current.email ?: current.userId, color = MaterialTheme.colorScheme.onSurfaceVariant); Spacer(Modifier.height(6.dp)); Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { OutlinedButton(onClick = { scope.launch { reload(current) } }, enabled = !loading) { Text(stringResource(R.string.refresh)) }; if (unread > 0) Text(stringResource(R.string.unread_notifications, unread), color = MaterialTheme.colorScheme.primary) } }
+
+    LazyColumn(
+        Modifier.fillMaxSize().padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            Row(
+                Modifier.fillMaxWidth().padding(top = 12.dp),
+                Arrangement.End,
+                Alignment.CenterVertically
+            ) {
+                TextButton(onClick = {
+                    scope.launch {
+                        runCatching { repository.signOut() }
+                            .onFailure { error = it.message ?: signOutError }
+                    }
+                }) { Text(stringResource(R.string.sign_out)) }
+            }
+        }
+        item {
+            Text(stringResource(R.string.developer_area), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+            Text(current.email ?: current.userId, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { scope.launch { reload(current) } }, enabled = !loading) {
+                    Text(stringResource(R.string.refresh))
+                }
+                if (unread > 0) Text(stringResource(R.string.unread_notifications, unread), color = MaterialTheme.colorScheme.primary)
+            }
+        }
         error?.let { message -> item { Text(message, color = MaterialTheme.colorScheme.error) } }
-        if (loading && data == null) item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { CircularProgressIndicator() } }
+        if (loading && data == null) item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { CircularProgressIndicator() }
+        }
         if (data != null) {
             item { Text(stringResource(R.string.notifications), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold) }
-            if (data.notifications.isEmpty()) item { Text(stringResource(R.string.no_notifications), color = MaterialTheme.colorScheme.onSurfaceVariant) } else items(data.notifications, key = { it.id }) { n -> NotificationCard(n, if (n.readAt == null) {{ scope.launch { runCatching { repository.markNotificationRead(n.id) }.onFailure { error = it.message ?: notificationError }; reload(current) } }} else null) }
-            item { Divider(Modifier.padding(vertical = 6.dp)); Text(stringResource(R.string.my_apps), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold) }
-            if (data.submissions.isEmpty()) item { Text(stringResource(R.string.no_account_apps), color = MaterialTheme.colorScheme.onSurfaceVariant) } else items(data.submissions, key = { it.id }) { SubmissionCard(it, comments[it.id].orEmpty().map { c -> c.body }) }
+            if (data.notifications.isEmpty()) {
+                item { Text(stringResource(R.string.no_notifications), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            } else {
+                items(data.notifications, key = { it.id }) { n ->
+                    NotificationCard(
+                        n,
+                        if (n.readAt == null) {
+                            {
+                                scope.launch {
+                                    runCatching { repository.markNotificationRead(n.id) }
+                                        .onFailure { error = it.message ?: notificationError }
+                                    reload(current)
+                                }
+                            }
+                        } else null
+                    )
+                }
+            }
+            item {
+                HorizontalDivider(Modifier.padding(vertical = 6.dp))
+                Text(stringResource(R.string.my_apps), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            }
+            if (data.submissions.isEmpty()) {
+                item { Text(stringResource(R.string.no_account_apps), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            } else {
+                items(data.submissions, key = { it.id }) {
+                    SubmissionCard(it, comments[it.id].orEmpty().map { c -> c.body })
+                }
+            }
         }
         item { Spacer(Modifier.height(28.dp)) }
     }
 }
 
-@Composable private fun NotificationCard(notification: DeveloperNotification, onMarkRead: (() -> Unit)?) { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) { Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) { Text(notification.title, fontWeight = FontWeight.SemiBold); if (notification.readAt == null) Text(stringResource(R.string.new_label), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) }; notification.message?.let { Text(it) }; notification.createdAt?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; if (onMarkRead != null) TextButton(onClick = onMarkRead) { Text(stringResource(R.string.mark_as_read)) } } } }
+@Composable
+private fun NotificationCard(notification: DeveloperNotification, onMarkRead: (() -> Unit)?) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                Text(notification.title, fontWeight = FontWeight.SemiBold)
+                if (notification.readAt == null) Text(stringResource(R.string.new_label), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            }
+            notification.message?.let { Text(it) }
+            notification.createdAt?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            if (onMarkRead != null) TextButton(onClick = onMarkRead) { Text(stringResource(R.string.mark_as_read)) }
+        }
+    }
+}
 
-@Composable private fun SubmissionCard(submission: DeveloperSubmission, comments: List<String>) { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) { Text(submission.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); Text(stringResource(R.string.status_value, submission.status), color = statusColor(submission.status)); submission.version?.let { Text(stringResource(R.string.version_value, it), style = MaterialTheme.typography.bodySmall) }; submission.packageName?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; submission.reviewMessage?.let { Divider(); Text(stringResource(R.string.review_feedback), fontWeight = FontWeight.SemiBold); Text(it) }; if (comments.isNotEmpty()) { Divider(); Text(stringResource(R.string.comments_feedback), fontWeight = FontWeight.SemiBold); comments.forEach { Text("• $it") } } } } }
+@Composable
+private fun SubmissionCard(submission: DeveloperSubmission, comments: List<String>) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            Text(submission.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.status_value, submission.status), color = statusColor(submission.status))
+            submission.version?.let { Text(stringResource(R.string.version_value, it), style = MaterialTheme.typography.bodySmall) }
+            submission.packageName?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            submission.reviewMessage?.let {
+                HorizontalDivider()
+                Text(stringResource(R.string.review_feedback), fontWeight = FontWeight.SemiBold)
+                Text(it)
+            }
+            if (comments.isNotEmpty()) {
+                HorizontalDivider()
+                Text(stringResource(R.string.comments_feedback), fontWeight = FontWeight.SemiBold)
+                comments.forEach { Text("• $it") }
+            }
+        }
+    }
+}
 
-@Composable private fun statusColor(status: String) = when (status) { "Approved" -> MaterialTheme.colorScheme.primary; "Rejected" -> MaterialTheme.colorScheme.error; "Changes Requested" -> MaterialTheme.colorScheme.tertiary; else -> MaterialTheme.colorScheme.onSurfaceVariant }
+@Composable
+private fun statusColor(status: String) = when (status) {
+    "Approved" -> MaterialTheme.colorScheme.primary
+    "Rejected" -> MaterialTheme.colorScheme.error
+    "Changes Requested" -> MaterialTheme.colorScheme.tertiary
+    else -> MaterialTheme.colorScheme.onSurfaceVariant
+}
