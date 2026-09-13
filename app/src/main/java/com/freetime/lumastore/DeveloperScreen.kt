@@ -34,39 +34,54 @@ import com.freetime.lumastore.data.DeveloperNotification
 import com.freetime.lumastore.data.DeveloperRepository
 import com.freetime.lumastore.data.DeveloperSession
 import com.freetime.lumastore.data.DeveloperSubmission
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @Composable
 fun DeveloperScreen(
     repository: DeveloperRepository,
-    onBack: () -> Unit,
-    onOpenAuth: (String) -> Unit
+    onBack: () -> Unit
 ) {
-    var session by remember { mutableStateOf(repository.savedSession()) }
+    var session by remember { mutableStateOf<DeveloperSession?>(null) }
     var dashboard by remember { mutableStateOf<DeveloperDashboard?>(null) }
-    var loading by remember { mutableStateOf(session != null) }
+    var loading by remember { mutableStateOf(false) }
+    var authLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    var loggingIn by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     suspend fun reload(currentSession: DeveloperSession) {
         loading = true
         error = null
         runCatching {
-            withContext(Dispatchers.IO) { repository.loadDashboard(currentSession) }
-        }.onSuccess { dashboard = it }
-            .onFailure {
-                error = it.message ?: "Developer-Daten konnten nicht geladen werden."
-                if ((it.message ?: "").contains("JWT", ignoreCase = true) ||
-                    (it.message ?: "").contains("401")) {
-                    withContext(Dispatchers.IO) { repository.signOut(currentSession) }
-                    session = null
-                    dashboard = null
-                }
-            }
+            repository.loadDashboard(currentSession)
+        }.onSuccess {
+            dashboard = it
+        }.onFailure {
+            error = it.message ?: "Developer-Daten konnten nicht geladen werden."
+        }
         loading = false
+    }
+
+    LaunchedEffect(Unit) {
+        runCatching { repository.savedSession() }
+            .onSuccess {
+                session = it
+                authLoading = false
+            }
+            .onFailure {
+                error = it.message ?: "Supabase-Anmeldung konnte nicht geladen werden."
+                authLoading = false
+            }
+
+        repository.sessionFlow().collect { newSession ->
+            session = newSession
+            if (newSession == null) {
+                dashboard = null
+            }
+            loggingIn = false
+            authLoading = false
+        }
     }
 
     LaunchedEffect(session?.accessToken) {
@@ -78,8 +93,15 @@ fun DeveloperScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
-        repository.consumePendingSession()?.let { session = it }
+    if (authLoading) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            CircularProgressIndicator()
+        }
+        return
     }
 
     if (session == null) {
@@ -90,18 +112,40 @@ fun DeveloperScreen(
             TextButton(onClick = onBack) { Text("← Zurück zum Store") }
             Text("Developer Login", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             Text(
-                "Melde dich mit GitHub oder GitLab an.",
+                "Melde dich über Supabase mit GitHub oder GitLab an.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Button(
-                onClick = { onOpenAuth(repository.oauthUrl("github")) },
+                onClick = {
+                    scope.launch {
+                        loggingIn = true
+                        error = null
+                        runCatching { repository.signInWithGitHub() }
+                            .onFailure {
+                                error = it.message ?: "GitHub-Anmeldung fehlgeschlagen."
+                                loggingIn = false
+                            }
+                    }
+                },
+                enabled = !loggingIn,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Mit GitHub anmelden")
             }
             OutlinedButton(
-                onClick = { onOpenAuth(repository.oauthUrl("gitlab")) },
+                onClick = {
+                    scope.launch {
+                        loggingIn = true
+                        error = null
+                        runCatching { repository.signInWithGitLab() }
+                            .onFailure {
+                                error = it.message ?: "GitLab-Anmeldung fehlgeschlagen."
+                                loggingIn = false
+                            }
+                    }
+                },
+                enabled = !loggingIn,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Mit GitLab anmelden")
@@ -128,10 +172,8 @@ fun DeveloperScreen(
                 TextButton(onClick = onBack) { Text("← Store") }
                 TextButton(onClick = {
                     scope.launch {
-                        withContext(Dispatchers.IO) { repository.signOut(currentSession) }
-                        session = null
-                        dashboard = null
-                        error = null
+                        runCatching { repository.signOut() }
+                            .onFailure { error = it.message ?: "Abmelden fehlgeschlagen." }
                     }
                 }) { Text("Ausloggen") }
             }
@@ -177,9 +219,9 @@ fun DeveloperScreen(
                             {
                                 scope.launch {
                                     runCatching {
-                                        withContext(Dispatchers.IO) {
-                                            repository.markNotificationRead(currentSession, notification.id)
-                                        }
+                                        repository.markNotificationRead(notification.id)
+                                    }.onFailure {
+                                        error = it.message ?: "Benachrichtigung konnte nicht aktualisiert werden."
                                     }
                                     reload(currentSession)
                                 }
