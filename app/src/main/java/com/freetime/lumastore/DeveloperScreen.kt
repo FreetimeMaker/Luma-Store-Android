@@ -1,5 +1,10 @@
 package com.freetime.lumastore
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,13 +32,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.freetime.lumastore.data.DeveloperDashboard
 import com.freetime.lumastore.data.DeveloperNotification
 import com.freetime.lumastore.data.DeveloperRepository
 import com.freetime.lumastore.data.DeveloperSession
 import com.freetime.lumastore.data.DeveloperSubmission
+import com.freetime.lumastore.notifications.SystemNotificationManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -42,6 +50,13 @@ fun DeveloperScreen(
     repository: DeveloperRepository,
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
+    val systemNotifications = remember(context) { SystemNotificationManager(context) }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { }
+    )
+
     var session by remember { mutableStateOf<DeveloperSession?>(null) }
     var dashboard by remember { mutableStateOf<DeveloperDashboard?>(null) }
     var loading by remember { mutableStateOf(false) }
@@ -57,6 +72,7 @@ fun DeveloperScreen(
             repository.loadDashboard(currentSession)
         }.onSuccess {
             dashboard = it
+            systemNotifications.showNewNotifications(it.notifications)
         }.onFailure {
             error = it.message ?: "Developer-Daten konnten nicht geladen werden."
         }
@@ -86,6 +102,17 @@ fun DeveloperScreen(
 
     LaunchedEffect(session?.accessToken) {
         val current = session ?: return@LaunchedEffect
+
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+
         reload(current)
         while (session?.accessToken == current.accessToken) {
             delay(30_000)
