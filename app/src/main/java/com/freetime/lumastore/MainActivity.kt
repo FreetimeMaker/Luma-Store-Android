@@ -65,7 +65,7 @@ class MainActivity : ComponentActivity() {
                             TextButton(onClick = { screen = MainScreen.SETTINGS }) { Text(stringResource(R.string.settings)) }
                         }
                         Box(Modifier.weight(1f)) {
-                            StoreScreen(
+                            FdroidStoreScreen(
                                 repository = repository,
                                 installedAppsRevision = revision,
                                 installedVersionCode = { installedVersionCode(it) },
