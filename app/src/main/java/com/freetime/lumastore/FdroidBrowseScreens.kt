@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -91,7 +92,8 @@ fun FdroidDiscoverScreen(
         selectedApps.flatMap { it.categories }.distinct().sortedBy { it.lowercase() }
     }
     val shownApps = remember(selectedApps, selectedCategory) {
-        if (selectedCategory == null) selectedApps else selectedApps.filter { selectedCategory in it.categories }
+        val category = selectedCategory
+        if (category == null) selectedApps else selectedApps.filter { category in it.categories }
     }
 
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState())
@@ -152,7 +154,9 @@ fun FdroidDiscoverScreen(
                                 }
                                 items(categories, key = { it }) { category ->
                                     AssistChip(
-                                        onClick = { selectedCategory = if (selectedCategory == category) null else category },
+                                        onClick = {
+                                            selectedCategory = if (selectedCategory == category) null else category
+                                        },
                                         label = { Text(category) }
                                     )
                                 }
@@ -163,7 +167,7 @@ fun FdroidDiscoverScreen(
 
                 item("all_apps_title") {
                     Text(
-                        if (selectedCategory == null) stringResource(R.string.browse_all_apps) else selectedCategory.orEmpty(),
+                        selectedCategory ?: stringResource(R.string.browse_all_apps),
                         style = MaterialTheme.typography.titleMedium,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.SemiBold,
