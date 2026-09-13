@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -366,7 +365,7 @@ private fun BrowseAppRow(app: StoreApp, onClick: () -> Unit) {
         ) {
             BrowseAppIcon(app, 60)
             Spacer(Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
+            Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     app.name,
                     style = MaterialTheme.typography.titleMedium,
