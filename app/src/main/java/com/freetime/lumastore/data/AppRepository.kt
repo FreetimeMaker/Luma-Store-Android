@@ -48,6 +48,14 @@ data class AppSource(
     val custom: Boolean = false
 )
 
+private data class ClosedSourceMetadata(
+    val values: Map<String, String>,
+    val summary: String,
+    val description: String,
+    val changelog: String,
+    val screenshots: List<String>
+)
+
 class AppRepository(context: Context) {
     private val cachePreferences = context.applicationContext.getSharedPreferences(
         CACHE_PREFERENCES,
@@ -320,7 +328,7 @@ class AppRepository(context: Context) {
             connection.connectTimeout = 15_000
             connection.readTimeout = 45_000
             connection.instanceFollowRedirects = true
-            connection.setRequestProperty("Accept", "application/json")
+            connection.setRequestProperty("Accept", "*/*")
             connection.setRequestProperty("User-Agent", "Luma-Store/1.0")
 
             val responseCode = connection.responseCode
@@ -330,6 +338,57 @@ class AppRepository(context: Context) {
         } finally {
             connection.disconnect()
         }
+    }
+
+    private fun loadClosedSourceMetadata(packageName: String, versionCode: Long): ClosedSourceMetadata? {
+        if (packageName.isBlank() || versionCode <= 0L) return null
+        val safePackage = packageName.replace(Regex("[^A-Za-z0-9._-]+"), "-")
+        val url = "$LUMA_STORAGE_PUBLIC_BASE/$safePackage/$versionCode/metadata.txt"
+        return runCatching { parseClosedSourceMetadata(downloadText(url)) }.getOrNull()
+    }
+
+    private fun parseClosedSourceMetadata(text: String): ClosedSourceMetadata {
+        val lines = text.replace("\r\n", "\n").replace('\r', '\n').split('\n')
+        val values = linkedMapOf<String, String>()
+        var index = 0
+
+        while (index < lines.size) {
+            val line = lines[index]
+            if (line.isBlank()) {
+                index++
+                break
+            }
+            val separator = line.indexOf(':')
+            if (separator > 0) {
+                values[line.substring(0, separator).trim()] = line.substring(separator + 1).trim()
+            }
+            index++
+        }
+
+        fun section(name: String, nextSections: Set<String>): String {
+            val start = lines.indexOfFirst { it.trim() == "$name:" }
+            if (start < 0) return ""
+            val content = mutableListOf<String>()
+            var current = start + 1
+            while (current < lines.size) {
+                val trimmed = lines[current].trim()
+                if (trimmed.removeSuffix(":") in nextSections && trimmed.endsWith(':')) break
+                content += lines[current]
+                current++
+            }
+            return content.joinToString("\n").trim()
+        }
+
+        val summary = section("Short Description", setOf("Description", "Changelog", "Screenshots"))
+        val description = section("Description", setOf("Changelog", "Screenshots"))
+        val changelog = section("Changelog", setOf("Screenshots"))
+        val screenshotSection = section("Screenshots", emptySet())
+        val screenshots = screenshotSection.lineSequence()
+            .map(String::trim)
+            .filter { it.startsWith("http://") || it.startsWith("https://") }
+            .toList()
+
+        return ClosedSourceMetadata(values, summary, description, changelog, screenshots)
     }
 
     private fun parseLumaApi(source: AppSource, text: String): List<StoreApp> {
@@ -350,8 +409,8 @@ class AppRepository(context: Context) {
             }
 
             val platform = androidPlatform ?: continue
-            val downloadUrl = platform.optString("download_url").trim()
-            if (downloadUrl.isBlank()) continue
+            val apiDownloadUrl = platform.optString("download_url").trim()
+            if (apiDownloadUrl.isBlank()) continue
 
             val rawId = firstNonBlank(
                 app.optString("packageName"),
@@ -368,26 +427,37 @@ class AppRepository(context: Context) {
             )
             val id = packageName ?: "luma:$rawId"
 
-            val name = app.optString("name").ifBlank { "Unbenannte App" }
-            val description = app.optString("description")
-            val summary = firstNonBlank(app.optString("short_description"), app.optString("summary"))
-                ?: description.lineSequence().firstOrNull().orEmpty().take(180)
-            val version = app.optString("version").ifBlank { "1.0" }
-            val versionCode = app.optLong("version_code", Long.MIN_VALUE)
+            val apiVersion = app.optString("version").ifBlank { "1.0" }
+            val apiVersionCode = app.optLong("version_code", Long.MIN_VALUE)
                 .takeIf { it != Long.MIN_VALUE }
-                ?: versionToCode(version)
+                ?: versionToCode(apiVersion)
+            val closedSource = app.optBoolean("closed_source", false)
+            val metadata = if (closedSource && packageName != null) {
+                loadClosedSourceMetadata(packageName, apiVersionCode)
+            } else {
+                null
+            }
+            val meta = metadata?.values.orEmpty()
 
-            val categoryName = app.optJSONObject("category")
-                ?.optString("name")
-                ?.takeIf { it.isNotBlank() }
+            val apiDescription = app.optString("description")
+            val name = meta["Name"].takeUnless(String?::isNullOrBlank)
+                ?: app.optString("name").ifBlank { "Unbenannte App" }
+            val description = metadata?.description?.takeIf { it.isNotBlank() } ?: apiDescription
+            val summary = metadata?.summary?.takeIf { it.isNotBlank() }
+                ?: firstNonBlank(app.optString("short_description"), app.optString("summary"))
+                ?: description.lineSequence().firstOrNull().orEmpty().take(180)
+            val version = meta["Version"].takeUnless(String?::isNullOrBlank) ?: apiVersion
+            val versionCode = meta["Version Code"]?.toLongOrNull() ?: apiVersionCode
 
-            val iconUrl = firstNonBlank(
-                app.optString("icon_url"),
-                app.optString("iconUrl")
-            )
+            val categoryName = meta["Category"].takeUnless(String?::isNullOrBlank)
+                ?: app.optJSONObject("category")?.optString("name")?.takeIf { it.isNotBlank() }
+
+            val iconUrl = meta["Icon URL"].takeUnless(String?::isNullOrBlank)
+                ?: firstNonBlank(app.optString("icon_url"), app.optString("iconUrl"))
+            val downloadUrl = meta["Download URL"].takeUnless(String?::isNullOrBlank) ?: apiDownloadUrl
 
             val donationUrls = buildList {
-                firstNonBlank(app.optString("donate_url"), app.optString("donateUrl"))?.let(::add)
+                firstNonBlank(meta["Donate URL"], app.optString("donate_url"), app.optString("donateUrl"))?.let(::add)
                 jsonStrings(app.optJSONArray("donate_urls")).forEach { if (it !in this) add(it) }
             }
 
@@ -399,26 +469,27 @@ class AppRepository(context: Context) {
                 version = version,
                 versionCode = versionCode,
                 iconUrl = iconUrl,
-                screenshotUrls = jsonStrings(app.optJSONArray("screenshots")),
+                screenshotUrls = metadata?.screenshots?.takeIf { it.isNotEmpty() }
+                    ?: jsonStrings(app.optJSONArray("screenshots")),
                 categories = listOfNotNull(categoryName),
                 apkUrl = downloadUrl,
                 sourceName = source.name,
-                authorName = nullableString(app, "author_name"),
-                authorEmail = nullableString(app, "author_email"),
-                authorWebsite = nullableString(app, "author_website"),
-                websiteUrl = nullableString(app, "website_url"),
-                sourceCodeUrl = firstNonBlank(app.optString("source_code_url"), app.optString("repo_url")),
-                issueTrackerUrl = nullableString(app, "issue_tracker_url"),
-                translationUrl = nullableString(app, "translation_url"),
+                authorName = firstNonBlank(meta["Author Name"], nullableString(app, "author_name")),
+                authorEmail = firstNonBlank(meta["Author Email"], nullableString(app, "author_email")),
+                authorWebsite = firstNonBlank(meta["Author Website"], nullableString(app, "author_website")),
+                websiteUrl = firstNonBlank(meta["Website"], nullableString(app, "website_url")),
+                sourceCodeUrl = if (closedSource) null else firstNonBlank(app.optString("source_code_url"), app.optString("repo_url")),
+                issueTrackerUrl = firstNonBlank(meta["Issue Tracker"], nullableString(app, "issue_tracker_url")),
+                translationUrl = firstNonBlank(meta["Translation"], nullableString(app, "translation_url")),
                 changelogUrl = nullableString(app, "changelog_url"),
                 donationUrls = donationUrls,
-                liberapay = nullableString(app, "liberapay"),
-                openCollective = nullableString(app, "opencollective"),
-                bitcoin = nullableString(app, "bitcoin"),
-                litecoin = nullableString(app, "litecoin"),
-                license = nullableString(app, "license_type"),
+                liberapay = firstNonBlank(meta["Liberapay"], nullableString(app, "liberapay")),
+                openCollective = firstNonBlank(meta["OpenCollective"], nullableString(app, "opencollective")),
+                bitcoin = firstNonBlank(meta["Bitcoin"], nullableString(app, "bitcoin")),
+                litecoin = firstNonBlank(meta["Litecoin"], nullableString(app, "litecoin")),
+                license = firstNonBlank(meta["License"], nullableString(app, "license_type")),
                 antiFeatures = jsonStrings(app.optJSONArray("ant_features")),
-                closedSource = app.optBoolean("closed_source", false)
+                closedSource = closedSource
             )
         }
 
@@ -437,7 +508,6 @@ class AppRepository(context: Context) {
 
         val packages = root.optJSONObject("packages") ?: return emptyList()
         val result = mutableListOf<StoreApp>()
-
         packages.keys().forEach { packageName ->
             val versions = packages.optJSONArray(packageName) ?: return@forEach
             var best: JSONObject? = null
@@ -582,5 +652,6 @@ class AppRepository(context: Context) {
         private const val CACHE_KEY_TIMESTAMP = "updated_at"
         private const val SOURCE_PREFERENCES = "luma_store_repository_settings"
         private const val CUSTOM_SOURCES_KEY = "custom_sources_json"
+        private const val LUMA_STORAGE_PUBLIC_BASE = "https://ndlaevedujqxhygbyxfh.supabase.co/storage/v1/object/public/luma-apps"
     }
 }
