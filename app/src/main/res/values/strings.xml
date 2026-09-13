@@ -2,6 +2,7 @@
     <string name="app_name">Luma Store</string>
     <string name="developer">Developer</string>
     <string name="settings">Settings</string>
+    <string name="search">Search</string>
     <string name="back">Back</string>
     <string name="back_to_store">← Back to Store</string>
     <string name="store_back">← Store</string>
@@ -9,6 +10,10 @@
     <string name="store_tagline">Discover, install, and update apps from %1$d sources</string>
     <string name="apps">Apps</string>
     <string name="updates_count">Updates (%1$d)</string>
+    <string name="updates_available_description">Updates are available for some of your installed apps.</string>
+    <string name="installed_apps">Installed apps</string>
+    <string name="no_installed_apps">No installed apps from your configured sources were found.</string>
+    <string name="installed_and_available_version">Installed: %1$s • Available: %2$s</string>
     <string name="search_updates">Search updates</string>
     <string name="search_apps">Search apps</string>
     <string name="discover_apps">Discover apps</string>
