@@ -24,8 +24,8 @@ data class DeveloperDashboard(val submissions: List<DeveloperSubmission>, val co
 class DeveloperRepository {
     fun sessionFlow(): Flow<DeveloperSession?> = supabase.auth.sessionStatus.map { supabase.auth.currentSessionOrNull()?.toDeveloperSession() }
     suspend fun savedSession(): DeveloperSession? { supabase.auth.awaitInitialization(); return supabase.auth.currentSessionOrNull()?.toDeveloperSession() }
-    suspend fun signInWithGitHub() { supabase.auth.signInWith(Github) }
-    suspend fun signInWithGitLab() { supabase.auth.signInWith(Gitlab) }
+    suspend fun signInWithGitHub() { supabase.auth.signInWith(Github, redirectUrl = OAUTH_REDIRECT_URL) }
+    suspend fun signInWithGitLab() { supabase.auth.signInWith(Gitlab, redirectUrl = OAUTH_REDIRECT_URL) }
     suspend fun currentSession(): DeveloperSession? = supabase.auth.currentSessionOrNull()?.toDeveloperSession()
     suspend fun signOut() { supabase.auth.signOut() }
 
@@ -47,5 +47,9 @@ class DeveloperRepository {
     private fun io.github.jan.supabase.auth.user.UserSession.toDeveloperSession(): DeveloperSession {
         val currentUser = user ?: error("Supabase session does not contain a user.")
         return DeveloperSession(accessToken, refreshToken, currentUser.id, currentUser.email)
+    }
+
+    companion object {
+        private const val OAUTH_REDIRECT_URL = "lumastore://auth"
     }
 }
