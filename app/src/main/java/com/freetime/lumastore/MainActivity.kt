@@ -43,6 +43,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        handleAuthIntent(intent)
         enableEdgeToEdge()
         setContent {
             val revision = installedAppsRevision.intValue
@@ -58,7 +59,10 @@ class MainActivity : ComponentActivity() {
 
                     MainScreen.DEVELOPER -> DeveloperScreen(
                         repository = developerRepository,
-                        onBack = { screen = MainScreen.STORE }
+                        onBack = { screen = MainScreen.STORE },
+                        onOpenAuth = { url ->
+                            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                        }
                     )
 
                     MainScreen.STORE -> Column(modifier = Modifier.fillMaxSize()) {
@@ -104,9 +108,20 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleAuthIntent(intent)
+    }
+
     override fun onResume() {
         super.onResume()
         installedAppsRevision.intValue++
+    }
+
+    private fun handleAuthIntent(intent: Intent?) {
+        val uri = intent?.data ?: return
+        runCatching { developerRepository.handleOAuthCallback(uri) }
     }
 
     private fun installedVersionCode(packageName: String): Long? = runCatching {
