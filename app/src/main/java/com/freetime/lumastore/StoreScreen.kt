@@ -119,8 +119,10 @@ fun StoreScreen(
         refreshing = false
     }
 
-    val variantsById = apps.groupBy { it.id }
-    val availableSources = apps.map { it.sourceName }.distinct().sortedBy { it.lowercase() }
+    val variantsById = remember(apps) { apps.groupBy { it.id } }
+    val availableSources = remember(apps) {
+        apps.map { it.sourceName }.distinct().sortedBy { it.lowercase() }
+    }
 
     fun matchesSourceCodeFilter(app: StoreApp): Boolean = when (sourceCodeFilter) {
         SourceCodeFilter.ALL -> true
@@ -146,40 +148,59 @@ fun StoreScreen(
         sourcePreferences.edit().putString(sourcePreferenceKey(appId), sourceName).apply()
     }
 
-    val selectedApps = variantsById.mapNotNull { (id, variants) ->
-        val matchingVariants = variants.filter { variant ->
-            (selectedSourceFilter == null || variant.sourceName == selectedSourceFilter) && matchesSourceCodeFilter(variant)
-        }
-        if (matchingVariants.isEmpty()) null else {
-            val selectedSource = selectedSources[id]
-            matchingVariants.firstOrNull { it.sourceName == selectedSource }
-                ?: matchingVariants.maxByOrNull { it.versionCode }
-        }
-    }.sortedBy { it.name.lowercase() }
-
-    val updateCount = selectedApps.count { app ->
-        val installedCode = installedVersionCode(app.id)
-        installedCode != null && app.versionCode > installedCode
+    val sourceSelectionSnapshot = selectedSources.toMap()
+    val selectedApps = remember(variantsById, selectedSourceFilter, sourceCodeFilter, sourceSelectionSnapshot) {
+        variantsById.mapNotNull { (id, variants) ->
+            val matchingVariants = variants.filter { variant ->
+                val sourceMatches = selectedSourceFilter == null || variant.sourceName == selectedSourceFilter
+                val sourceCodeMatches = when (sourceCodeFilter) {
+                    SourceCodeFilter.ALL -> true
+                    SourceCodeFilter.OPEN_SOURCE -> !variant.closedSource
+                    SourceCodeFilter.CLOSED_SOURCE -> variant.closedSource
+                }
+                sourceMatches && sourceCodeMatches
+            }
+            if (matchingVariants.isEmpty()) null else {
+                val selectedSource = sourceSelectionSnapshot[id]
+                matchingVariants.firstOrNull { it.sourceName == selectedSource }
+                    ?: matchingVariants.maxByOrNull { it.versionCode }
+            }
+        }.sortedBy { it.name.lowercase() }
     }
 
-    val categories = selectedApps.flatMap { it.categories }.distinct().sortedBy { it.lowercase() }
-
-    val filtered = selectedApps.filter { app ->
-        val matchesQuery = query.isBlank() ||
-            app.name.contains(query, true) ||
-            app.id.contains(query, true) ||
-            app.summary.contains(query, true) ||
-            app.description.contains(query, true) ||
-            app.categories.any { it.contains(query, true) }
-        val matchesCategory = selectedCategory == null || selectedCategory in app.categories
-        val matchesView = when (storeView) {
-            StoreView.APPS -> true
-            StoreView.UPDATES -> {
-                val installedCode = installedVersionCode(app.id)
-                installedCode != null && app.versionCode > installedCode
-            }
+    val installedCodes = remember(selectedApps, installedAppsRevision) {
+        selectedApps.associate { it.id to installedVersionCode(it.id) }
+    }
+    val installedNames = remember(selectedApps, installedAppsRevision) {
+        selectedApps.associate { it.id to installedVersionName(it.id) }
+    }
+    val updateCount = remember(selectedApps, installedCodes) {
+        selectedApps.count { app ->
+            val installedCode = installedCodes[app.id]
+            installedCode != null && app.versionCode > installedCode
         }
-        matchesQuery && matchesCategory && matchesView
+    }
+    val categories = remember(selectedApps) {
+        selectedApps.flatMap { it.categories }.distinct().sortedBy { it.lowercase() }
+    }
+    val filtered = remember(selectedApps, query, selectedCategory, storeView, installedCodes) {
+        selectedApps.filter { app ->
+            val matchesQuery = query.isBlank() ||
+                app.name.contains(query, true) ||
+                app.id.contains(query, true) ||
+                app.summary.contains(query, true) ||
+                app.description.contains(query, true) ||
+                app.categories.any { it.contains(query, true) }
+            val matchesCategory = selectedCategory == null || selectedCategory in app.categories
+            val matchesView = when (storeView) {
+                StoreView.APPS -> true
+                StoreView.UPDATES -> {
+                    val installedCode = installedCodes[app.id]
+                    installedCode != null && app.versionCode > installedCode
+                }
+            }
+            matchesQuery && matchesCategory && matchesView
+        }
     }
 
     val sourceCodeText = when (sourceCodeFilter) {
@@ -187,10 +208,6 @@ fun StoreScreen(
         SourceCodeFilter.OPEN_SOURCE -> stringResource(R.string.open_source)
         SourceCodeFilter.CLOSED_SOURCE -> stringResource(R.string.closed_source)
     }
-
-    val collapseProgress = if (storeListState.firstVisibleItemIndex > 0) 1f
-    else (storeListState.firstVisibleItemScrollOffset / 220f).coerceIn(0f, 1f)
-    val headerScale = 1f - collapseProgress * 0.06f
 
     Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
         LazyColumn(
@@ -204,8 +221,14 @@ fun StoreScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 10.dp)
                         .graphicsLayer {
-                            scaleX = headerScale
-                            scaleY = headerScale
+                            val collapseProgress = if (storeListState.firstVisibleItemIndex > 0) {
+                                1f
+                            } else {
+                                (storeListState.firstVisibleItemScrollOffset / 220f).coerceIn(0f, 1f)
+                            }
+                            val scale = 1f - collapseProgress * 0.06f
+                            scaleX = scale
+                            scaleY = scale
                             transformOrigin = TransformOrigin(0f, 0f)
                         }
                 ) {
@@ -357,12 +380,8 @@ fun StoreScreen(
                     }
 
                     items(filtered, key = { it.id }) { app ->
-                        val variants = variantsById[app.id].orEmpty()
-                            .filter(::matchesSourceCodeFilter)
-                            .filter { selectedSourceFilter == null || it.sourceName == selectedSourceFilter }
-                            .sortedBy { it.sourceName.lowercase() }
-                        val installedCode = installedVersionCode(app.id)
-                        val installedName = installedVersionName(app.id)
+                        val installedCode = installedCodes[app.id]
+                        val installedName = installedNames[app.id]
                         val action = when {
                             installedCode == null -> AppAction.INSTALL
                             app.versionCode > installedCode -> AppAction.UPDATE
@@ -372,13 +391,11 @@ fun StoreScreen(
 
                         AppListItem(
                             app = app,
-                            sourceVariants = variants,
                             action = action,
                             installedVersionName = installedName,
                             installing = installingKey == currentInstallKey,
                             progress = installProgress,
                             onOpenDetails = { selectedAppId = app.id },
-                            onSourceSelected = { source -> selectSource(app.id, source.sourceName) },
                             onAction = {
                                 if (action == AppAction.OPEN) {
                                     if (!openInstalledApp(app.id)) error = context.getString(R.string.app_not_launchable, app.name)
@@ -517,13 +534,11 @@ fun StoreScreen(
 @Composable
 private fun AppListItem(
     app: StoreApp,
-    sourceVariants: List<StoreApp>,
     action: AppAction,
     installedVersionName: String?,
     installing: Boolean,
     progress: Int,
     onOpenDetails: () -> Unit,
-    onSourceSelected: (StoreApp) -> Unit,
     onAction: () -> Unit
 ) {
     Surface(
@@ -574,19 +589,6 @@ private fun AppListItem(
                             AppAction.OPEN -> stringResource(R.string.open)
                         }
                     )
-                }
-            }
-
-            if (sourceVariants.size > 1) {
-                Spacer(Modifier.height(6.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(start = 66.dp)) {
-                    items(sourceVariants, key = { it.sourceName }) { variant ->
-                        FilterChip(
-                            selected = variant.sourceName == app.sourceName,
-                            onClick = { onSourceSelected(variant) },
-                            label = { Text(variant.sourceName) }
-                        )
-                    }
                 }
             }
 
