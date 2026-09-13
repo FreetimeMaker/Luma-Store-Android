@@ -42,8 +42,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:scheme="lumastore"
-                    android:host="auth"
-                    android:path="/callback" />
+                    android:host="auth" />
             </intent-filter>
         </activity>
     </application>
