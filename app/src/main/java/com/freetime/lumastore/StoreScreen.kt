@@ -46,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -102,6 +103,7 @@ fun StoreScreen(
     val selectedSources = remember { mutableStateMapOf<String, String>() }
     val categoryListState = rememberLazyListState()
     val categoryScrollScope = rememberCoroutineScope()
+    val storeListState = rememberLazyListState()
 
     LaunchedEffect(refreshKey) {
         if (apps.isEmpty()) loading = true else refreshing = true
@@ -185,196 +187,246 @@ fun StoreScreen(
         SourceCodeFilter.CLOSED_SOURCE -> stringResource(R.string.closed_source)
     }
 
+    val collapseProgress = if (storeListState.firstVisibleItemIndex > 0) {
+        1f
+    } else {
+        (storeListState.firstVisibleItemScrollOffset / 280f).coerceIn(0f, 1f)
+    }
+    val headerScale = 1f - (collapseProgress * 0.08f)
+
     Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
-        Column(
+        LazyColumn(
+            state = storeListState,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp)
+                .padding(padding),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = 12.dp,
+                bottom = 24.dp
+            )
         ) {
-            Spacer(Modifier.height(12.dp))
-            Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Text(
-                stringResource(R.string.store_tagline, repository.sources.size),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            if (refreshing) {
-                Spacer(Modifier.height(6.dp))
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            }
-            Spacer(Modifier.height(14.dp))
-
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                item {
-                    FilterChip(
-                        selected = storeView == StoreView.APPS,
-                        onClick = { storeView = StoreView.APPS },
-                        label = { Text(stringResource(R.string.apps)) }
-                    )
-                }
-                item {
-                    FilterChip(
-                        selected = storeView == StoreView.UPDATES,
-                        onClick = { storeView = StoreView.UPDATES },
-                        label = { Text(stringResource(R.string.updates_count, updateCount)) }
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(10.dp))
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                label = {
+            item(key = "store_header") {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .graphicsLayer {
+                            scaleX = headerScale
+                            scaleY = headerScale
+                            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
+                        }
+                ) {
                     Text(
-                        if (storeView == StoreView.UPDATES) stringResource(R.string.search_updates)
-                        else stringResource(R.string.search_apps)
+                        stringResource(R.string.app_name),
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold
                     )
-                },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(Modifier.height(10.dp))
-            Text(stringResource(R.string.source_code), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(4.dp))
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                item {
-                    FilterChip(
-                        selected = sourceCodeFilter == SourceCodeFilter.ALL,
-                        onClick = { sourceCodeFilter = SourceCodeFilter.ALL },
-                        label = { Text(stringResource(R.string.all_apps)) }
+                    Text(
+                        stringResource(R.string.store_tagline, repository.sources.size),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                }
-                item {
-                    FilterChip(
-                        selected = sourceCodeFilter == SourceCodeFilter.OPEN_SOURCE,
-                        onClick = { sourceCodeFilter = SourceCodeFilter.OPEN_SOURCE },
-                        label = { Text(stringResource(R.string.open_source)) }
-                    )
-                }
-                item {
-                    FilterChip(
-                        selected = sourceCodeFilter == SourceCodeFilter.CLOSED_SOURCE,
-                        onClick = { sourceCodeFilter = SourceCodeFilter.CLOSED_SOURCE },
-                        label = { Text(stringResource(R.string.closed_source)) }
-                    )
-                }
-            }
-
-            if (availableSources.isNotEmpty()) {
-                Spacer(Modifier.height(10.dp))
-                Text(stringResource(R.string.source), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.height(4.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    item {
-                        FilterChip(
-                            selected = selectedSourceFilter == null,
-                            onClick = { selectedSourceFilter = null },
-                            label = { Text(stringResource(R.string.all_sources)) }
-                        )
+                    if (refreshing) {
+                        Spacer(Modifier.height(6.dp))
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                     }
-                    items(availableSources, key = { it }) { sourceName ->
-                        FilterChip(
-                            selected = selectedSourceFilter == sourceName,
-                            onClick = { selectedSourceFilter = if (selectedSourceFilter == sourceName) null else sourceName },
-                            label = { Text(sourceName) }
-                        )
-                    }
-                }
-            }
+                    Spacer(Modifier.height(10.dp))
 
-            if (categories.isNotEmpty()) {
-                Spacer(Modifier.height(10.dp))
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(
-                        onClick = {
-                            categoryScrollScope.launch {
-                                val target = (categoryListState.firstVisibleItemIndex - 3).coerceAtLeast(0)
-                                categoryListState.animateScrollToItem(target)
-                            }
-                        },
-                        enabled = categoryListState.canScrollBackward
-                    ) { Text("‹") }
-
-                    LazyRow(
-                        state = categoryListState,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         item {
                             FilterChip(
-                                selected = selectedCategory == null,
-                                onClick = { selectedCategory = null },
-                                label = { Text(stringResource(R.string.all_categories)) }
+                                selected = storeView == StoreView.APPS,
+                                onClick = { storeView = StoreView.APPS },
+                                label = { Text(stringResource(R.string.apps)) }
                             )
                         }
-                        items(categories, key = { it }) { category ->
+                        item {
                             FilterChip(
-                                selected = selectedCategory == category,
-                                onClick = { selectedCategory = if (selectedCategory == category) null else category },
-                                label = { Text(category) }
+                                selected = storeView == StoreView.UPDATES,
+                                onClick = { storeView = StoreView.UPDATES },
+                                label = { Text(stringResource(R.string.updates_count, updateCount)) }
                             )
                         }
                     }
 
-                    TextButton(
-                        onClick = {
-                            categoryScrollScope.launch {
-                                val target = (categoryListState.firstVisibleItemIndex + 3).coerceAtMost(categories.size)
-                                categoryListState.animateScrollToItem(target)
-                            }
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        label = {
+                            Text(
+                                if (storeView == StoreView.UPDATES) stringResource(R.string.search_updates)
+                                else stringResource(R.string.search_apps)
+                            )
                         },
-                        enabled = categoryListState.canScrollForward
-                    ) { Text("›") }
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        stringResource(R.string.source_code),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        item {
+                            FilterChip(
+                                selected = sourceCodeFilter == SourceCodeFilter.ALL,
+                                onClick = { sourceCodeFilter = SourceCodeFilter.ALL },
+                                label = { Text(stringResource(R.string.all_apps)) }
+                            )
+                        }
+                        item {
+                            FilterChip(
+                                selected = sourceCodeFilter == SourceCodeFilter.OPEN_SOURCE,
+                                onClick = { sourceCodeFilter = SourceCodeFilter.OPEN_SOURCE },
+                                label = { Text(stringResource(R.string.open_source)) }
+                            )
+                        }
+                        item {
+                            FilterChip(
+                                selected = sourceCodeFilter == SourceCodeFilter.CLOSED_SOURCE,
+                                onClick = { sourceCodeFilter = SourceCodeFilter.CLOSED_SOURCE },
+                                label = { Text(stringResource(R.string.closed_source)) }
+                            )
+                        }
+                    }
+
+                    if (availableSources.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            stringResource(R.string.source),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            item {
+                                FilterChip(
+                                    selected = selectedSourceFilter == null,
+                                    onClick = { selectedSourceFilter = null },
+                                    label = { Text(stringResource(R.string.all_sources)) }
+                                )
+                            }
+                            items(availableSources, key = { it }) { sourceName ->
+                                FilterChip(
+                                    selected = selectedSourceFilter == sourceName,
+                                    onClick = {
+                                        selectedSourceFilter = if (selectedSourceFilter == sourceName) null else sourceName
+                                    },
+                                    label = { Text(sourceName) }
+                                )
+                            }
+                        }
+                    }
+
+                    if (categories.isNotEmpty()) {
+                        Spacer(Modifier.height(6.dp))
+                        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(
+                                onClick = {
+                                    categoryScrollScope.launch {
+                                        val target = (categoryListState.firstVisibleItemIndex - 3).coerceAtLeast(0)
+                                        categoryListState.animateScrollToItem(target)
+                                    }
+                                },
+                                enabled = categoryListState.canScrollBackward
+                            ) { Text("‹") }
+
+                            LazyRow(
+                                state = categoryListState,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                item {
+                                    FilterChip(
+                                        selected = selectedCategory == null,
+                                        onClick = { selectedCategory = null },
+                                        label = { Text(stringResource(R.string.all_categories)) }
+                                    )
+                                }
+                                items(categories, key = { it }) { category ->
+                                    FilterChip(
+                                        selected = selectedCategory == category,
+                                        onClick = {
+                                            selectedCategory = if (selectedCategory == category) null else category
+                                        },
+                                        label = { Text(category) }
+                                    )
+                                }
+                            }
+
+                            TextButton(
+                                onClick = {
+                                    categoryScrollScope.launch {
+                                        val target = (categoryListState.firstVisibleItemIndex + 3).coerceAtMost(categories.size)
+                                        categoryListState.animateScrollToItem(target)
+                                    }
+                                },
+                                enabled = categoryListState.canScrollForward
+                            ) { Text("›") }
+                        }
+                    }
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
-
             when {
-                loading -> Column(
-                    modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    CircularProgressIndicator()
-                    Spacer(Modifier.height(12.dp))
-                    Text(stringResource(R.string.loading_sources))
+                loading -> item(key = "loading") {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        CircularProgressIndicator()
+                        Spacer(Modifier.height(12.dp))
+                        Text(stringResource(R.string.loading_sources))
+                    }
                 }
 
-                error != null -> Column(
-                    modifier = Modifier.fillMaxWidth().padding(top = 32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(error ?: stringResource(R.string.unknown_error))
-                    Spacer(Modifier.height(12.dp))
-                    Button(onClick = { refreshKey++ }) { Text(stringResource(R.string.try_again)) }
+                error != null -> item(key = "error") {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(error ?: stringResource(R.string.unknown_error))
+                        Spacer(Modifier.height(12.dp))
+                        Button(onClick = { refreshKey++ }) { Text(stringResource(R.string.try_again)) }
+                    }
                 }
 
-                storeView == StoreView.UPDATES && filtered.isEmpty() -> Column(
-                    modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(stringResource(R.string.no_updates_available), style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.height(6.dp))
-                    Text(stringResource(R.string.apps_up_to_date), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                storeView == StoreView.UPDATES && filtered.isEmpty() -> item(key = "no_updates") {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(stringResource(R.string.no_updates_available), style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            stringResource(R.string.apps_up_to_date),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
-                filtered.isEmpty() -> Column(
-                    modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(stringResource(R.string.no_apps_found), style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.height(6.dp))
-                    Text(stringResource(R.string.no_apps_for_filters), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                filtered.isEmpty() -> item(key = "no_apps") {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(stringResource(R.string.no_apps_found), style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            stringResource(R.string.no_apps_for_filters),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
-                else -> LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    item {
+                else -> {
+                    item(key = "results_summary") {
                         Text(
                             stringResource(
                                 R.string.store_results_summary,
@@ -386,6 +438,7 @@ fun StoreScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+
                     items(filtered, key = { it.id }) { app ->
                         val variants = variantsById[app.id]
                             .orEmpty()
