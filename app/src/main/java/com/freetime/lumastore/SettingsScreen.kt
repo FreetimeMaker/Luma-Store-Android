@@ -72,35 +72,15 @@ fun SettingsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "Einstellungen",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        "Luma Store konfigurieren",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Text("Settings", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                    Text("Configure Luma Store", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                TextButton(onClick = onBack) {
-                    Text("Zurück")
-                }
+                TextButton(onClick = onBack) { Text("Back") }
             }
 
             Spacer(Modifier.height(24.dp))
-
-            Text(
-                "Quellen verwalten",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                "Aktiviere nur die Repositories, aus denen Apps geladen werden sollen.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
+            Text("Manage sources", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Text("Enable only the repositories you want to load apps from.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(12.dp))
 
             sourceList.forEach { source ->
@@ -125,47 +105,28 @@ fun SettingsScreen(
             }
 
             if (enabledStates.values.none { it }) {
-                Text(
-                    "Keine Quelle ist aktiviert. Der Store zeigt dann keine Apps an, bis du mindestens eine Quelle wieder aktivierst.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error
-                )
+                Text("No source is enabled. The store will not show any apps until you enable at least one source again.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
                 Spacer(Modifier.height(12.dp))
             }
 
             Spacer(Modifier.height(14.dp))
-            Text(
-                "Weitere Quelle hinzufügen",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                "Unterstützt werden F-Droid-Repositories mit index-v1.json. Du kannst die Repository-URL oder direkt die index-v1.json-URL angeben.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
+            Text("Add another source", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Text("F-Droid repositories with index-v1.json are supported. You can enter either the repository URL or the direct index-v1.json URL.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(12.dp))
+
             OutlinedTextField(
                 value = sourceName,
-                onValueChange = {
-                    sourceName = it
-                    addSourceError = null
-                },
+                onValueChange = { sourceName = it; addSourceError = null },
                 label = { Text("Name") },
-                placeholder = { Text("Mein F-Droid Repository") },
+                placeholder = { Text("My F-Droid Repository") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
-
             Spacer(Modifier.height(10.dp))
             OutlinedTextField(
                 value = sourceUrl,
-                onValueChange = {
-                    sourceUrl = it
-                    addSourceError = null
-                },
-                label = { Text("Repository-URL") },
+                onValueChange = { sourceUrl = it; addSourceError = null },
+                label = { Text("Repository URL") },
                 placeholder = { Text("https://example.org/repo") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
@@ -173,11 +134,7 @@ fun SettingsScreen(
 
             addSourceError?.let { message ->
                 Spacer(Modifier.height(8.dp))
-                Text(
-                    message,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
-                )
+                Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
 
             Spacer(Modifier.height(12.dp))
@@ -192,16 +149,11 @@ fun SettingsScreen(
                             refreshSources()
                             onSourcesChanged()
                         }
-                        .onFailure { error ->
-                            addSourceError = error.message ?: "Die Quelle konnte nicht hinzugefügt werden."
-                        }
+                        .onFailure { error -> addSourceError = error.message ?: "The source could not be added." }
                 },
                 enabled = sourceName.isNotBlank() && sourceUrl.isNotBlank(),
                 modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Quelle hinzufügen")
-            }
-
+            ) { Text("Add source") }
             Spacer(Modifier.height(28.dp))
         }
     }
@@ -217,43 +169,18 @@ private fun SourceCard(
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                 Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
-                    Text(
-                        source.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Text(source.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     if (removable) {
-                        Text(
-                            "Benutzerdefinierte Quelle",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        Text("Custom source", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                     }
-                    Text(
-                        source.indexUrl,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Text(source.indexUrl, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Switch(
-                    checked = enabled,
-                    onCheckedChange = onEnabledChange
-                )
+                Switch(checked = enabled, onCheckedChange = onEnabledChange)
             }
-
             if (removable) {
-                TextButton(
-                    onClick = onRemove,
-                    modifier = Modifier.align(Alignment.End)
-                ) {
-                    Text("Entfernen")
-                }
+                TextButton(onClick = onRemove, modifier = Modifier.align(Alignment.End)) { Text("Remove") }
             }
         }
     }
