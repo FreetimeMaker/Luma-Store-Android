@@ -6,6 +6,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.Locale
 
 data class StoreApp(
     val id: String,
@@ -597,16 +598,39 @@ class AppRepository(context: Context) {
 
     private fun preferredLocalized(metadata: JSONObject): Pair<String, JSONObject>? {
         val localized = metadata.optJSONObject("localized") ?: return null
-        val locales = listOf("en-US", "en", "de-DE", "de")
-        locales.forEach { locale ->
-            localized.optJSONObject(locale)?.let { return locale to it }
+        val availableLocales = buildList {
+            val keys = localized.keys()
+            while (keys.hasNext()) add(keys.next())
         }
-        val keys = localized.keys()
-        if (keys.hasNext()) {
-            val locale = keys.next()
-            localized.optJSONObject(locale)?.let { return locale to it }
+        if (availableLocales.isEmpty()) return null
+
+        val deviceLocales = appContext.resources.configuration.locales
+        for (index in 0 until deviceLocales.size()) {
+            val deviceLocale = deviceLocales[index]
+            val exactTag = deviceLocale.toLanguageTag()
+
+            availableLocales.firstOrNull { it.equals(exactTag, ignoreCase = true) }
+                ?.let { key -> localized.optJSONObject(key)?.let { return key to it } }
+
+            availableLocales.firstOrNull { it.equals(deviceLocale.language, ignoreCase = true) }
+                ?.let { key -> localized.optJSONObject(key)?.let { return key to it } }
+
+            availableLocales.firstOrNull { key ->
+                Locale.forLanguageTag(key.replace('_', '-')).language.equals(deviceLocale.language, ignoreCase = true)
+            }?.let { key -> localized.optJSONObject(key)?.let { return key to it } }
         }
-        return null
+
+        listOf("en-US", "en").forEach { fallback ->
+            availableLocales.firstOrNull { it.equals(fallback, ignoreCase = true) }
+                ?.let { key -> localized.optJSONObject(key)?.let { return key to it } }
+        }
+
+        availableLocales.firstOrNull { key ->
+            Locale.forLanguageTag(key.replace('_', '-')).language.equals("en", ignoreCase = true)
+        }?.let { key -> localized.optJSONObject(key)?.let { return key to it } }
+
+        val first = availableLocales.first()
+        return localized.optJSONObject(first)?.let { first to it }
     }
 
     private fun jsonStrings(array: JSONArray?): List<String> {
