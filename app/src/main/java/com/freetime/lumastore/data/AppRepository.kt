@@ -440,21 +440,21 @@ class AppRepository(context: Context) {
             val meta = metadata?.values.orEmpty()
 
             val apiDescription = app.optString("description")
-            val name = meta["Name"].takeUnless(String?::isNullOrBlank)
+            val name = meta["Name"]?.takeIf { it.isNotBlank() }
                 ?: app.optString("name").ifBlank { "Unbenannte App" }
             val description = metadata?.description?.takeIf { it.isNotBlank() } ?: apiDescription
             val summary = metadata?.summary?.takeIf { it.isNotBlank() }
                 ?: firstNonBlank(app.optString("short_description"), app.optString("summary"))
                 ?: description.lineSequence().firstOrNull().orEmpty().take(180)
-            val version = meta["Version"].takeUnless(String?::isNullOrBlank) ?: apiVersion
+            val version = meta["Version"]?.takeIf { it.isNotBlank() } ?: apiVersion
             val versionCode = meta["Version Code"]?.toLongOrNull() ?: apiVersionCode
 
-            val categoryName = meta["Category"].takeUnless(String?::isNullOrBlank)
+            val categoryName = meta["Category"]?.takeIf { it.isNotBlank() }
                 ?: app.optJSONObject("category")?.optString("name")?.takeIf { it.isNotBlank() }
 
-            val iconUrl = meta["Icon URL"].takeUnless(String?::isNullOrBlank)
+            val iconUrl = meta["Icon URL"]?.takeIf { it.isNotBlank() }
                 ?: firstNonBlank(app.optString("icon_url"), app.optString("iconUrl"))
-            val downloadUrl = meta["Download URL"].takeUnless(String?::isNullOrBlank) ?: apiDownloadUrl
+            val downloadUrl = meta["Download URL"]?.takeIf { it.isNotBlank() } ?: apiDownloadUrl
 
             val donationUrls = buildList {
                 firstNonBlank(meta["Donate URL"], app.optString("donate_url"), app.optString("donateUrl"))?.let(::add)
