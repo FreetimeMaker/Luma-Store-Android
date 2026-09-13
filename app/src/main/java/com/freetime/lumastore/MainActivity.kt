@@ -47,8 +47,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        supabase.handleDeeplinks(intent)
-        scheduleNotificationSync()
+        handleSupabaseDeepLinkSafely(intent)
+        scheduleNotificationSyncSafely()
         enableEdgeToEdge()
         setContent {
             val revision = installedAppsRevision.intValue
@@ -87,23 +87,58 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); supabase.handleDeeplinks(intent) }
-    override fun onResume() { super.onResume(); installedAppsRevision.intValue++ }
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleSupabaseDeepLinkSafely(intent)
+    }
 
-    private fun scheduleNotificationSync() {
-        val scheduler = getSystemService(JobScheduler::class.java)
-        val component = ComponentName(this, NotificationSyncJobService::class.java)
-        scheduler.schedule(JobInfo.Builder(NOTIFICATION_SYNC_JOB_ID, component).setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY).setPeriodic(15 * 60 * 1000L).build())
+    override fun onResume() {
+        super.onResume()
+        installedAppsRevision.intValue++
+    }
+
+    private fun handleSupabaseDeepLinkSafely(intent: Intent) {
+        if (intent.data == null) return
+        runCatching { supabase.handleDeeplinks(intent) }
+    }
+
+    private fun scheduleNotificationSyncSafely() {
+        runCatching {
+            val scheduler = getSystemService(JobScheduler::class.java)
+            val component = ComponentName(this, NotificationSyncJobService::class.java)
+            scheduler.schedule(
+                JobInfo.Builder(NOTIFICATION_SYNC_JOB_ID, component)
+                    .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+                    .setPeriodic(15 * 60 * 1000L)
+                    .build()
+            )
+        }
     }
 
     private fun installedVersionCode(packageName: String): Long? = runCatching {
         val info = packageManager.getPackageInfo(packageName, 0)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) info.longVersionCode else { @Suppress("DEPRECATION") info.versionCode.toLong() }
     }.getOrNull()
-    private fun installedVersionName(packageName: String): String? = runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull()
-    private fun openInstalledApp(packageName: String): Boolean { val i = packageManager.getLaunchIntentForPackage(packageName) ?: return false; i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); startActivity(i); return true }
+
+    private fun installedVersionName(packageName: String): String? = runCatching {
+        packageManager.getPackageInfo(packageName, 0).versionName
+    }.getOrNull()
+
+    private fun openInstalledApp(packageName: String): Boolean {
+        val i = packageManager.getLaunchIntentForPackage(packageName) ?: return false
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(i)
+        return true
+    }
+
     private fun canInstallUnknownApps() = Build.VERSION.SDK_INT < Build.VERSION_CODES.O || packageManager.canRequestPackageInstalls()
-    private fun openInstallPermission() { if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName"))) }
+
+    private fun openInstallPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+        }
+    }
 
     companion object { private const val NOTIFICATION_SYNC_JOB_ID = 4201 }
 }
