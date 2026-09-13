@@ -27,8 +27,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.freetime.lumastore.data.AppRepository
 import com.freetime.lumastore.data.DeveloperRepository
+import com.freetime.lumastore.data.supabase
 import com.freetime.lumastore.install.ApkInstaller
 import com.freetime.lumastore.ui.theme.LumaStoreTheme
+import io.github.jan.supabase.auth.handleDeeplinks
 
 private enum class MainScreen {
     STORE,
@@ -38,12 +40,12 @@ private enum class MainScreen {
 
 class MainActivity : ComponentActivity() {
     private val repository by lazy { AppRepository(applicationContext) }
-    private val developerRepository by lazy { DeveloperRepository(applicationContext) }
+    private val developerRepository by lazy { DeveloperRepository() }
     private val installedAppsRevision = mutableIntStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        handleAuthIntent(intent)
+        supabase.handleDeeplinks(intent)
         enableEdgeToEdge()
         setContent {
             val revision = installedAppsRevision.intValue
@@ -59,10 +61,7 @@ class MainActivity : ComponentActivity() {
 
                     MainScreen.DEVELOPER -> DeveloperScreen(
                         repository = developerRepository,
-                        onBack = { screen = MainScreen.STORE },
-                        onOpenAuth = { url ->
-                            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                        }
+                        onBack = { screen = MainScreen.STORE }
                     )
 
                     MainScreen.STORE -> Column(modifier = Modifier.fillMaxSize()) {
@@ -111,17 +110,12 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        handleAuthIntent(intent)
+        supabase.handleDeeplinks(intent)
     }
 
     override fun onResume() {
         super.onResume()
         installedAppsRevision.intValue++
-    }
-
-    private fun handleAuthIntent(intent: Intent?) {
-        val uri = intent?.data ?: return
-        runCatching { developerRepository.handleOAuthCallback(uri) }
     }
 
     private fun installedVersionCode(packageName: String): Long? = runCatching {
