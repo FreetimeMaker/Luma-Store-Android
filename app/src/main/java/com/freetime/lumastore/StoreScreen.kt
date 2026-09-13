@@ -128,7 +128,7 @@ fun StoreScreen(
             apps = it
         }.onFailure {
             if (apps.isEmpty()) {
-                error = it.message ?: "Die App-Quellen konnten nicht geladen werden."
+                error = it.message ?: "App sources could not be loaded."
             }
         }
 
@@ -224,7 +224,7 @@ fun StoreScreen(
             Spacer(Modifier.height(12.dp))
             Text("Luma Store", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             Text(
-                "Apps aus ${repository.sources.size} Quellen entdecken, installieren und aktualisieren",
+                "Discover, install, and update apps from ${repository.sources.size} sources",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -255,64 +255,38 @@ fun StoreScreen(
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
-                label = { Text(if (storeView == StoreView.UPDATES) "Updates suchen" else "Apps suchen") },
+                label = { Text(if (storeView == StoreView.UPDATES) "Search updates" else "Search apps") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(Modifier.height(10.dp))
-            Text(
-                "Quellcode",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Text("Source code", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(4.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 item {
-                    FilterChip(
-                        selected = sourceCodeFilter == SourceCodeFilter.ALL,
-                        onClick = { sourceCodeFilter = SourceCodeFilter.ALL },
-                        label = { Text("Alle Apps") }
-                    )
+                    FilterChip(selected = sourceCodeFilter == SourceCodeFilter.ALL, onClick = { sourceCodeFilter = SourceCodeFilter.ALL }, label = { Text("All apps") })
                 }
                 item {
-                    FilterChip(
-                        selected = sourceCodeFilter == SourceCodeFilter.OPEN_SOURCE,
-                        onClick = { sourceCodeFilter = SourceCodeFilter.OPEN_SOURCE },
-                        label = { Text("Open Source") }
-                    )
+                    FilterChip(selected = sourceCodeFilter == SourceCodeFilter.OPEN_SOURCE, onClick = { sourceCodeFilter = SourceCodeFilter.OPEN_SOURCE }, label = { Text("Open Source") })
                 }
                 item {
-                    FilterChip(
-                        selected = sourceCodeFilter == SourceCodeFilter.CLOSED_SOURCE,
-                        onClick = { sourceCodeFilter = SourceCodeFilter.CLOSED_SOURCE },
-                        label = { Text("Closed Source") }
-                    )
+                    FilterChip(selected = sourceCodeFilter == SourceCodeFilter.CLOSED_SOURCE, onClick = { sourceCodeFilter = SourceCodeFilter.CLOSED_SOURCE }, label = { Text("Closed Source") })
                 }
             }
 
             if (availableSources.isNotEmpty()) {
                 Spacer(Modifier.height(10.dp))
-                Text(
-                    "Quelle",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text("Source", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(4.dp))
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     item {
-                        FilterChip(
-                            selected = selectedSourceFilter == null,
-                            onClick = { selectedSourceFilter = null },
-                            label = { Text("Alle Quellen") }
-                        )
+                        FilterChip(selected = selectedSourceFilter == null, onClick = { selectedSourceFilter = null }, label = { Text("All sources") })
                     }
                     items(availableSources, key = { it }) { sourceName ->
                         FilterChip(
                             selected = selectedSourceFilter == sourceName,
-                            onClick = {
-                                selectedSourceFilter = if (selectedSourceFilter == sourceName) null else sourceName
-                            },
+                            onClick = { selectedSourceFilter = if (selectedSourceFilter == sourceName) null else sourceName },
                             label = { Text(sourceName) }
                         )
                     }
@@ -321,10 +295,7 @@ fun StoreScreen(
 
             if (categories.isNotEmpty()) {
                 Spacer(Modifier.height(10.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     TextButton(
                         onClick = {
                             categoryScrollScope.launch {
@@ -333,9 +304,7 @@ fun StoreScreen(
                             }
                         },
                         enabled = categoryListState.canScrollBackward
-                    ) {
-                        Text("‹")
-                    }
+                    ) { Text("‹") }
 
                     LazyRow(
                         state = categoryListState,
@@ -343,18 +312,12 @@ fun StoreScreen(
                         modifier = Modifier.weight(1f)
                     ) {
                         item {
-                            FilterChip(
-                                selected = selectedCategory == null,
-                                onClick = { selectedCategory = null },
-                                label = { Text("Alle Kategorien") }
-                            )
+                            FilterChip(selected = selectedCategory == null, onClick = { selectedCategory = null }, label = { Text("All categories") })
                         }
                         items(categories, key = { it }) { category ->
                             FilterChip(
                                 selected = selectedCategory == category,
-                                onClick = {
-                                    selectedCategory = if (selectedCategory == category) null else category
-                                },
+                                onClick = { selectedCategory = if (selectedCategory == category) null else category },
                                 label = { Text(category) }
                             )
                         }
@@ -363,15 +326,12 @@ fun StoreScreen(
                     TextButton(
                         onClick = {
                             categoryScrollScope.launch {
-                                val target = (categoryListState.firstVisibleItemIndex + 3)
-                                    .coerceAtMost(categories.size)
+                                val target = (categoryListState.firstVisibleItemIndex + 3).coerceAtMost(categories.size)
                                 categoryListState.animateScrollToItem(target)
                             }
                         },
                         enabled = categoryListState.canScrollForward
-                    ) {
-                        Text("›")
-                    }
+                    ) { Text("›") }
                 }
             }
 
@@ -384,40 +344,34 @@ fun StoreScreen(
                 ) {
                     CircularProgressIndicator()
                     Spacer(Modifier.height(12.dp))
-                    Text("Quellen werden geladen …")
+                    Text("Loading sources …")
                 }
 
                 error != null -> Column(
                     modifier = Modifier.fillMaxWidth().padding(top = 32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(error ?: "Unbekannter Fehler")
+                    Text(error ?: "Unknown error")
                     Spacer(Modifier.height(12.dp))
-                    Button(onClick = { refreshKey++ }) { Text("Erneut versuchen") }
+                    Button(onClick = { refreshKey++ }) { Text("Try again") }
                 }
 
                 storeView == StoreView.UPDATES && filtered.isEmpty() -> Column(
                     modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Keine Updates verfügbar", style = MaterialTheme.typography.titleMedium)
+                    Text("No updates available", style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(6.dp))
-                    Text(
-                        "Deine installierten Apps sind für die gewählten Filter aktuell.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Text("Your installed apps are up to date for the selected filters.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
 
                 filtered.isEmpty() -> Column(
                     modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Keine Apps gefunden", style = MaterialTheme.typography.titleMedium)
+                    Text("No apps found", style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(6.dp))
-                    Text(
-                        "Für die gewählten Filter sind keine Apps verfügbar.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Text("No apps are available for the selected filters.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
 
                 else -> LazyColumn(
@@ -429,7 +383,7 @@ fun StoreScreen(
                             buildString {
                                 append(filtered.size)
                                 append(" Apps • ")
-                                append(selectedSourceFilter ?: "Alle Quellen")
+                                append(selectedSourceFilter ?: "All sources")
                                 append(" • ")
                                 append(
                                     when (sourceCodeFilter) {
@@ -470,7 +424,7 @@ fun StoreScreen(
                             onAction = {
                                 if (action == AppAction.OPEN) {
                                     if (!openInstalledApp(app.id)) {
-                                        error = "${app.name} ist installiert, hat aber keine startbare Activity."
+                                        error = "${app.name} is installed but has no launchable Activity."
                                     }
                                 } else if (!canInstallPackages()) {
                                     requestInstallPermission()
@@ -486,7 +440,7 @@ fun StoreScreen(
                                         },
                                         {
                                             installingKey = null
-                                            error = "Download fehlgeschlagen: ${it.message ?: "Unbekannter Fehler"}"
+                                            error = "Download failed: ${it.message ?: "Unknown error"}"
                                         }
                                     )
                                 }
@@ -515,13 +469,9 @@ fun StoreScreen(
                 text = {
                     Column(
                         verticalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 600.dp)
-                            .verticalScroll(rememberScrollState())
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 600.dp).verticalScroll(rememberScrollState())
                     ) {
                         AppIcon(app = app, size = 80)
-
                         Text(
                             if (app.closedSource) "Closed Source" else "Open Source",
                             style = MaterialTheme.typography.labelMedium,
@@ -530,7 +480,7 @@ fun StoreScreen(
                         )
 
                         if (variants.size > 1 && selectedSourceFilter == null) {
-                            Text("Quelle wählen", fontWeight = FontWeight.SemiBold)
+                            Text("Choose source", fontWeight = FontWeight.SemiBold)
                             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 items(variants, key = { it.sourceName }) { variant ->
                                     FilterChip(
@@ -542,34 +492,22 @@ fun StoreScreen(
                             }
                         }
 
-                        Text(app.description.ifBlank { app.summary.ifBlank { "Keine Beschreibung verfügbar." } })
+                        Text(app.description.ifBlank { app.summary.ifBlank { "No description available." } })
 
                         if (app.categories.isNotEmpty()) {
-                            Text(
-                                "Kategorien: ${app.categories.joinToString()}",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                            Text("Categories: ${app.categories.joinToString()}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                         }
 
                         if (app.screenshotUrls.isNotEmpty()) {
                             Text("Screenshots", fontWeight = FontWeight.SemiBold)
-                            Text(
-                                "Zum Vergrößern antippen",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Text("Tap to enlarge", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 items(app.screenshotUrls) { url ->
                                     AsyncImage(
                                         model = url,
-                                        contentDescription = "Screenshot von ${app.name}",
+                                        contentDescription = "Screenshot of ${app.name}",
                                         contentScale = ContentScale.Crop,
-                                        modifier = Modifier
-                                            .width(140.dp)
-                                            .height(250.dp)
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .clickable { selectedScreenshotUrl = url }
+                                        modifier = Modifier.width(140.dp).height(250.dp).clip(RoundedCornerShape(12.dp)).clickable { selectedScreenshotUrl = url }
                                     )
                                 }
                             }
@@ -593,23 +531,20 @@ fun StoreScreen(
 
                         if (hasRichMetadata) {
                             HorizontalDivider()
-                            Text("App-Informationen", fontWeight = FontWeight.SemiBold)
-
-                            app.authorName?.let { MetadataValue("Autor", it) }
-                            app.authorEmail?.let { MetadataValue("E-Mail", it) }
-                            app.authorWebsite?.let { MetadataLink("Autor-Webseite", it) { uriHandler.openUri(it) } }
-                            app.websiteUrl?.let { MetadataLink("Webseite", it) { uriHandler.openUri(it) } }
-                            app.sourceCodeUrl?.let { MetadataLink("Quellcode", it) { uriHandler.openUri(it) } }
-                            app.issueTrackerUrl?.let { MetadataLink("Issue Tracker", it) { uriHandler.openUri(it) } }
-                            app.translationUrl?.let { MetadataLink("Übersetzung", it) { uriHandler.openUri(it) } }
+                            Text("App information", fontWeight = FontWeight.SemiBold)
+                            app.authorName?.let { MetadataValue("Author", it) }
+                            app.authorEmail?.let { MetadataValue("Email", it) }
+                            app.authorWebsite?.let { MetadataLink("Author website", it) { uriHandler.openUri(it) } }
+                            app.websiteUrl?.let { MetadataLink("Website", it) { uriHandler.openUri(it) } }
+                            app.sourceCodeUrl?.let { MetadataLink("Source code", it) { uriHandler.openUri(it) } }
+                            app.issueTrackerUrl?.let { MetadataLink("Issue tracker", it) { uriHandler.openUri(it) } }
+                            app.translationUrl?.let { MetadataLink("Translation", it) { uriHandler.openUri(it) } }
                             app.changelogUrl?.let { MetadataLink("Changelog", it) { uriHandler.openUri(it) } }
-                            app.license?.let { MetadataValue("Lizenz", it) }
+                            app.license?.let { MetadataValue("License", it) }
 
                             if (app.donationUrls.isNotEmpty() || !app.liberapay.isNullOrBlank() || !app.openCollective.isNullOrBlank() || !app.bitcoin.isNullOrBlank() || !app.litecoin.isNullOrBlank()) {
-                                Text("Spenden", fontWeight = FontWeight.SemiBold)
-                                app.donationUrls.forEach { donationUrl ->
-                                    MetadataLink("Spenden-Link", donationUrl) { uriHandler.openUri(donationUrl) }
-                                }
+                                Text("Donations", fontWeight = FontWeight.SemiBold)
+                                app.donationUrls.forEach { donationUrl -> MetadataLink("Donation link", donationUrl) { uriHandler.openUri(donationUrl) } }
                                 app.liberapay?.let { MetadataValue("Liberapay", it) }
                                 app.openCollective?.let { MetadataValue("OpenCollective", it) }
                                 app.bitcoin?.let { MetadataValue("Bitcoin", it) }
@@ -618,22 +553,18 @@ fun StoreScreen(
 
                             if (app.antiFeatures.isNotEmpty()) {
                                 Text("Anti-Features", fontWeight = FontWeight.SemiBold)
-                                Text(
-                                    app.antiFeatures.joinToString(", "),
-                                    color = MaterialTheme.colorScheme.error,
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
+                                Text(app.antiFeatures.joinToString(", "), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
                             }
                         }
 
                         HorizontalDivider()
-                        Text("Paket: ${app.id}")
+                        Text("Package: ${app.id}")
                         Text("Version: ${app.version} (${app.versionCode})")
-                        Text("Quelle: ${app.sourceName}")
+                        Text("Source: ${app.sourceName}")
                         Spacer(Modifier.height(4.dp))
                     }
                 },
-                confirmButton = { TextButton(onClick = { selectedAppId = null }) { Text("Schließen") } }
+                confirmButton = { TextButton(onClick = { selectedAppId = null }) { Text("Close") } }
             )
         }
     }
@@ -644,26 +575,19 @@ fun StoreScreen(
             title = { Text("Screenshot") },
             text = {
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 650.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 650.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     AsyncImage(
                         model = screenshotUrl,
-                        contentDescription = "Vergrößerter Screenshot",
+                        contentDescription = "Enlarged screenshot",
                         contentScale = ContentScale.Fit,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 650.dp)
-                            .clip(RoundedCornerShape(12.dp))
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 650.dp).clip(RoundedCornerShape(12.dp))
                     )
                 }
             },
             confirmButton = {
-                TextButton(onClick = { selectedScreenshotUrl = null }) {
-                    Text("Schließen")
-                }
+                TextButton(onClick = { selectedScreenshotUrl = null }) { Text("Close") }
             }
         )
     }
@@ -672,11 +596,7 @@ fun StoreScreen(
 @Composable
 private fun MetadataValue(label: String, value: String) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, style = MaterialTheme.typography.bodyMedium)
     }
 }
@@ -684,17 +604,8 @@ private fun MetadataValue(label: String, value: String) {
 @Composable
 private fun MetadataLink(label: String, value: String, onClick: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.clickable(onClick = onClick)
-        )
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.clickable(onClick = onClick))
     }
 }
 
@@ -712,27 +623,12 @@ private fun AppCard(
 ) {
     Card(onClick = onOpenDetails, modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 AppIcon(app = app, size = 64)
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
-                    Text(
-                        app.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        app.summary.ifBlank { app.id },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Text(app.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(app.summary.ifBlank { app.id }, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Spacer(Modifier.height(6.dp))
                     Text(
                         if (app.closedSource) "Closed Source" else "Open Source",
@@ -746,7 +642,7 @@ private fun AppCard(
                             append(" • ")
                             append(app.sourceName)
                             if (installedVersionName != null) {
-                                append(" • installiert: ")
+                                append(" • installed: ")
                                 append(installedVersionName)
                             }
                         },
@@ -756,21 +652,15 @@ private fun AppCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     if (app.categories.isNotEmpty()) {
-                        Text(
-                            app.categories.take(2).joinToString(" • "),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        Text(app.categories.take(2).joinToString(" • "), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
                 Button(onClick = onAction, enabled = !installing) {
                     Text(
                         if (installing) "$progress%" else when (action) {
-                            AppAction.INSTALL -> "Installieren"
-                            AppAction.UPDATE -> "Aktualisieren"
-                            AppAction.OPEN -> "Öffnen"
+                            AppAction.INSTALL -> "Install"
+                            AppAction.UPDATE -> "Update"
+                            AppAction.OPEN -> "Open"
                         }
                     )
                 }
@@ -778,11 +668,7 @@ private fun AppCard(
 
             if (sourceVariants.size > 1) {
                 Spacer(Modifier.height(10.dp))
-                Text(
-                    "Quelle",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text("Source", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(4.dp))
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     items(sourceVariants, key = { it.sourceName }) { variant ->
@@ -798,10 +684,7 @@ private fun AppCard(
             if (installing) {
                 Spacer(Modifier.height(10.dp))
                 if (progress > 0) {
-                    LinearProgressIndicator(
-                        progress = { progress / 100f },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    LinearProgressIndicator(progress = { progress / 100f }, modifier = Modifier.fillMaxWidth())
                 } else {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
@@ -815,25 +698,16 @@ private fun AppIcon(app: StoreApp, size: Int) {
     if (app.iconUrl != null) {
         AsyncImage(
             model = app.iconUrl,
-            contentDescription = "Icon von ${app.name}",
+            contentDescription = "Icon of ${app.name}",
             contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(size.dp)
-                .clip(RoundedCornerShape(14.dp))
+            modifier = Modifier.size(size.dp).clip(RoundedCornerShape(14.dp))
         )
     } else {
         Box(
-            modifier = Modifier
-                .size(size.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(MaterialTheme.colorScheme.secondaryContainer),
+            modifier = Modifier.size(size.dp).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.secondaryContainer),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                app.name.take(1).uppercase(),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
+            Text(app.name.take(1).uppercase(), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         }
     }
 }
