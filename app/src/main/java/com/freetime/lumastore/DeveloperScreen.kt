@@ -46,17 +46,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
-fun DeveloperScreen(
-    repository: DeveloperRepository,
-    onBack: () -> Unit
-) {
+fun DeveloperScreen(repository: DeveloperRepository, onBack: () -> Unit) {
     val context = LocalContext.current
     val systemNotifications = remember(context) { SystemNotificationManager(context) }
-    val notificationPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-        onResult = { }
-    )
-
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     var session by remember { mutableStateOf<DeveloperSession?>(null) }
     var dashboard by remember { mutableStateOf<DeveloperDashboard?>(null) }
     var loading by remember { mutableStateOf(false) }
@@ -68,33 +61,19 @@ fun DeveloperScreen(
     suspend fun reload(currentSession: DeveloperSession) {
         loading = true
         error = null
-        runCatching {
-            repository.loadDashboard(currentSession)
-        }.onSuccess {
-            dashboard = it
-            systemNotifications.showNewNotifications(it.notifications)
-        }.onFailure {
-            error = it.message ?: "Developer-Daten konnten nicht geladen werden."
-        }
+        runCatching { repository.loadDashboard(currentSession) }
+            .onSuccess { dashboard = it; systemNotifications.showNewNotifications(it.notifications) }
+            .onFailure { error = it.message ?: "Developer data could not be loaded." }
         loading = false
     }
 
     LaunchedEffect(Unit) {
         runCatching { repository.savedSession() }
-            .onSuccess {
-                session = it
-                authLoading = false
-            }
-            .onFailure {
-                error = it.message ?: "Supabase-Anmeldung konnte nicht geladen werden."
-                authLoading = false
-            }
-
+            .onSuccess { session = it; authLoading = false }
+            .onFailure { error = it.message ?: "Supabase sign-in could not be loaded."; authLoading = false }
         repository.sessionFlow().collect { newSession ->
             session = newSession
-            if (newSession == null) {
-                dashboard = null
-            }
+            if (newSession == null) dashboard = null
             loggingIn = false
             authLoading = false
         }
@@ -102,81 +81,26 @@ fun DeveloperScreen(
 
     LaunchedEffect(session?.accessToken) {
         val current = session ?: return@LaunchedEffect
-
-        if (
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
-
         reload(current)
-        while (session?.accessToken == current.accessToken) {
-            delay(30_000)
-            reload(current)
-        }
+        while (session?.accessToken == current.accessToken) { delay(30_000); reload(current) }
     }
 
     if (authLoading) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            CircularProgressIndicator()
-        }
+        Column(Modifier.fillMaxSize(), Arrangement.Center, Alignment.CenterHorizontally) { CircularProgressIndicator() }
         return
     }
 
     if (session == null) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            TextButton(onClick = onBack) { Text("← Zurück zum Store") }
+        Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            TextButton(onClick = onBack) { Text("← Back to Store") }
             Text("Developer Login", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Text(
-                "Melde dich über Supabase mit GitHub oder GitLab an.",
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Text("Sign in through Supabase with GitHub or GitLab.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            Button(
-                onClick = {
-                    scope.launch {
-                        loggingIn = true
-                        error = null
-                        runCatching { repository.signInWithGitHub() }
-                            .onFailure {
-                                error = it.message ?: "GitHub-Anmeldung fehlgeschlagen."
-                                loggingIn = false
-                            }
-                    }
-                },
-                enabled = !loggingIn,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Mit GitHub anmelden")
-            }
-            OutlinedButton(
-                onClick = {
-                    scope.launch {
-                        loggingIn = true
-                        error = null
-                        runCatching { repository.signInWithGitLab() }
-                            .onFailure {
-                                error = it.message ?: "GitLab-Anmeldung fehlgeschlagen."
-                                loggingIn = false
-                            }
-                    }
-                },
-                enabled = !loggingIn,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Mit GitLab anmelden")
-            }
+            Button(onClick = { scope.launch { loggingIn = true; error = null; runCatching { repository.signInWithGitHub() }.onFailure { error = it.message ?: "GitHub sign-in failed."; loggingIn = false } } }, enabled = !loggingIn, modifier = Modifier.fillMaxWidth()) { Text("Sign in with GitHub") }
+            OutlinedButton(onClick = { scope.launch { loggingIn = true; error = null; runCatching { repository.signInWithGitLab() }.onFailure { error = it.message ?: "GitLab sign-in failed."; loggingIn = false } } }, enabled = !loggingIn, modifier = Modifier.fillMaxWidth()) { Text("Sign in with GitLab") }
         }
         return
     }
@@ -186,142 +110,63 @@ fun DeveloperScreen(
     val unreadCount = data?.notifications?.count { it.readAt == null } ?: 0
     val commentsBySubmission = data?.comments?.groupBy { it.submissionId }.orEmpty()
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(Modifier.fillMaxWidth().padding(top = 12.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 TextButton(onClick = onBack) { Text("← Store") }
-                TextButton(onClick = {
-                    scope.launch {
-                        runCatching { repository.signOut() }
-                            .onFailure { error = it.message ?: "Abmelden fehlgeschlagen." }
-                    }
-                }) { Text("Ausloggen") }
+                TextButton(onClick = { scope.launch { runCatching { repository.signOut() }.onFailure { error = it.message ?: "Sign out failed." } } }) { Text("Sign out") }
             }
         }
-
         item {
-            Text("Developer Bereich", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+            Text("Developer Area", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             Text(currentSession.email ?: currentSession.userId, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { scope.launch { reload(currentSession) } }, enabled = !loading) {
-                    Text("Aktualisieren")
-                }
-                if (unreadCount > 0) {
-                    Text("$unreadCount ungelesene Benachrichtigungen", color = MaterialTheme.colorScheme.primary)
-                }
+                OutlinedButton(onClick = { scope.launch { reload(currentSession) } }, enabled = !loading) { Text("Refresh") }
+                if (unreadCount > 0) Text("$unreadCount unread notifications", color = MaterialTheme.colorScheme.primary)
             }
         }
-
-        error?.let { message ->
-            item { Text(message, color = MaterialTheme.colorScheme.error) }
-        }
-
-        if (loading && data == null) {
-            item {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                    CircularProgressIndicator()
-                }
-            }
-        }
-
+        error?.let { message -> item { Text(message, color = MaterialTheme.colorScheme.error) } }
+        if (loading && data == null) item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { CircularProgressIndicator() } }
         if (data != null) {
-            item {
-                Text("Benachrichtigungen", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            item { Text("Notifications", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold) }
+            if (data.notifications.isEmpty()) item { Text("No notifications yet.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            else items(data.notifications, key = { it.id }) { notification ->
+                NotificationCard(notification, if (notification.readAt == null) {{ scope.launch { runCatching { repository.markNotificationRead(notification.id) }.onFailure { error = it.message ?: "Notification could not be updated." }; reload(currentSession) } }} else null)
             }
-            if (data.notifications.isEmpty()) {
-                item { Text("Noch keine Benachrichtigungen.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            } else {
-                items(data.notifications, key = { it.id }) { notification ->
-                    NotificationCard(
-                        notification = notification,
-                        onMarkRead = if (notification.readAt == null) {
-                            {
-                                scope.launch {
-                                    runCatching {
-                                        repository.markNotificationRead(notification.id)
-                                    }.onFailure {
-                                        error = it.message ?: "Benachrichtigung konnte nicht aktualisiert werden."
-                                    }
-                                    reload(currentSession)
-                                }
-                            }
-                        } else null
-                    )
-                }
-            }
-
-            item {
-                Divider(modifier = Modifier.padding(vertical = 6.dp))
-                Text("Meine Apps", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-            }
-
-            if (data.submissions.isEmpty()) {
-                item { Text("Für dieses Konto wurden keine Apps gefunden.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            } else {
-                items(data.submissions, key = { it.id }) { submission ->
-                    SubmissionCard(
-                        submission = submission,
-                        comments = commentsBySubmission[submission.id].orEmpty().map { it.body }
-                    )
-                }
-            }
+            item { Divider(Modifier.padding(vertical = 6.dp)); Text("My Apps", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold) }
+            if (data.submissions.isEmpty()) item { Text("No apps were found for this account.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            else items(data.submissions, key = { it.id }) { submission -> SubmissionCard(submission, commentsBySubmission[submission.id].orEmpty().map { it.body }) }
         }
-
         item { Spacer(Modifier.height(28.dp)) }
     }
 }
 
 @Composable
-private fun NotificationCard(
-    notification: DeveloperNotification,
-    onMarkRead: (() -> Unit)?
-) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+private fun NotificationCard(notification: DeveloperNotification, onMarkRead: (() -> Unit)?) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                 Text(notification.title, fontWeight = FontWeight.SemiBold)
-                if (notification.readAt == null) {
-                    Text("Neu", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                }
+                if (notification.readAt == null) Text("New", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             }
             notification.message?.let { Text(it) }
             notification.createdAt?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            if (onMarkRead != null) {
-                TextButton(onClick = onMarkRead) { Text("Als gelesen markieren") }
-            }
+            if (onMarkRead != null) TextButton(onClick = onMarkRead) { Text("Mark as read") }
         }
     }
 }
 
 @Composable
-private fun SubmissionCard(
-    submission: DeveloperSubmission,
-    comments: List<String>
-) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+private fun SubmissionCard(submission: DeveloperSubmission, comments: List<String>) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             Text(submission.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text("Status: ${submission.status}", color = statusColor(submission.status))
             submission.version?.let { Text("Version: $it", style = MaterialTheme.typography.bodySmall) }
             submission.packageName?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            submission.reviewMessage?.let {
-                Divider()
-                Text("Review-Feedback", fontWeight = FontWeight.SemiBold)
-                Text(it)
-            }
-            if (comments.isNotEmpty()) {
-                Divider()
-                Text("Kommentare / Feedback", fontWeight = FontWeight.SemiBold)
-                comments.forEach { body -> Text("• $body") }
-            }
+            submission.reviewMessage?.let { Divider(); Text("Review Feedback", fontWeight = FontWeight.SemiBold); Text(it) }
+            if (comments.isNotEmpty()) { Divider(); Text("Comments / Feedback", fontWeight = FontWeight.SemiBold); comments.forEach { Text("• $it") } }
         }
     }
 }
