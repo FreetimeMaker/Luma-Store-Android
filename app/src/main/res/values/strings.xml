@@ -11,6 +11,9 @@
     <string name="updates_count">Updates (%1$d)</string>
     <string name="search_updates">Search updates</string>
     <string name="search_apps">Search apps</string>
+    <string name="discover_apps">Discover apps</string>
+    <string name="categories_title">Categories</string>
+    <string name="browse_all_apps">All apps</string>
     <string name="source_code">Source code</string>
     <string name="all_apps">All apps</string>
     <string name="open_source">Open Source</string>
