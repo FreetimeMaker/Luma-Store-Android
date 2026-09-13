@@ -5,42 +5,19 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import com.freetime.lumastore.data.DeveloperDashboard
-import com.freetime.lumastore.data.DeveloperNotification
-import com.freetime.lumastore.data.DeveloperRepository
-import com.freetime.lumastore.data.DeveloperSession
-import com.freetime.lumastore.data.DeveloperSubmission
+import com.freetime.lumastore.data.*
 import com.freetime.lumastore.notifications.SystemNotificationManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -49,7 +26,7 @@ import kotlinx.coroutines.launch
 fun DeveloperScreen(repository: DeveloperRepository, onBack: () -> Unit) {
     val context = LocalContext.current
     val systemNotifications = remember(context) { SystemNotificationManager(context) }
-    val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     var session by remember { mutableStateOf<DeveloperSession?>(null) }
     var dashboard by remember { mutableStateOf<DeveloperDashboard?>(null) }
     var loading by remember { mutableStateOf(false) }
@@ -57,124 +34,62 @@ fun DeveloperScreen(repository: DeveloperRepository, onBack: () -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
     var loggingIn by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val developerLoadError = stringResource(R.string.developer_data_load_failed)
+    val authLoadError = stringResource(R.string.supabase_sign_in_load_failed)
+    val githubError = stringResource(R.string.github_sign_in_failed)
+    val gitlabError = stringResource(R.string.gitlab_sign_in_failed)
+    val signOutError = stringResource(R.string.sign_out_failed)
+    val notificationError = stringResource(R.string.notification_update_failed)
 
-    suspend fun reload(currentSession: DeveloperSession) {
-        loading = true
-        error = null
-        runCatching { repository.loadDashboard(currentSession) }
-            .onSuccess { dashboard = it; systemNotifications.showNewNotifications(it.notifications) }
-            .onFailure { error = it.message ?: "Developer data could not be loaded." }
+    suspend fun reload(current: DeveloperSession) {
+        loading = true; error = null
+        runCatching { repository.loadDashboard(current) }.onSuccess { dashboard = it; systemNotifications.showNewNotifications(it.notifications) }.onFailure { error = it.message ?: developerLoadError }
         loading = false
     }
-
     LaunchedEffect(Unit) {
-        runCatching { repository.savedSession() }
-            .onSuccess { session = it; authLoading = false }
-            .onFailure { error = it.message ?: "Supabase sign-in could not be loaded."; authLoading = false }
-        repository.sessionFlow().collect { newSession ->
-            session = newSession
-            if (newSession == null) dashboard = null
-            loggingIn = false
-            authLoading = false
-        }
+        runCatching { repository.savedSession() }.onSuccess { session = it; authLoading = false }.onFailure { error = it.message ?: authLoadError; authLoading = false }
+        repository.sessionFlow().collect { session = it; if (it == null) dashboard = null; loggingIn = false; authLoading = false }
     }
-
     LaunchedEffect(session?.accessToken) {
         val current = session ?: return@LaunchedEffect
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
-        reload(current)
-        while (session?.accessToken == current.accessToken) { delay(30_000); reload(current) }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        reload(current); while (session?.accessToken == current.accessToken) { delay(30_000); reload(current) }
     }
-
-    if (authLoading) {
-        Column(Modifier.fillMaxSize(), Arrangement.Center, Alignment.CenterHorizontally) { CircularProgressIndicator() }
-        return
-    }
-
+    if (authLoading) { Column(Modifier.fillMaxSize(), Arrangement.Center, Alignment.CenterHorizontally) { CircularProgressIndicator() }; return }
     if (session == null) {
         Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            TextButton(onClick = onBack) { Text("← Back to Store") }
-            Text("Developer Login", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Text("Sign in through Supabase with GitHub or GitLab.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TextButton(onClick = onBack) { Text(stringResource(R.string.back_to_store)) }
+            Text(stringResource(R.string.developer_login), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.developer_login_description), color = MaterialTheme.colorScheme.onSurfaceVariant)
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            Button(onClick = { scope.launch { loggingIn = true; error = null; runCatching { repository.signInWithGitHub() }.onFailure { error = it.message ?: "GitHub sign-in failed."; loggingIn = false } } }, enabled = !loggingIn, modifier = Modifier.fillMaxWidth()) { Text("Sign in with GitHub") }
-            OutlinedButton(onClick = { scope.launch { loggingIn = true; error = null; runCatching { repository.signInWithGitLab() }.onFailure { error = it.message ?: "GitLab sign-in failed."; loggingIn = false } } }, enabled = !loggingIn, modifier = Modifier.fillMaxWidth()) { Text("Sign in with GitLab") }
-        }
-        return
+            Button(onClick = { scope.launch { loggingIn = true; error = null; runCatching { repository.signInWithGitHub() }.onFailure { error = it.message ?: githubError; loggingIn = false } } }, enabled = !loggingIn, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.sign_in_github)) }
+            OutlinedButton(onClick = { scope.launch { loggingIn = true; error = null; runCatching { repository.signInWithGitLab() }.onFailure { error = it.message ?: gitlabError; loggingIn = false } } }, enabled = !loggingIn, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.sign_in_gitlab)) }
+        }; return
     }
-
-    val currentSession = session ?: return
+    val current = session ?: return
     val data = dashboard
-    val unreadCount = data?.notifications?.count { it.readAt == null } ?: 0
-    val commentsBySubmission = data?.comments?.groupBy { it.submissionId }.orEmpty()
-
+    val unread = data?.notifications?.count { it.readAt == null } ?: 0
+    val comments = data?.comments?.groupBy { it.submissionId }.orEmpty()
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item {
-            Row(Modifier.fillMaxWidth().padding(top = 12.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                TextButton(onClick = onBack) { Text("← Store") }
-                TextButton(onClick = { scope.launch { runCatching { repository.signOut() }.onFailure { error = it.message ?: "Sign out failed." } } }) { Text("Sign out") }
-            }
-        }
-        item {
-            Text("Developer Area", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Text(currentSession.email ?: currentSession.userId, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { scope.launch { reload(currentSession) } }, enabled = !loading) { Text("Refresh") }
-                if (unreadCount > 0) Text("$unreadCount unread notifications", color = MaterialTheme.colorScheme.primary)
-            }
-        }
+        item { Row(Modifier.fillMaxWidth().padding(top = 12.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+            TextButton(onClick = onBack) { Text(stringResource(R.string.store_back)) }
+            TextButton(onClick = { scope.launch { runCatching { repository.signOut() }.onFailure { error = it.message ?: signOutError } } }) { Text(stringResource(R.string.sign_out)) }
+        } }
+        item { Text(stringResource(R.string.developer_area), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold); Text(current.email ?: current.userId, color = MaterialTheme.colorScheme.onSurfaceVariant); Spacer(Modifier.height(6.dp)); Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { OutlinedButton(onClick = { scope.launch { reload(current) } }, enabled = !loading) { Text(stringResource(R.string.refresh)) }; if (unread > 0) Text(stringResource(R.string.unread_notifications, unread), color = MaterialTheme.colorScheme.primary) } }
         error?.let { message -> item { Text(message, color = MaterialTheme.colorScheme.error) } }
         if (loading && data == null) item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { CircularProgressIndicator() } }
         if (data != null) {
-            item { Text("Notifications", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold) }
-            if (data.notifications.isEmpty()) item { Text("No notifications yet.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            else items(data.notifications, key = { it.id }) { notification ->
-                NotificationCard(notification, if (notification.readAt == null) {{ scope.launch { runCatching { repository.markNotificationRead(notification.id) }.onFailure { error = it.message ?: "Notification could not be updated." }; reload(currentSession) } }} else null)
-            }
-            item { Divider(Modifier.padding(vertical = 6.dp)); Text("My Apps", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold) }
-            if (data.submissions.isEmpty()) item { Text("No apps were found for this account.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            else items(data.submissions, key = { it.id }) { submission -> SubmissionCard(submission, commentsBySubmission[submission.id].orEmpty().map { it.body }) }
+            item { Text(stringResource(R.string.notifications), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold) }
+            if (data.notifications.isEmpty()) item { Text(stringResource(R.string.no_notifications), color = MaterialTheme.colorScheme.onSurfaceVariant) } else items(data.notifications, key = { it.id }) { n -> NotificationCard(n, if (n.readAt == null) {{ scope.launch { runCatching { repository.markNotificationRead(n.id) }.onFailure { error = it.message ?: notificationError }; reload(current) } }} else null) }
+            item { Divider(Modifier.padding(vertical = 6.dp)); Text(stringResource(R.string.my_apps), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold) }
+            if (data.submissions.isEmpty()) item { Text(stringResource(R.string.no_account_apps), color = MaterialTheme.colorScheme.onSurfaceVariant) } else items(data.submissions, key = { it.id }) { SubmissionCard(it, comments[it.id].orEmpty().map { c -> c.body }) }
         }
         item { Spacer(Modifier.height(28.dp)) }
     }
 }
 
-@Composable
-private fun NotificationCard(notification: DeveloperNotification, onMarkRead: (() -> Unit)?) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                Text(notification.title, fontWeight = FontWeight.SemiBold)
-                if (notification.readAt == null) Text("New", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-            }
-            notification.message?.let { Text(it) }
-            notification.createdAt?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            if (onMarkRead != null) TextButton(onClick = onMarkRead) { Text("Mark as read") }
-        }
-    }
-}
+@Composable private fun NotificationCard(notification: DeveloperNotification, onMarkRead: (() -> Unit)?) { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) { Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) { Text(notification.title, fontWeight = FontWeight.SemiBold); if (notification.readAt == null) Text(stringResource(R.string.new_label), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) }; notification.message?.let { Text(it) }; notification.createdAt?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; if (onMarkRead != null) TextButton(onClick = onMarkRead) { Text(stringResource(R.string.mark_as_read)) } } } }
 
-@Composable
-private fun SubmissionCard(submission: DeveloperSubmission, comments: List<String>) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-            Text(submission.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text("Status: ${submission.status}", color = statusColor(submission.status))
-            submission.version?.let { Text("Version: $it", style = MaterialTheme.typography.bodySmall) }
-            submission.packageName?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            submission.reviewMessage?.let { Divider(); Text("Review Feedback", fontWeight = FontWeight.SemiBold); Text(it) }
-            if (comments.isNotEmpty()) { Divider(); Text("Comments / Feedback", fontWeight = FontWeight.SemiBold); comments.forEach { Text("• $it") } }
-        }
-    }
-}
+@Composable private fun SubmissionCard(submission: DeveloperSubmission, comments: List<String>) { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) { Text(submission.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); Text(stringResource(R.string.status_value, submission.status), color = statusColor(submission.status)); submission.version?.let { Text(stringResource(R.string.version_value, it), style = MaterialTheme.typography.bodySmall) }; submission.packageName?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; submission.reviewMessage?.let { Divider(); Text(stringResource(R.string.review_feedback), fontWeight = FontWeight.SemiBold); Text(it) }; if (comments.isNotEmpty()) { Divider(); Text(stringResource(R.string.comments_feedback), fontWeight = FontWeight.SemiBold); comments.forEach { Text("• $it") } } } } }
 
-@Composable
-private fun statusColor(status: String) = when (status) {
-    "Approved" -> MaterialTheme.colorScheme.primary
-    "Rejected" -> MaterialTheme.colorScheme.error
-    "Changes Requested" -> MaterialTheme.colorScheme.tertiary
-    else -> MaterialTheme.colorScheme.onSurfaceVariant
-}
+@Composable private fun statusColor(status: String) = when (status) { "Approved" -> MaterialTheme.colorScheme.primary; "Rejected" -> MaterialTheme.colorScheme.error; "Changes Requested" -> MaterialTheme.colorScheme.tertiary; else -> MaterialTheme.colorScheme.onSurfaceVariant }
