@@ -11,26 +11,27 @@ import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.freetime.lumastore.data.AppRepository
 import com.freetime.lumastore.data.DeveloperRepository
+import com.freetime.lumastore.data.StoreApp
 import com.freetime.lumastore.data.supabase
 import com.freetime.lumastore.install.ApkInstaller
 import com.freetime.lumastore.notifications.NotificationSyncJobService
@@ -38,7 +39,7 @@ import com.freetime.lumastore.notifications.SystemNotificationManager
 import com.freetime.lumastore.ui.theme.LumaStoreTheme
 import io.github.jan.supabase.auth.handleDeeplinks
 
-private enum class MainScreen { STORE, DEVELOPER, SETTINGS }
+private enum class MainScreen { MY_APPS, DEVELOPER, SEARCH }
 
 class MainActivity : ComponentActivity() {
     private val repository by lazy { AppRepository(applicationContext) }
@@ -50,21 +51,46 @@ class MainActivity : ComponentActivity() {
         handleSupabaseDeepLinkSafely(intent)
         scheduleNotificationSyncSafely()
         enableEdgeToEdge()
+
         setContent {
             val revision = installedAppsRevision.intValue
             var screen by rememberSaveable {
-                mutableStateOf(if (intent.getBooleanExtra(SystemNotificationManager.EXTRA_OPEN_DEVELOPER, false)) MainScreen.DEVELOPER else MainScreen.STORE)
+                mutableStateOf(
+                    if (intent.getBooleanExtra(SystemNotificationManager.EXTRA_OPEN_DEVELOPER, false)) {
+                        MainScreen.DEVELOPER
+                    } else {
+                        MainScreen.SEARCH
+                    }
+                )
             }
+
             LumaStoreTheme {
-                when (screen) {
-                    MainScreen.SETTINGS -> SettingsScreen(repository, { screen = MainScreen.STORE }, { })
-                    MainScreen.DEVELOPER -> DeveloperScreen(developerRepository) { screen = MainScreen.STORE }
-                    MainScreen.STORE -> Column(Modifier.fillMaxSize()) {
-                        Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.End) {
-                            TextButton(onClick = { screen = MainScreen.DEVELOPER }) { Text(stringResource(R.string.developer)) }
-                            TextButton(onClick = { screen = MainScreen.SETTINGS }) { Text(stringResource(R.string.settings)) }
+                Scaffold(
+                    bottomBar = {
+                        NavigationBar {
+                            NavigationBarItem(
+                                selected = screen == MainScreen.MY_APPS,
+                                onClick = { screen = MainScreen.MY_APPS },
+                                icon = { Text("↓") },
+                                label = { Text(stringResource(R.string.my_apps)) }
+                            )
+                            NavigationBarItem(
+                                selected = screen == MainScreen.DEVELOPER,
+                                onClick = { screen = MainScreen.DEVELOPER },
+                                icon = { Text("</>") },
+                                label = { Text(stringResource(R.string.developer)) }
+                            )
+                            NavigationBarItem(
+                                selected = screen == MainScreen.SEARCH,
+                                onClick = { screen = MainScreen.SEARCH },
+                                icon = { Text("⌕") },
+                                label = { Text(stringResource(R.string.search)) }
+                            )
                         }
-                        Box(Modifier.weight(1f)) {
+                    }
+                ) { padding ->
+                    Box(Modifier.fillMaxSize().padding(padding)) {
+                        PersistentScreen(visible = screen == MainScreen.SEARCH) {
                             FdroidStoreScreen(
                                 repository = repository,
                                 installedAppsRevision = revision,
@@ -73,12 +99,28 @@ class MainActivity : ComponentActivity() {
                                 openInstalledApp = { openInstalledApp(it) },
                                 canInstallPackages = { canInstallUnknownApps() },
                                 requestInstallPermission = { openInstallPermission() },
-                                install = { app, onProgress, onReady, onError ->
-                                    ApkInstaller.downloadAndInstall(this@MainActivity, app.id, app.apkUrl,
-                                        { runOnUiThread { onProgress(it) } },
-                                        { runOnUiThread(onReady) },
-                                        { error -> runOnUiThread { onError(error) } })
-                                }
+                                install = installerCallback()
+                            )
+                        }
+
+                        PersistentScreen(visible = screen == MainScreen.MY_APPS) {
+                            MyAppsScreen(
+                                repository = repository,
+                                installedAppsRevision = revision,
+                                installedVersionCode = { installedVersionCode(it) },
+                                installedVersionName = { installedVersionName(it) },
+                                openInstalledApp = { openInstalledApp(it) },
+                                canInstallPackages = { canInstallUnknownApps() },
+                                requestInstallPermission = { openInstallPermission() },
+                                install = installerCallback()
+                            )
+                        }
+
+                        PersistentScreen(visible = screen == MainScreen.DEVELOPER) {
+                            DeveloperScreen(
+                                repository = developerRepository,
+                                onBack = { screen = MainScreen.SEARCH },
+                                active = screen == MainScreen.DEVELOPER
                             )
                         }
                     }
@@ -86,6 +128,34 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    @androidx.compose.runtime.Composable
+    private fun PersistentScreen(
+        visible: Boolean,
+        content: @androidx.compose.runtime.Composable () -> Unit
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(if (visible) 1f else 0f)
+                .graphicsLayer { alpha = if (visible) 1f else 0f },
+            color = MaterialTheme.colorScheme.background
+        ) {
+            content()
+        }
+    }
+
+    private fun installerCallback(): (StoreApp, (Int) -> Unit, () -> Unit, (Throwable) -> Unit) -> Unit =
+        { app, onProgress, onReady, onError ->
+            ApkInstaller.downloadAndInstall(
+                this@MainActivity,
+                app.id,
+                app.apkUrl,
+                { runOnUiThread { onProgress(it) } },
+                { runOnUiThread(onReady) },
+                { error -> runOnUiThread { onError(error) } }
+            )
+        }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -118,7 +188,12 @@ class MainActivity : ComponentActivity() {
 
     private fun installedVersionCode(packageName: String): Long? = runCatching {
         val info = packageManager.getPackageInfo(packageName, 0)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) info.longVersionCode else { @Suppress("DEPRECATION") info.versionCode.toLong() }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            info.longVersionCode
+        } else {
+            @Suppress("DEPRECATION")
+            info.versionCode.toLong()
+        }
     }.getOrNull()
 
     private fun installedVersionName(packageName: String): String? = runCatching {
@@ -126,19 +201,27 @@ class MainActivity : ComponentActivity() {
     }.getOrNull()
 
     private fun openInstalledApp(packageName: String): Boolean {
-        val i = packageManager.getLaunchIntentForPackage(packageName) ?: return false
-        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        startActivity(i)
+        val launchIntent = packageManager.getLaunchIntentForPackage(packageName) ?: return false
+        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(launchIntent)
         return true
     }
 
-    private fun canInstallUnknownApps() = Build.VERSION.SDK_INT < Build.VERSION_CODES.O || packageManager.canRequestPackageInstalls()
+    private fun canInstallUnknownApps(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.O || packageManager.canRequestPackageInstalls()
 
     private fun openInstallPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+            startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:$packageName")
+                )
+            )
         }
     }
 
-    companion object { private const val NOTIFICATION_SYNC_JOB_ID = 4201 }
+    companion object {
+        private const val NOTIFICATION_SYNC_JOB_ID = 4201
+    }
 }
