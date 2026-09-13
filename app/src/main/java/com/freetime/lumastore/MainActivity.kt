@@ -20,6 +20,8 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -63,9 +65,20 @@ class MainActivity : ComponentActivity() {
                     }
                 )
             }
+            var myAppsMounted by rememberSaveable { mutableStateOf(screen == MainScreen.MY_APPS) }
+            var developerMounted by rememberSaveable { mutableStateOf(screen == MainScreen.DEVELOPER) }
+
+            LaunchedEffect(screen) {
+                when (screen) {
+                    MainScreen.MY_APPS -> myAppsMounted = true
+                    MainScreen.DEVELOPER -> developerMounted = true
+                    MainScreen.SEARCH -> Unit
+                }
+            }
 
             LumaStoreTheme {
                 Scaffold(
+                    containerColor = MaterialTheme.colorScheme.background,
                     bottomBar = {
                         NavigationBar {
                             NavigationBarItem(
@@ -103,25 +116,29 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        PersistentScreen(visible = screen == MainScreen.MY_APPS) {
-                            MyAppsScreen(
-                                repository = repository,
-                                installedAppsRevision = revision,
-                                installedVersionCode = { installedVersionCode(it) },
-                                installedVersionName = { installedVersionName(it) },
-                                openInstalledApp = { openInstalledApp(it) },
-                                canInstallPackages = { canInstallUnknownApps() },
-                                requestInstallPermission = { openInstallPermission() },
-                                install = installerCallback()
-                            )
+                        if (myAppsMounted) {
+                            PersistentScreen(visible = screen == MainScreen.MY_APPS) {
+                                MyAppsScreen(
+                                    repository = repository,
+                                    installedAppsRevision = revision,
+                                    installedVersionCode = { installedVersionCode(it) },
+                                    installedVersionName = { installedVersionName(it) },
+                                    openInstalledApp = { openInstalledApp(it) },
+                                    canInstallPackages = { canInstallUnknownApps() },
+                                    requestInstallPermission = { openInstallPermission() },
+                                    install = installerCallback()
+                                )
+                            }
                         }
 
-                        PersistentScreen(visible = screen == MainScreen.DEVELOPER) {
-                            DeveloperScreen(
-                                repository = developerRepository,
-                                onBack = { screen = MainScreen.SEARCH },
-                                active = screen == MainScreen.DEVELOPER
-                            )
+                        if (developerMounted) {
+                            PersistentScreen(visible = screen == MainScreen.DEVELOPER) {
+                                DeveloperScreen(
+                                    repository = developerRepository,
+                                    onBack = { screen = MainScreen.SEARCH },
+                                    active = screen == MainScreen.DEVELOPER
+                                )
+                            }
                         }
                     }
                 }
@@ -129,10 +146,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    @androidx.compose.runtime.Composable
+    @Composable
     private fun PersistentScreen(
         visible: Boolean,
-        content: @androidx.compose.runtime.Composable () -> Unit
+        content: @Composable () -> Unit
     ) {
         Surface(
             modifier = Modifier
