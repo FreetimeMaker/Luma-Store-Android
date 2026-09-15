@@ -170,8 +170,16 @@ fun AppDetailsScreen(
                     }
                     app.liberapay?.let { DetailValueRow(stringResource(R.string.liberapay), it) }
                     app.openCollective?.let { DetailValueRow(stringResource(R.string.open_collective), it) }
-                    app.bitcoin?.let { DetailValueRow(stringResource(R.string.bitcoin), it) }
-                    app.litecoin?.let { DetailValueRow(stringResource(R.string.litecoin), it) }
+                    app.bitcoin?.let { value ->
+                        DetailActionRow(stringResource(R.string.bitcoin), value) {
+                            onOpenUri(cryptoUri("bitcoin", value))
+                        }
+                    }
+                    app.litecoin?.let { value ->
+                        DetailActionRow(stringResource(R.string.litecoin), value) {
+                            onOpenUri(cryptoUri("litecoin", value))
+                        }
+                    }
                     Spacer(Modifier.height(8.dp))
                 }
             }
@@ -208,6 +216,13 @@ fun AppDetailsScreen(
     }
 }
 
+private fun cryptoUri(scheme: String, value: String): String {
+    val trimmed = value.trim()
+    if (trimmed.startsWith("$scheme:", ignoreCase = true)) return trimmed
+    if (trimmed.startsWith("https://", ignoreCase = true) || trimmed.startsWith("http://", ignoreCase = true)) return trimmed
+    return "$scheme:$trimmed"
+}
+
 @Composable
 private fun AppDetailsHeader(
     app: StoreApp,
@@ -226,142 +241,50 @@ private fun AppDetailsHeader(
     ) {
         DetailsAppIcon(app = app, size = 64)
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                app.name,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Medium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            app.authorName?.let {
-                Text(
-                    stringResource(R.string.by_author, it),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-            Text(
-                stringResource(R.string.app_version_source, app.version, app.sourceName),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            installedVersionName?.let {
-                Text(
-                    stringResource(R.string.installed_version, it),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            Text(app.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            app.authorName?.let { Text(stringResource(R.string.by_author, it), style = MaterialTheme.typography.bodyMedium) }
+            Text(stringResource(R.string.app_version_source, app.version, app.sourceName), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            installedVersionName?.let { Text(stringResource(R.string.installed_version, it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
     }
-
-    if (app.summary.isNotBlank()) {
-        Text(
-            app.summary,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-        )
-    }
-
+    if (app.summary.isNotBlank()) Text(app.summary, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
     if (app.categories.isNotEmpty()) {
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp)
-        ) {
-            items(app.categories, key = { it }) { category ->
-                AssistChip(onClick = {}, label = { Text(category) })
-            }
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 16.dp)) {
+            items(app.categories, key = { it }) { category -> AssistChip(onClick = {}, label = { Text(category) }) }
         }
     }
-
     if (variants.size > 1) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-            Text(
-                stringResource(R.string.choose_source),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Text(stringResource(R.string.choose_source), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(4.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(variants, key = { it.sourceName }) { variant ->
-                    FilterChip(
-                        selected = variant.sourceName == app.sourceName,
-                        onClick = { onSourceSelected(variant) },
-                        label = { Text(variant.sourceName) }
-                    )
+                    FilterChip(selected = variant.sourceName == app.sourceName, onClick = { onSourceSelected(variant) }, label = { Text(variant.sourceName) })
                 }
             }
         }
     }
-
     if (installing) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-            Text(
-                stringResource(R.string.install_progress, progress),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Text(stringResource(R.string.install_progress, progress), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(6.dp))
-            if (progress > 0) {
-                LinearProgressIndicator(
-                    progress = { progress / 100f },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            } else {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            }
+            if (progress > 0) LinearProgressIndicator(progress = { progress / 100f }, modifier = Modifier.fillMaxWidth()) else LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         }
     } else {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            if (actionLabel == stringResource(R.string.open)) {
-                OutlinedButton(
-                    onClick = onAction,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(actionLabel)
-                }
-            } else {
-                Button(
-                    onClick = onAction,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(actionLabel)
-                }
-            }
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.Center) {
+            if (actionLabel == stringResource(R.string.open)) OutlinedButton(onClick = onAction, modifier = Modifier.fillMaxWidth()) { Text(actionLabel) }
+            else Button(onClick = onAction, modifier = Modifier.fillMaxWidth()) { Text(actionLabel) }
         }
     }
 }
 
 @Composable
-private fun DetailsScreenshots(
-    app: StoreApp,
-    onScreenshotSelected: (String) -> Unit
-) {
+private fun DetailsScreenshots(app: StoreApp, onScreenshotSelected: (String) -> Unit) {
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        Text(
-            stringResource(R.string.screenshots),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-        )
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp)
-        ) {
+        Text(stringResource(R.string.screenshots), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(horizontal = 16.dp)) {
             items(app.screenshotUrls, key = { it }) { url ->
-                AsyncImage(
-                    model = url,
-                    contentDescription = stringResource(R.string.screenshot_of, app.name),
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .width(150.dp)
-                        .height(268.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .clickable { onScreenshotSelected(url) }
-                )
+                AsyncImage(model = url, contentDescription = stringResource(R.string.screenshot_of, app.name), contentScale = ContentScale.Crop, modifier = Modifier.width(150.dp).height(268.dp).clip(RoundedCornerShape(14.dp)).clickable { onScreenshotSelected(url) })
             }
         }
     }
@@ -369,66 +292,26 @@ private fun DetailsScreenshots(
 
 @Composable
 private fun ExpandableDescription(app: StoreApp) {
-    val text = app.description.ifBlank {
-        app.summary.ifBlank { stringResource(R.string.no_description_available) }
-    }
+    val text = app.description.ifBlank { app.summary.ifBlank { stringResource(R.string.no_description_available) } }
     var expanded by rememberSaveable(text) { mutableStateOf(false) }
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .animateContentSize()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-    ) {
-        Text(
-            text,
-            style = MaterialTheme.typography.bodyLarge,
-            maxLines = if (expanded) Int.MAX_VALUE else 3,
-            overflow = TextOverflow.Ellipsis
-        )
-        TextButton(
-            onClick = { expanded = !expanded },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(if (expanded) stringResource(R.string.less) else stringResource(R.string.more))
-        }
+    Column(modifier = Modifier.fillMaxWidth().animateContentSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Text(text, style = MaterialTheme.typography.bodyLarge, maxLines = if (expanded) Int.MAX_VALUE else 3, overflow = TextOverflow.Ellipsis)
+        TextButton(onClick = { expanded = !expanded }, modifier = Modifier.fillMaxWidth()) { Text(if (expanded) stringResource(R.string.less) else stringResource(R.string.more)) }
     }
 }
 
 @Composable
-private fun DetailsExpandableSection(
-    title: String,
-    content: @Composable ColumnScope.() -> Unit
-) {
+private fun DetailsExpandableSection(title: String, content: @Composable ColumnScope.() -> Unit) {
     var expanded by rememberSaveable(title) { mutableStateOf(false) }
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-    ) {
-        ElevatedCard(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.elevatedCardColors()
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { expanded = !expanded }
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f)
-                )
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        ElevatedCard(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.elevatedCardColors()) {
+            Row(modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 Text(if (expanded) "⌃" else "⌄")
             }
             if (expanded) {
                 HorizontalDivider()
-                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                    content()
-                }
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { content() }
             }
         }
     }
@@ -437,11 +320,7 @@ private fun DetailsExpandableSection(
 @Composable
 private fun DetailValueRow(label: String, value: String) {
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(2.dp))
         Text(value, style = MaterialTheme.typography.bodyMedium)
     }
@@ -449,47 +328,19 @@ private fun DetailValueRow(label: String, value: String) {
 
 @Composable
 private fun DetailActionRow(label: String, value: String, onClick: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp)
-    ) {
+    Column(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 8.dp)) {
         Text(label, style = MaterialTheme.typography.bodyLarge)
-        Text(
-            value,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.primary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        Text(value, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
 @Composable
 private fun DetailsAppIcon(app: StoreApp, size: Int) {
     if (app.iconUrl != null) {
-        AsyncImage(
-            model = app.iconUrl,
-            contentDescription = stringResource(R.string.icon_of, app.name),
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(size.dp)
-                .clip(MaterialTheme.shapes.large)
-        )
+        AsyncImage(model = app.iconUrl, contentDescription = stringResource(R.string.icon_of, app.name), contentScale = ContentScale.Crop, modifier = Modifier.size(size.dp).clip(MaterialTheme.shapes.large))
     } else {
-        Box(
-            modifier = Modifier
-                .size(size.dp)
-                .clip(MaterialTheme.shapes.large)
-                .background(MaterialTheme.colorScheme.secondaryContainer),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                app.name.take(1).uppercase(),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
+        Box(modifier = Modifier.size(size.dp).clip(MaterialTheme.shapes.large).background(MaterialTheme.colorScheme.secondaryContainer), contentAlignment = Alignment.Center) {
+            Text(app.name.take(1).uppercase(), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         }
     }
 }
