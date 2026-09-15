@@ -40,14 +40,17 @@ data class StoreApp(
 
 enum class SourceType {
     FDROID_V1,
-    LUMA_API
+    LUMA_API,
+    GOOGLE_PLAY
 }
 
 data class AppSource(
     val name: String,
     val indexUrl: String,
     val type: SourceType = SourceType.FDROID_V1,
-    val custom: Boolean = false
+    val custom: Boolean = false,
+    val enabledByDefault: Boolean = true,
+    val requiresAcknowledgement: Boolean = false
 )
 
 private data class ClosedSourceMetadata(
@@ -70,14 +73,21 @@ class AppRepository(context: Context) {
         AppSource("Freetime F-Droid", "https://fdroid.free-time.me/repo/index-v1.json"),
         AppSource("F-Droid", "https://f-droid.org/repo/index-v1.json"),
         AppSource("IzzyOnDroid", "https://apt.izzysoft.de/fdroid/repo/index-v1.json"),
-        AppSource("Luma Store", "https://api.free-time.me/v2/lumastore/apps", SourceType.LUMA_API)
+        AppSource("Luma Store", "https://api.free-time.me/v2/lumastore/apps", SourceType.LUMA_API),
+        AppSource(
+            name = "Google Play",
+            indexUrl = "https://play.google.com/store/apps",
+            type = SourceType.GOOGLE_PLAY,
+            enabledByDefault = false,
+            requiresAcknowledgement = true
+        )
     )
 
     val sources: List<AppSource>
         get() = defaultSources + loadCustomSources()
 
     fun isSourceEnabled(source: AppSource): Boolean =
-        sourcePreferences.getBoolean(sourcePreferenceKey(source), true)
+        sourcePreferences.getBoolean(sourcePreferenceKey(source), source.enabledByDefault)
 
     fun setSourceEnabled(source: AppSource, enabled: Boolean) {
         sourcePreferences.edit().putBoolean(sourcePreferenceKey(source), enabled).apply()
@@ -336,6 +346,7 @@ class AppRepository(context: Context) {
     private fun loadSource(source: AppSource): List<StoreApp> = when (source.type) {
         SourceType.FDROID_V1 -> loadFdroidSource(source)
         SourceType.LUMA_API -> loadLumaApiSource(source)
+        SourceType.GOOGLE_PLAY -> emptyList()
     }
 
     private fun loadFdroidSource(source: AppSource): List<StoreApp> {
@@ -404,137 +415,102 @@ class AppRepository(context: Context) {
                 )
             }
         }
-
         return results
     }
 
     private fun loadLumaApiSource(source: AppSource): List<StoreApp> {
         val root = JSONObject(httpGet(source.indexUrl))
-        val apps = root.optJSONArray("apps") ?: root.optJSONArray("data") ?: return emptyList()
+        val apps = root.optJSONArray("apps") ?: return emptyList()
         return buildList {
             for (i in 0 until apps.length()) {
                 val item = apps.optJSONObject(i) ?: continue
-                parseLumaApiApp(item, source)?.let(::add)
+                val id = item.optString("package_name").ifBlank { item.optString("id") }
+                val name = item.optString("name")
+                if (id.isBlank() || name.isBlank()) continue
+                add(
+                    StoreApp(
+                        id = id,
+                        name = name,
+                        summary = item.optString("summary"),
+                        description = item.optString("description"),
+                        version = item.optString("version_name").ifBlank { item.optString("version") },
+                        versionCode = item.optLong("version_code"),
+                        iconUrl = item.optNullableString("icon_url"),
+                        screenshotUrls = item.optJSONArray("screenshot_urls").toStringList(),
+                        categories = item.optJSONArray("categories").toStringList(),
+                        apkUrl = item.optString("download_url").ifBlank { item.optString("apk_url") },
+                        sourceName = source.name,
+                        authorName = item.optNullableString("author_name"),
+                        authorEmail = item.optNullableString("author_email"),
+                        authorWebsite = item.optNullableString("author_website"),
+                        websiteUrl = item.optNullableString("website_url"),
+                        sourceCodeUrl = item.optNullableString("source_code_url"),
+                        issueTrackerUrl = item.optNullableString("issue_tracker_url"),
+                        translationUrl = item.optNullableString("translation_url"),
+                        changelogUrl = item.optNullableString("changelog_url"),
+                        donationUrls = item.optJSONArray("donation_urls").toStringList(),
+                        liberapay = item.optNullableString("liberapay"),
+                        openCollective = item.optNullableString("open_collective"),
+                        bitcoin = item.optNullableString("bitcoin"),
+                        litecoin = item.optNullableString("litecoin"),
+                        license = item.optNullableString("license"),
+                        antiFeatures = item.optJSONArray("anti_features").toStringList(),
+                        closedSource = item.optBoolean("closed_source", false)
+                    )
+                )
             }
         }
     }
 
-    private fun parseLumaApiApp(item: JSONObject, source: AppSource): StoreApp? {
-        val id = item.optString("package_name").ifBlank { item.optString("id") }.trim()
-        if (id.isBlank()) return null
-        val name = item.optString("name").ifBlank { id }
-        val version = item.optString("version").ifBlank { item.optString("version_name") }
-        val versionCode = item.optLong("version_code", item.optLong("versionCode", 0L))
-        val apkUrl = item.optString("download_url").ifBlank { item.optString("apk_url") }
-        if (apkUrl.isBlank()) return null
-        val screenshots = item.optJSONArray("screenshots").toStringList()
-        val categories = item.optJSONArray("categories").toStringList()
-        return StoreApp(
-            id = id,
-            name = name,
-            summary = item.optString("summary"),
-            description = item.optString("description"),
-            version = version,
-            versionCode = versionCode,
-            iconUrl = item.optNullableString("icon_url") ?: item.optNullableString("icon"),
-            screenshotUrls = screenshots,
-            categories = categories,
-            apkUrl = apkUrl,
-            sourceName = source.name,
-            authorName = item.optNullableString("author_name"),
-            authorEmail = item.optNullableString("author_email"),
-            authorWebsite = item.optNullableString("author_website"),
-            websiteUrl = item.optNullableString("website_url"),
-            sourceCodeUrl = item.optNullableString("source_code_url"),
-            issueTrackerUrl = item.optNullableString("issue_tracker_url"),
-            translationUrl = item.optNullableString("translation_url"),
-            changelogUrl = item.optNullableString("changelog_url"),
-            donationUrls = item.optJSONArray("donation_urls").toStringList(),
-            liberapay = item.optNullableString("liberapay"),
-            openCollective = item.optNullableString("open_collective"),
-            bitcoin = item.optNullableString("bitcoin"),
-            litecoin = item.optNullableString("litecoin"),
-            license = item.optNullableString("license"),
-            antiFeatures = item.optJSONArray("anti_features").toStringList(),
-            closedSource = item.optBoolean("closed_source", false)
-        )
+    private fun parseFdroidScreenshots(metadata: JSONObject?, source: AppSource): List<String> = emptyList()
+
+    private fun resolveFdroidAssetUrl(source: AppSource, asset: String): String? {
+        if (asset.isBlank()) return null
+        if (asset.startsWith("http://") || asset.startsWith("https://")) return asset
+        val base = source.indexUrl.substringBeforeLast('/')
+        return "$base/${asset.trimStart('/')}"
     }
 
-    private fun parseFdroidScreenshots(metadata: JSONObject?, source: AppSource): List<String> {
-        val screenshots = metadata?.optJSONObject("screenshots") ?: return emptyList()
-        val localeKeys = buildList {
-            add(Locale.getDefault().toLanguageTag())
-            add(Locale.getDefault().language)
-            add("en-US")
-            add("en")
-        }.distinct()
-        localeKeys.forEach { locale ->
-            val value = screenshots.optJSONArray(locale).toStringList()
-            if (value.isNotEmpty()) return value.mapNotNull { resolveFdroidAssetUrl(source, it) }
+    private fun localizedString(value: JSONObject?): String? {
+        if (value == null) return null
+        val locale = Locale.getDefault()
+        val preferred = listOf(locale.toLanguageTag(), locale.language, "en-US", "en")
+        preferred.forEach { key ->
+            value.optString(key).takeIf { it.isNotBlank() }?.let { return it }
         }
-        screenshots.keys().forEach { key ->
-            val value = screenshots.optJSONArray(key).toStringList()
-            if (value.isNotEmpty()) return value.mapNotNull { resolveFdroidAssetUrl(source, it) }
-        }
-        return emptyList()
-    }
-
-    private fun localizedString(obj: JSONObject?): String? {
-        if (obj == null) return null
-        val candidates = listOf(Locale.getDefault().toLanguageTag(), Locale.getDefault().language, "en-US", "en")
-        candidates.forEach { key ->
-            obj.optString(key).takeIf { it.isNotBlank() }?.let { return it }
-        }
-        obj.keys().forEach { key ->
-            obj.optString(key).takeIf { it.isNotBlank() }?.let { return it }
+        val keys = value.keys()
+        while (keys.hasNext()) {
+            value.optString(keys.next()).takeIf { it.isNotBlank() }?.let { return it }
         }
         return null
     }
 
-    private fun resolveFdroidAssetUrl(source: AppSource, path: String): String? {
-        val clean = path.trim()
-        if (clean.isBlank()) return null
-        if (clean.startsWith("http://") || clean.startsWith("https://")) return clean
-        val base = source.indexUrl.substringBeforeLast('/')
-        return "$base/${clean.trimStart('/')}"
-    }
-
     private fun httpGet(url: String): String {
-        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
-            connectTimeout = 15_000
-            readTimeout = 30_000
-            requestMethod = "GET"
-            setRequestProperty("Accept", "application/json")
-            setRequestProperty("User-Agent", "LumaStore/Android")
-        }
-        try {
-            val code = connection.responseCode
-            if (code !in 200..299) {
-                error(appContext.getString(R.string.http_request_failed, code, url))
-            }
-            return connection.inputStream.bufferedReader().use { it.readText() }
-        } finally {
-            connection.disconnect()
-        }
+        val connection = URL(url).openConnection() as HttpURLConnection
+        connection.connectTimeout = 15_000
+        connection.readTimeout = 20_000
+        connection.requestMethod = "GET"
+        connection.setRequestProperty("Accept", "application/json")
+        return connection.inputStream.bufferedReader().use { it.readText() }
     }
-
-    private fun JSONArray?.toStringList(): List<String> {
-        if (this == null) return emptyList()
-        return buildList {
-            for (i in 0 until length()) {
-                optString(i).trim().takeIf { it.isNotBlank() }?.let(::add)
-            }
-        }
-    }
-
-    private fun JSONObject.optNullableString(key: String): String? =
-        optString(key).trim().takeIf { it.isNotBlank() && it != "null" }
 
     companion object {
-        private const val CACHE_PREFERENCES = "luma_store_cache"
+        private const val CACHE_PREFERENCES = "app_cache"
+        private const val SOURCE_PREFERENCES = "app_sources"
         private const val CACHE_KEY_APPS = "apps"
         private const val CACHE_KEY_TIMESTAMP = "timestamp"
-        private const val SOURCE_PREFERENCES = "luma_store_sources"
         private const val CUSTOM_SOURCES_KEY = "custom_sources"
     }
 }
+
+private fun JSONArray?.toStringList(): List<String> {
+    if (this == null) return emptyList()
+    return buildList {
+        for (i in 0 until length()) {
+            optString(i).takeIf { it.isNotBlank() }?.let(::add)
+        }
+    }
+}
+
+private fun JSONObject.optNullableString(name: String): String? =
+    optString(name).takeIf { it.isNotBlank() && it != "null" }
