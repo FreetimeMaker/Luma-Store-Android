@@ -1,8 +1,3 @@
-• Browse and search the Luma Store app catalog.
-• Manage optional F-Droid repositories and custom sources.
-• Download apps, install updates and open installed apps.
-• View developer submissions, review feedback and notifications.
 • Open app details directly from My Apps.
 • Cryptocurrency donation links for Bitcoin and Litecoin are now clickable.
 • Fixed parsing for the Luma Store API source.
-• Remove the unnecessary back button from the Search tab.
