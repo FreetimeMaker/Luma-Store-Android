@@ -1,3 +1,1 @@
-• Open app details directly from My Apps.
-• Cryptocurrency donation links for Bitcoin and Litecoin are now clickable.
-• Fixed parsing for the Luma Store API source.
+• Fixed the Update Error
