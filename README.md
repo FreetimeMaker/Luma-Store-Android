@@ -41,7 +41,6 @@ The Luma Store catalog is enabled by default. Additional repositories can be ena
 | Freetime F-Droid | Disabled |
 | F-Droid | Disabled |
 | IzzyOnDroid | Disabled |
-| Google Play | Disabled; catalog loading is not implemented |
 
 Custom repositories currently use the `index-v1.json` format. Enter a repository URL or a direct URL to its `index-v1.json` file. Compatibility depends on the repository's index format and available metadata.
 

@@ -74,7 +74,6 @@ class AppRepository(context: Context) {
         AppSource("F-Droid", "https://f-droid.org/repo/index-v1.json", enabledByDefault = false),
         AppSource("IzzyOnDroid", "https://apt.izzysoft.de/fdroid/repo/index-v1.json", enabledByDefault = false),
         AppSource("Luma Store", "https://api.free-time.me/v2/lumastore/apps", SourceType.LUMA_API),
-        AppSource(name = "Google Play", indexUrl = "https://play.google.com/store/apps", type = SourceType.GOOGLE_PLAY, enabledByDefault = false, requiresAcknowledgement = true)
     )
 
     val sources: List<AppSource>
