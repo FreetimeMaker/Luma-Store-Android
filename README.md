@@ -1,157 +1,105 @@
-<div align="center">
-<h1>🌤️ GeoWeather</h1>
-<p><i>A modern weather app for Android, inspired by MeteoSwiss</i></p>
-</div>
+# Luma Store
 
-<div align="center">
-<h1>📸 Pictures of GeoWeather in Action</h1>
+An Android app store for discovering, installing and updating apps from the Luma Store catalog and optional F-Droid repositories.
 
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" alt="1. Picture"  width="25%">
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" alt="2. Picture"  width="25%">
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" alt="3. Picture"  width="25%">
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" alt="4. Picture"  width="25%">
-</div>
+[![Android build](https://github.com/FreetimeMaker/Luma-Store-New/actions/workflows/build_and_co.yml/badge.svg)](https://github.com/FreetimeMaker/Luma-Store-New/actions/workflows/build_and_co.yml)
+![Android 7.0+](https://img.shields.io/badge/Android-7.0%2B-3DDC84)
 
-# Translations
-<div align="center">
+## Features
 
-[![Translations Status](https://translate.codeberg.org/widget/geoweather/geoweather/287x66-grey.png)](https://translate.codeberg.org/engage/geoweather/)
-</div>
+- **Discover apps:** Browse the catalog and filter by category.
+- **Search:** Find apps by name, description, package name or category.
+- **App details:** View available metadata, versions and sources, with links supplied by the catalog.
+- **Install and update:** Download APKs and open Android's installer, or launch apps already installed.
+- **Manage sources:** Enable or disable built-in sources and add, edit or remove custom F-Droid repository URLs.
+- **Cached catalog:** Browse previously loaded app information when available.
+- **Developer area:** Sign in with GitHub or GitLab to view your submissions, review feedback and notifications.
 
-<div align="center">
-<h1>Repository, Build and App Informations</h1>
-</div>
+## Get the app
 
-<div align="center">
+Luma Store is under active development and requires **Android 7.0 (API 24) or newer**.
 
-[![Latest release](https://img.shields.io/github/v/release/FreetimeMaker/GeoWeather?style=for-the-badge)](https://github.com/FreetimeMaker/GeoWeather/releases)
-[![F-Droid latest release](https://img.shields.io/f-droid/v/com.freetime.geoweather?color=%23ea9010&style=for-the-badge)](https://f-droid.org/packages/com.freetime.geoweather)
-[![GitHub license](https://img.shields.io/github/license/FreetimeMaker/GeoWeather?style=for-the-badge)](https://github.com/FreetimeMaker/GeoWeather/blob/main/LICENSE)
-[![Downloads](https://img.shields.io/github/downloads/FreetimeMaker/GeoWeather/total?style=for-the-badge)](https://github.com/FreetimeMaker/GeoWeather/releases)
-[![GitHub stars](https://img.shields.io/github/stars/FreetimeMaker/GeoWeather?color=%2359a14f&style=for-the-badge)](https://github.com/FreetimeMaker/GeoWeather/stargazers)
-[![Android Build, Sign and Release](https://github.com/FreetimeMaker/GeoWeather/actions/workflows/build_and_co.yml/badge.svg)](https://github.com/FreetimeMaker/GeoWeather/actions/workflows/build_and_co.yml)
-[![API](https://img.shields.io/badge/API-26%2B-brightgreen.svg?style=flat)](https://android-arsenal.com/api?level=26)
-<img alt="Kotlin" src="https://ziadoua.github.io/m3-Markdown-Badges/badges/Kotlin/kotlin1.svg" />
-<img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/Android/android1.svg" />
-<a href="https://github.com/FreetimeMaker/GeoWeather/issues">
-  <img src="https://m3-markdown-badges.vercel.app/issues/1/2/FreetimeMaker/GeoWeather" alt="Issues"/>
-</a>
-</div>
+- **Published versions:** Check [GitHub Releases](https://github.com/FreetimeMaker/Luma-Store-New/releases) for release APKs.
+- **Development builds:** Open a successful [build workflow run](https://github.com/FreetimeMaker/Luma-Store-New/actions/workflows/build_and_co.yml) and download its APK artifact. GitHub may require you to sign in to download artifacts. Extract the archive to access the signed APK.
 
-GeoWeather is a modern Android weather application that allows you to monitor weather conditions for multiple cities. The app was inspired by the Swiss weather app MeteoSwiss and offers an intuitive interface with detailed weather information.
+If no release is listed, use a development build. Development builds may contain unfinished features.
 
-## ✨ Key Features
+### Installation
 
-- 🏙️ **Multiple Cities**: Add and manage unlimited cities with ease
-- 🌡️ **Unit Switching**: Switch between Celsius/Fahrenheit, km/h/mph, and **hPa/mmHg**
-- 📅 **16-Day Weather Forecast**: Detailed weather predictions for more than two weeks
-- ⏰ **Hourly Forecast**: Precise weather data on an hourly basis
-- 🎨 **Material YOU**: Dynamic colors based on your wallpaper (Android 12+)
-- 🌍 **Localization**: Full support for English, German, **Russian**, and many more with a dedicated language selector
-- 🎨 **Weather Icons**: Visual representation of weather conditions
-- 🔔 **Notifications**: Receive weather alerts and updates
-- 📝 **Integrated Change Log**: Track version updates directly in the app
+1. Download and open the Luma Store APK on your Android device.
+2. If prompted, allow your browser or file manager to install apps from this source.
+3. Open Luma Store and browse the catalog.
+4. When installing an app through Luma Store, grant Luma Store permission to install apps if Android requests it, then confirm the installation.
 
-## 🛠️ Technology Stack
+## App sources
 
-- **Jetpack Compose**: Modern UI framework for declarative interfaces
-- **Kotlin**: Modern programming language for Android development
-- **Kotlin DSL**: For build configuration and scripts
-- **Room**: Local database for persistent data storage
-- **Retrofit & OkHttp**: Network communication for weather APIs
-- **Coil**: Image loading library for Compose
-- **WorkManager**: Background processing for regular updates
+The Luma Store catalog is enabled by default. Additional repositories can be enabled in the **Sources** tab.
 
-## 📥 Download & Installation
+| Built-in source | Default state |
+| --- | --- |
+| Luma Store | Enabled |
+| Freetime F-Droid | Disabled |
+| F-Droid | Disabled |
+| IzzyOnDroid | Disabled |
+| Google Play | Disabled; catalog loading is not implemented |
 
-### Get the Latest Version
+Custom repositories currently use the `index-v1.json` format. Enter a repository URL or a direct URL to its `index-v1.json` file. Compatibility depends on the repository's index format and available metadata.
 
-You can download the latest version of GeoWeather from the following platforms:
+App availability and metadata depend on the enabled sources. Google Play is currently a placeholder and does not supply apps.
 
-- **GitHub Releases**: [Direct Download](https://github.com/FreetimeMaker/GeoWeather/releases/latest)
-- **F-Droid**: [com.freetime.geoweather](https://f-droid.org/packages/com.freetime.geoweather)
-- **Obtainium**: [Automatic Updates](https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22com.freetime.geoweather%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2FFreetimeMaker%2FGeoWeather%22%2C%22author%22%3A%22Freetime%20Maker%22%2C%22name%22%3A%22GeoWeather%22%2C%22additionalSettings%22%3A%22%7B%5C%22includePrereleases%5C%22%3Afalse%7D%22%7D)
-- **OpenApk.net**: [OpenAPK.net](https://www.openapk.net/de/geoweather/com.freetime.geoweather/)
-- **GitHub Store**: [Open in GitHub Store](https://github-store.org/app?repo=FreetimeMaker/GeoWeather)
+## Developer area
 
-<div align="center">
+The **Developer** tab supports GitHub and GitLab sign-in through Supabase. After signing in, you can:
 
-[<img src="media-resources/badge_github.png" alt="Get it on GitHub" height="82">](https://github.com/FreetimeMaker/GeoWeather/releases/latest)
+- View submissions associated with your account and their review status.
+- Read review messages and comments.
+- View notifications and mark them as read.
 
-[<img src="media-resources/badge_f_droid.png" alt="Get it on F-Droid" height="80">](https://f-droid.org/packages/com.freetime.geoweather)
+This area displays existing submissions; creating a new submission inside the Android app is not currently implemented.
 
-[<img src="media-resources/badge_obtainium.png" alt="Get it on Obtainium" width="194">](https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22com.freetime.geoweather%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2FFreetimeMaker%2FGeoWeather%22%2C%22author%22%3A%22Freetime%20Maker%22%2C%22name%22%3A%22GeoWeather%22%2C%22additionalSettings%22%3A%22%7B%5C%22includePrereleases%5C%22%3Afalse%7D%22%7D)
+## Permissions
 
-[<img src="media-resources/openapk-badge.png" alt="Get it on OpenAPK.net" height="80">](https://www.openapk.net/de/geoweather/com.freetime.geoweather/)
+| Permission | Purpose |
+| --- | --- |
+| Internet access | Load catalogs, images and APKs, and connect to developer services. |
+| Install packages | Request installation through Android's package installer. |
+| Query installed packages | Compare installed versions with catalog entries and offer install, update or open actions. |
+| Notifications | Show developer account notifications when permission is granted. |
 
-[<img src="media-resources/badge_github_store.png" alt="Get it on GitHub Store" height="70">](https://github-store.org/app?repo=FreetimeMaker/GeoWeather)
-</div>
+## Build from source
 
-## 🚀 Upcoming Features
+The app uses Kotlin, Jetpack Compose and Material 3, with Coil for images and Supabase for developer authentication and data.
 
-Planned:
+1. Clone this repository.
+2. Open it in Android Studio and install the Android SDK required by [the app configuration](app/build.gradle.kts).
+3. Let Gradle sync, then run the app on a device or emulator.
 
-- 📸 **App Demonstration**: Screenshots and video tutorials on YouTube and other platforms
-- 📊 **Weather History**: Historical weather data and trends
+You can also build a debug APK with the included Gradle wrapper:
 
-## 📄 License
+```sh
+./gradlew :app:assembleDebug
+```
 
-This project is licensed under the [Apache-2.0 License](LICENSE).
+On Windows:
 
-## ❤️ Support This Project
+```powershell
+.\gradlew.bat :app:assembleDebug
+```
 
-GeoWeather is 100% free. No ads. No tracking.
+The debug APK is written to `app/build/outputs/apk/debug/`.
 
-- ⭐ **[Star](https://github.com/FreetimeMaker/GeoWeather/star)** this repository
-- 🐛 **[Report](https://github.com/FreetimeMaker/GeoWeather/issues)** bugs and issues
-- 💡 **[Suggest](https://github.com/FreetimeMaker/GeoWeather/issues)** new features
-- 📧 **[Contact](mailto:FreetimeMaker@proton.me)** via Email
-- 💳 **[Sponsor](#-donations)** the developer
+The GitHub workflow builds release APKs, signs them and verifies their signatures. Its signing step uses repository secrets and a separate keystore repository. Local release builds need your own signing configuration.
+
+## Contributing and support
+
+Bug reports, feature suggestions and pull requests are welcome.
+
+- [Report a bug or suggest a feature](https://github.com/FreetimeMaker/Luma-Store-New/issues)
+- [Browse the source code](https://github.com/FreetimeMaker/Luma-Store-New)
+- [Contact the maintainer](mailto:FreetimeMaker@proton.me)
+
+For bug reports, include your Android version, the Luma Store version or build commit, the affected source or app, and steps to reproduce the issue.
 
 ---
 
-<div align="center">
-
-## 🤝 Contributing
-
-Contributions are welcome! Feel free to open issues or submit pull requests.
-
-### Contributors :handshake:
-
-<a href="https://github.com/FreetimeMaker/GeoWeather/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=FreetimeMaker/GeoWeather"  alt="Icons of contributors to GeoWeather"/>
-</a>
-
-## 🌟 Star History
-
-<a href="https://www.star-history.com/?repos=FreetimeMaker%2FGeoWeather&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=FreetimeMaker/GeoWeather&type=date&theme=dark&legend=top-left&sealed_token=Hqnhxg2dGmm2y8EEo-vOBlQcAp19vIQwHcBhzQtPCxusKPLS3EpQycRH4V76LLdWl_yyObhxZ00MZXZFANHqGi6l9Cw4MwogxSHX3nECrxptAv-NFOhmNQ" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=FreetimeMaker/GeoWeather&type=date&legend=top-left&sealed_token=Hqnhxg2dGmm2y8EEo-vOBlQcAp19vIQwHcBhzQtPCxusKPLS3EpQycRH4V76LLdWl_yyObhxZ00MZXZFANHqGi6l9Cw4MwogxSHX3nECrxptAv-NFOhmNQ" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=FreetimeMaker/GeoWeather&type=date&legend=top-left&sealed_token=Hqnhxg2dGmm2y8EEo-vOBlQcAp19vIQwHcBhzQtPCxusKPLS3EpQycRH4V76LLdWl_yyObhxZ00MZXZFANHqGi6l9Cw4MwogxSHX3nECrxptAv-NFOhmNQ" />
- </picture>
-</a>
-
-</div>
-
----
-
-## 🤝 Donations
-
-If you like GeoWeather, I'd appreciate a small donation — thank you! Below are some common cryptocurrency options.
-
-<div align="center">
-
-[![Bitcoin](https://img.shields.io/badge/Bitcoin-BTC-FF9900?style=for-the-badge&logo=bitcoin&logoColor=white)](https://blockchair.com/bitcoin/address/1DsCAVrzvGokrzXpe6YR33QuTo5EppiKRE)
-[![Litecoin](https://img.shields.io/badge/Litecoin-LTC-345D9D?style=for-the-badge&logo=litecoin&logoColor=white)](https://blockchair.com/litecoin/address/LU2ERRXKTeKnzpuieQcpsBteViEY7ff5Wg)
-
-</div>
-
-Alternatively, you can also display the addresses directly:
-
-- Bitcoin (BTC): `1DsCAVrzvGokrzXpe6YR33QuTo5EppiKRE` — or open in block explorer by clicking the badge above
-- Litecoin (LTC): `LU2ERRXKTeKnzpuieQcpsBteViEY7ff5Wg` — or open in block explorer by clicking the badge above
-
-<div align="center">
-<p><i>Developed with ❤️ by FreetimeMaker</i></p>
-</div>
+Developed by [FreetimeMaker](https://github.com/FreetimeMaker).
