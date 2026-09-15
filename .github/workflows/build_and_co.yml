@@ -108,11 +108,21 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
+      - name: Create release notes
+        run: |
+          {
+            echo "## What's new"
+            echo ""
+            cat fastlane/metadata/android/en-US/changelogs/default.txt
+          } > release-notes.md
+
       - name: Upload APK to Release
         if: needs.prepare_android_app.outputs.create_tag == 'true'
         uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ needs.prepare_android_app.outputs.version }}
+          name: Luma Store v${{ needs.prepare_android_app.outputs.version }}
+          body_path: release-notes.md
           files: |
             Luma-Store-v${{ needs.prepare_android_app.outputs.version }}.apk
           draft: false
