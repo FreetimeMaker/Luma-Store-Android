@@ -146,4 +146,5 @@
     <string name="developer_notification_fallback">New developer notification</string>
     <string name="developer_notification_channel">Developer notifications</string>
     <string name="developer_notification_channel_description">Status updates and review messages for submitted apps</string>
+    <string name="invalid_apk_download_url">No valid download address is available for this app. Refresh the app sources and try again.</string>
 </resources>

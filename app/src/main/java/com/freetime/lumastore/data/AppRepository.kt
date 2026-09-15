@@ -432,15 +432,15 @@ class AppRepository(context: Context) {
                     for (platformIndex in 0 until platforms.length()) {
                         val platform = platforms.optJSONObject(platformIndex) ?: continue
                         if (platform.optString("platform").equals("Android", ignoreCase = true)) {
-                            androidDownloadUrl = platform.optString("download_url").takeIf { it.isNotBlank() }
+                            androidDownloadUrl = platform.optDownloadUrl("download_url")
                             if (androidDownloadUrl != null) break
                         }
                     }
                 }
 
                 val apkUrl = androidDownloadUrl
-                    ?: item.optString("download_url").takeIf { it.isNotBlank() }
-                    ?: item.optString("apk_url").takeIf { it.isNotBlank() }
+                    ?: item.optDownloadUrl("download_url")
+                    ?: item.optDownloadUrl("apk_url")
                     ?: continue
 
                 add(
@@ -525,7 +525,8 @@ class AppRepository(context: Context) {
     companion object {
         private const val CACHE_PREFERENCES = "app_cache"
         private const val SOURCE_PREFERENCES = "app_sources"
-        private const val CACHE_KEY_APPS = "apps"
+        // Reload snapshots written before download URL validation was introduced.
+        private const val CACHE_KEY_APPS = "apps_validated_download_urls"
         private const val CACHE_KEY_TIMESTAMP = "timestamp"
         private const val CUSTOM_SOURCES_KEY = "custom_sources"
     }
@@ -542,3 +543,11 @@ private fun JSONArray?.toStringList(): List<String> {
 
 private fun JSONObject.optNullableString(name: String): String? =
     optString(name).takeIf { it.isNotBlank() && it != "null" }
+
+private fun JSONObject.optDownloadUrl(name: String): String? {
+    val value = optNullableString(name)?.trim() ?: return null
+    val url = runCatching { URL(value) }.getOrNull() ?: return null
+    return value.takeIf {
+        (url.protocol == "http" || url.protocol == "https") && url.host.isNotBlank()
+    }
+}

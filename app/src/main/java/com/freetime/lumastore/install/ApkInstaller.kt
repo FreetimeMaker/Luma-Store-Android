@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.core.content.FileProvider
+import com.freetime.lumastore.R
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -19,9 +20,15 @@ object ApkInstaller {
     ) {
         Thread {
             runCatching {
+                val downloadUrl = runCatching { URL(apkUrl.trim()) }.getOrNull()
+                require(downloadUrl != null &&
+                    (downloadUrl.protocol == "https" || downloadUrl.protocol == "http") &&
+                    downloadUrl.host.isNotBlank()) {
+                    context.getString(R.string.invalid_apk_download_url)
+                }
                 val dir = File(context.cacheDir, "apks").apply { mkdirs() }
                 val target = File(dir, "${packageName.replace('.', '_')}.apk")
-                val connection = URL(apkUrl).openConnection() as HttpURLConnection
+                val connection = downloadUrl.openConnection() as HttpURLConnection
                 connection.connectTimeout = 15_000
                 connection.readTimeout = 60_000
                 connection.instanceFollowRedirects = true
