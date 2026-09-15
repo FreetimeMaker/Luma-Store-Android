@@ -1,5 +1,6 @@
 package com.freetime.lumastore
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -14,7 +15,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -51,10 +52,11 @@ fun MyAppsScreen(
     requestInstallPermission: () -> Unit,
     install: (StoreApp, (Int) -> Unit, () -> Unit, (Throwable) -> Unit) -> Unit
 ) {
-    val allApps = remember(repository, installedAppsRevision) {
-        repository.loadCachedApps()
-            .groupBy { it.id }
-            .mapNotNull { (_, variants) -> variants.maxByOrNull { it.versionCode } }
+    val allVariants = remember(repository, installedAppsRevision) {
+        repository.loadCachedApps().groupBy { it.id }
+    }
+    val allApps = remember(allVariants) {
+        allVariants.values.mapNotNull { variants -> variants.maxByOrNull { it.versionCode } }
     }
     val installed = remember(allApps, installedAppsRevision) {
         allApps.mapNotNull { app ->
@@ -64,9 +66,12 @@ fun MyAppsScreen(
     }
     val updates = remember(installed) { installed.filter { it.app.versionCode > it.installedCode } }
 
+    var selectedAppId by remember { mutableStateOf<String?>(null) }
+    var selectedSource by remember(selectedAppId) { mutableStateOf<String?>(null) }
     var installingId by remember { mutableStateOf<String?>(null) }
     var installProgress by remember { mutableIntStateOf(0) }
     var error by remember { mutableStateOf<String?>(null) }
+    val uriHandler = LocalUriHandler.current
 
     fun runAction(item: InstalledStoreApp) {
         if (item.app.versionCode <= item.installedCode) {
@@ -129,6 +134,7 @@ fun MyAppsScreen(
                         installing = installingId == item.app.id,
                         progress = installProgress,
                         actionLabel = stringResource(R.string.update),
+                        onClick = { selectedAppId = item.app.id },
                         onAction = { runAction(item) }
                     )
                     HorizontalDivider(modifier = Modifier.padding(start = 92.dp))
@@ -158,12 +164,62 @@ fun MyAppsScreen(
                         installing = installingId == item.app.id,
                         progress = installProgress,
                         actionLabel = if (item.app.versionCode > item.installedCode) stringResource(R.string.update) else stringResource(R.string.open),
+                        onClick = { selectedAppId = item.app.id },
                         onAction = { runAction(item) }
                     )
                     HorizontalDivider(modifier = Modifier.padding(start = 92.dp))
                 }
             }
         }
+    }
+
+    val variants = selectedAppId?.let { allVariants[it] }.orEmpty().sortedBy { it.sourceName }
+    val selectedApp = variants.firstOrNull { it.sourceName == selectedSource }
+        ?: variants.maxByOrNull { it.versionCode }
+
+    if (selectedApp != null) {
+        val installedCode = installedVersionCode(selectedApp.id)
+        val actionLabel = when {
+            installedCode == null -> stringResource(R.string.install)
+            selectedApp.versionCode > installedCode -> stringResource(R.string.update)
+            else -> stringResource(R.string.open)
+        }
+        val installing = installingId == selectedApp.id
+
+        AppDetailsScreen(
+            app = selectedApp,
+            variants = variants,
+            installedVersionName = installedVersionName(selectedApp.id),
+            actionLabel = actionLabel,
+            installing = installing,
+            progress = installProgress,
+            onBack = { selectedAppId = null },
+            onAction = {
+                if (installedCode != null && selectedApp.versionCode <= installedCode) {
+                    openInstalledApp(selectedApp.id)
+                } else if (!canInstallPackages()) {
+                    requestInstallPermission()
+                } else {
+                    installingId = selectedApp.id
+                    installProgress = 0
+                    install(
+                        selectedApp,
+                        { installProgress = it },
+                        {
+                            installProgress = 100
+                            installingId = null
+                        },
+                        {
+                            installingId = null
+                            error = it.message
+                        }
+                    )
+                }
+            },
+            onSourceSelected = { selectedSource = it.sourceName },
+            onScreenshotSelected = {},
+            onOpenUri = { uriHandler.openUri(it) }
+        )
     }
 }
 
@@ -173,9 +229,14 @@ private fun MyAppRow(
     installing: Boolean,
     progress: Int,
     actionLabel: String,
+    onClick: () -> Unit,
     onAction: () -> Unit
 ) {
-    Surface(modifier = Modifier.fillMaxWidth()) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+    ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (item.app.iconUrl != null) {
@@ -221,7 +282,10 @@ private fun MyAppRow(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                TextButton(onClick = onAction, enabled = !installing) {
+                TextButton(
+                    onClick = onAction,
+                    enabled = !installing
+                ) {
                     Text(if (installing) stringResource(R.string.install_progress, progress) else actionLabel)
                 }
             }
