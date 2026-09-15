@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -50,12 +51,13 @@ import com.freetime.lumastore.notifications.SystemNotificationManager
 import com.freetime.lumastore.ui.theme.LumaStoreTheme
 import io.github.jan.supabase.auth.handleDeeplinks
 
-private enum class MainScreen { DISCOVER, SEARCH, MY_APPS, DEVELOPER }
+private enum class MainScreen { DISCOVER, SEARCH, MY_APPS, SOURCES, DEVELOPER }
 
 class MainActivity : ComponentActivity() {
     private val repository by lazy { AppRepository(applicationContext) }
     private val developerRepository by lazy { DeveloperRepository() }
     private val installedAppsRevision = mutableIntStateOf(0)
+    private val sourcesRevision = mutableIntStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,6 +67,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val revision = installedAppsRevision.intValue
+            val currentSourcesRevision = sourcesRevision.intValue
             var screen by rememberSaveable {
                 mutableStateOf(
                     if (intent.getBooleanExtra(SystemNotificationManager.EXTRA_OPEN_DEVELOPER, false)) {
@@ -76,12 +79,14 @@ class MainActivity : ComponentActivity() {
             }
             var searchMounted by rememberSaveable { mutableStateOf(screen == MainScreen.SEARCH) }
             var myAppsMounted by rememberSaveable { mutableStateOf(screen == MainScreen.MY_APPS) }
+            var sourcesMounted by rememberSaveable { mutableStateOf(screen == MainScreen.SOURCES) }
             var developerMounted by rememberSaveable { mutableStateOf(screen == MainScreen.DEVELOPER) }
 
             LaunchedEffect(screen) {
                 when (screen) {
                     MainScreen.SEARCH -> searchMounted = true
                     MainScreen.MY_APPS -> myAppsMounted = true
+                    MainScreen.SOURCES -> sourcesMounted = true
                     MainScreen.DEVELOPER -> developerMounted = true
                     MainScreen.DISCOVER -> Unit
                 }
@@ -126,6 +131,17 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                             FdroidNavigationItem(
+                                selected = screen == MainScreen.SOURCES,
+                                onClick = { screen = MainScreen.SOURCES },
+                                label = stringResource(R.string.sources),
+                                icon = {
+                                    Icon(
+                                        Icons.Filled.Storage,
+                                        contentDescription = stringResource(R.string.sources)
+                                    )
+                                }
+                            )
+                            FdroidNavigationItem(
                                 selected = screen == MainScreen.DEVELOPER,
                                 onClick = { screen = MainScreen.DEVELOPER },
                                 label = stringResource(R.string.developer),
@@ -141,43 +157,59 @@ class MainActivity : ComponentActivity() {
                 ) { padding ->
                     Box(Modifier.fillMaxSize().padding(padding)) {
                         PersistentScreen(visible = screen == MainScreen.DISCOVER) {
-                            FdroidDiscoverScreen(
-                                repository = repository,
-                                installedVersionCode = { installedVersionCode(it) },
-                                installedVersionName = { installedVersionName(it) },
-                                openInstalledApp = { openInstalledApp(it) },
-                                canInstallPackages = { canInstallUnknownApps() },
-                                requestInstallPermission = { openInstallPermission() },
-                                install = installerCallback()
-                            )
-                        }
-
-                        if (searchMounted) {
-                            PersistentScreen(visible = screen == MainScreen.SEARCH) {
-                                FdroidSearchScreen(
+                            key(currentSourcesRevision) {
+                                FdroidDiscoverScreen(
                                     repository = repository,
-                                    installedVersionCode = { installedVersionCode(it) },
-                                    installedVersionName = { installedVersionName(it) },
-                                    openInstalledApp = { openInstalledApp(it) },
-                                    canInstallPackages = { canInstallUnknownApps() },
-                                    requestInstallPermission = { openInstallPermission() },
-                                    install = installerCallback(),
-                                    onBack = { screen = MainScreen.DISCOVER }
-                                )
-                            }
-                        }
-
-                        if (myAppsMounted) {
-                            PersistentScreen(visible = screen == MainScreen.MY_APPS) {
-                                MyAppsScreen(
-                                    repository = repository,
-                                    installedAppsRevision = revision,
                                     installedVersionCode = { installedVersionCode(it) },
                                     installedVersionName = { installedVersionName(it) },
                                     openInstalledApp = { openInstalledApp(it) },
                                     canInstallPackages = { canInstallUnknownApps() },
                                     requestInstallPermission = { openInstallPermission() },
                                     install = installerCallback()
+                                )
+                            }
+                        }
+
+                        if (searchMounted) {
+                            PersistentScreen(visible = screen == MainScreen.SEARCH) {
+                                key(currentSourcesRevision) {
+                                    FdroidSearchScreen(
+                                        repository = repository,
+                                        installedVersionCode = { installedVersionCode(it) },
+                                        installedVersionName = { installedVersionName(it) },
+                                        openInstalledApp = { openInstalledApp(it) },
+                                        canInstallPackages = { canInstallUnknownApps() },
+                                        requestInstallPermission = { openInstallPermission() },
+                                        install = installerCallback(),
+                                        onBack = { screen = MainScreen.DISCOVER }
+                                    )
+                                }
+                            }
+                        }
+
+                        if (myAppsMounted) {
+                            PersistentScreen(visible = screen == MainScreen.MY_APPS) {
+                                key(currentSourcesRevision) {
+                                    MyAppsScreen(
+                                        repository = repository,
+                                        installedAppsRevision = revision,
+                                        installedVersionCode = { installedVersionCode(it) },
+                                        installedVersionName = { installedVersionName(it) },
+                                        openInstalledApp = { openInstalledApp(it) },
+                                        canInstallPackages = { canInstallUnknownApps() },
+                                        requestInstallPermission = { openInstallPermission() },
+                                        install = installerCallback()
+                                    )
+                                }
+                            }
+                        }
+
+                        if (sourcesMounted) {
+                            PersistentScreen(visible = screen == MainScreen.SOURCES) {
+                                SettingsScreen(
+                                    repository = repository,
+                                    onBack = { screen = MainScreen.DISCOVER },
+                                    onSourcesChanged = { sourcesRevision.intValue++ }
                                 )
                             }
                         }
