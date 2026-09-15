@@ -70,17 +70,11 @@ class AppRepository(context: Context) {
     private var memoryApps: List<StoreApp>? = null
 
     private val defaultSources = listOf(
-        AppSource("Freetime F-Droid", "https://fdroid.free-time.me/repo/index-v1.json"),
-        AppSource("F-Droid", "https://f-droid.org/repo/index-v1.json"),
-        AppSource("IzzyOnDroid", "https://apt.izzysoft.de/fdroid/repo/index-v1.json"),
+        AppSource("Freetime F-Droid", "https://fdroid.free-time.me/repo/index-v1.json", enabledByDefault = false),
+        AppSource("F-Droid", "https://f-droid.org/repo/index-v1.json", enabledByDefault = false),
+        AppSource("IzzyOnDroid", "https://apt.izzysoft.de/fdroid/repo/index-v1.json", enabledByDefault = false),
         AppSource("Luma Store", "https://api.free-time.me/v2/lumastore/apps", SourceType.LUMA_API),
-        AppSource(
-            name = "Google Play",
-            indexUrl = "https://play.google.com/store/apps",
-            type = SourceType.GOOGLE_PLAY,
-            enabledByDefault = false,
-            requiresAcknowledgement = true
-        )
+        AppSource(name = "Google Play", indexUrl = "https://play.google.com/store/apps", type = SourceType.GOOGLE_PLAY, enabledByDefault = false, requiresAcknowledgement = true)
     )
 
     val sources: List<AppSource>
