@@ -181,8 +181,7 @@ class MainActivity : ComponentActivity() {
                                         openInstalledApp = { openInstalledApp(it) },
                                         canInstallPackages = { canInstallUnknownApps() },
                                         requestInstallPermission = { openInstallPermission() },
-                                        install = installerCallback(),
-                                        onBack = { screen = MainScreen.DISCOVER }
+                                        install = installerCallback()
                                     )
                                 }
                             }
