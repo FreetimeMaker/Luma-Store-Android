@@ -57,7 +57,7 @@ dependencies {
     implementation(platform("io.github.jan-tennert.supabase:bom:3.8.0"))
     implementation("io.github.jan-tennert.supabase:postgrest-kt")
     implementation("io.github.jan-tennert.supabase:auth-kt")
-    implementation("io.ktor:ktor-client-android:3.5.1")
+    implementation("io.ktor:ktor-client-android:3.5.2")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 
