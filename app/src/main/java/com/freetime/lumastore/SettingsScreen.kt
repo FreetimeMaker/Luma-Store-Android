@@ -23,6 +23,8 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
     var sourceUrl by remember { mutableStateOf("") }
     var addSourceError by remember { mutableStateOf<String?>(null) }
     var editingSource by remember { mutableStateOf<AppSource?>(null) }
+    var acknowledgementSource by remember { mutableStateOf<AppSource?>(null) }
+    var acknowledgementChecked by remember { mutableStateOf(false) }
     val sourceAddFailed = stringResource(R.string.source_add_failed)
     val enabledStates = remember {
         mutableStateMapOf<String, Boolean>().apply {
@@ -33,6 +35,12 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
     fun refreshSources() {
         sourceList = repository.sources
         sourceList.forEach { enabledStates[it.name] = repository.isSourceEnabled(it) }
+    }
+
+    fun applySourceState(source: AppSource, enabled: Boolean) {
+        enabledStates[source.name] = enabled
+        repository.setSourceEnabled(source, enabled)
+        onSourcesChanged()
     }
 
     Scaffold(
@@ -66,13 +74,16 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
             sourceList.forEach { source ->
                 SourceCard(
                     source = source,
-                    enabled = enabledStates[source.name] ?: true,
+                    enabled = enabledStates[source.name] ?: repository.isSourceEnabled(source),
                     removable = repository.isCustomSource(source),
                     editable = repository.isCustomSource(source),
                     onEnabledChange = { checked ->
-                        enabledStates[source.name] = checked
-                        repository.setSourceEnabled(source, checked)
-                        onSourcesChanged()
+                        if (checked && source.requiresAcknowledgement) {
+                            acknowledgementSource = source
+                            acknowledgementChecked = false
+                        } else {
+                            applySourceState(source, checked)
+                        }
                     },
                     onEdit = { editingSource = source },
                     onRemove = {
@@ -86,7 +97,7 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
                 Spacer(Modifier.height(10.dp))
             }
 
-            if (enabledStates.values.none { it }) {
+            if (sourceList.none { enabledStates[it.name] ?: repository.isSourceEnabled(it) }) {
                 Text(
                     stringResource(R.string.no_source_enabled),
                     style = MaterialTheme.typography.bodyMedium,
@@ -149,6 +160,51 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
             }
             Spacer(Modifier.height(28.dp))
         }
+    }
+
+    acknowledgementSource?.let { source ->
+        AlertDialog(
+            onDismissRequest = {
+                acknowledgementSource = null
+                acknowledgementChecked = false
+            },
+            title = { Text(stringResource(R.string.google_play_warning_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(stringResource(R.string.google_play_warning_message))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = acknowledgementChecked,
+                            onCheckedChange = { acknowledgementChecked = it }
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.i_understand))
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = acknowledgementChecked,
+                    onClick = {
+                        applySourceState(source, true)
+                        acknowledgementSource = null
+                        acknowledgementChecked = false
+                    }
+                ) {
+                    Text(stringResource(R.string.enable_source))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        acknowledgementSource = null
+                        acknowledgementChecked = false
+                    }
+                ) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
     }
 
     editingSource?.let { source ->
@@ -245,6 +301,13 @@ private fun SourceCard(
                             stringResource(R.string.custom_source),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    if (source.requiresAcknowledgement) {
+                        Text(
+                            stringResource(R.string.requires_acknowledgement),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error
                         )
                     }
                     Text(
