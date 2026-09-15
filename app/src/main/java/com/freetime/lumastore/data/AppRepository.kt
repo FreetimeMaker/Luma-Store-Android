@@ -412,42 +412,77 @@ class AppRepository(context: Context) {
     }
 
     private fun loadLumaApiSource(source: AppSource): List<StoreApp> {
-        val root = JSONObject(httpGet(source.indexUrl))
-        val apps = root.optJSONArray("apps") ?: return emptyList()
+        val raw = httpGet(source.indexUrl).trim()
+        val apps = when {
+            raw.startsWith("[") -> JSONArray(raw)
+            raw.startsWith("{") -> JSONObject(raw).optJSONArray("apps") ?: JSONArray()
+            else -> JSONArray()
+        }
+
         return buildList {
             for (i in 0 until apps.length()) {
                 val item = apps.optJSONObject(i) ?: continue
                 val id = item.optString("package_name").ifBlank { item.optString("id") }
                 val name = item.optString("name")
                 if (id.isBlank() || name.isBlank()) continue
+
+                val platforms = item.optJSONArray("platforms")
+                var androidDownloadUrl: String? = null
+                if (platforms != null) {
+                    for (platformIndex in 0 until platforms.length()) {
+                        val platform = platforms.optJSONObject(platformIndex) ?: continue
+                        if (platform.optString("platform").equals("Android", ignoreCase = true)) {
+                            androidDownloadUrl = platform.optString("download_url").takeIf { it.isNotBlank() }
+                            if (androidDownloadUrl != null) break
+                        }
+                    }
+                }
+
+                val apkUrl = androidDownloadUrl
+                    ?: item.optString("download_url").takeIf { it.isNotBlank() }
+                    ?: item.optString("apk_url").takeIf { it.isNotBlank() }
+                    ?: continue
+
                 add(
                     StoreApp(
                         id = id,
                         name = name,
-                        summary = item.optString("summary"),
+                        summary = item.optString("short_description").ifBlank { item.optString("summary") },
                         description = item.optString("description"),
                         version = item.optString("version_name").ifBlank { item.optString("version") },
                         versionCode = item.optLong("version_code"),
                         iconUrl = item.optNullableString("icon_url"),
-                        screenshotUrls = item.optJSONArray("screenshot_urls").toStringList(),
-                        categories = item.optJSONArray("categories").toStringList(),
-                        apkUrl = item.optString("download_url").ifBlank { item.optString("apk_url") },
+                        screenshotUrls = item.optJSONArray("screenshots").toStringList().ifEmpty {
+                            item.optJSONArray("screenshot_urls").toStringList()
+                        },
+                        categories = item.optJSONArray("categories").toStringList().ifEmpty {
+                            item.optJSONObject("category")?.optString("name")
+                                ?.takeIf { it.isNotBlank() }
+                                ?.let(::listOf)
+                                ?: emptyList()
+                        },
+                        apkUrl = apkUrl,
                         sourceName = source.name,
-                        authorName = item.optNullableString("author_name"),
+                        authorName = item.optNullableString("author_name") ?: item.optNullableString("developer_name"),
                         authorEmail = item.optNullableString("author_email"),
                         authorWebsite = item.optNullableString("author_website"),
                         websiteUrl = item.optNullableString("website_url"),
-                        sourceCodeUrl = item.optNullableString("source_code_url"),
+                        sourceCodeUrl = item.optNullableString("source_code_url") ?: item.optNullableString("repo_url"),
                         issueTrackerUrl = item.optNullableString("issue_tracker_url"),
                         translationUrl = item.optNullableString("translation_url"),
                         changelogUrl = item.optNullableString("changelog_url"),
-                        donationUrls = item.optJSONArray("donation_urls").toStringList(),
+                        donationUrls = buildList {
+                            item.optNullableString("donate_url")?.let(::add)
+                            addAll(item.optJSONArray("donation_urls").toStringList())
+                        },
                         liberapay = item.optNullableString("liberapay"),
-                        openCollective = item.optNullableString("open_collective"),
+                        openCollective = item.optNullableString("opencollective") ?: item.optNullableString("open_collective"),
                         bitcoin = item.optNullableString("bitcoin"),
                         litecoin = item.optNullableString("litecoin"),
-                        license = item.optNullableString("license"),
-                        antiFeatures = item.optJSONArray("anti_features").toStringList(),
+                        license = item.optNullableString("license_type") ?: item.optNullableString("license"),
+                        antiFeatures = item.optJSONArray("ant_features").toStringList().ifEmpty {
+                            item.optJSONArray("anti_features").toStringList()
+                        },
                         closedSource = item.optBoolean("closed_source", false)
                     )
                 )
