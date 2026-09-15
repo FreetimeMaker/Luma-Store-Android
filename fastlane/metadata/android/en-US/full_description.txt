@@ -1,0 +1,79 @@
+The Ultimate SuperSMP Companion App - Your Server, Everywhere!
+
+Enhance your SuperSMP Minecraft experience with the official companion app designed for players on the go! Access essential server features, stay connected with the community, and manage your server interactions right from your Android device.
+
+KEY FEATURES:
+
+SMART VOTING SYSTEM
+- Vote for the SuperSMP server directly from your phone
+- Quick access to all voting platforms
+- Track your voting history and rewards
+- Never miss daily vote rewards again
+
+INTEGRATED SHOP ACCESS
+- Browse the official SuperSMP shop catalog
+- View detailed item descriptions and pricing
+- Make secure purchases on-the-go
+- Real-time inventory updates
+
+INTERACTIVE SERVER MAP
+- Access the official SuperSMP world map
+- Real-time player locations and activity
+- Navigate spawn, warps, and key locations
+- Perfect for exploration and planning
+
+MODERN USER INTERFACE
+- Built with Jetpack Compose for smooth animations
+- Material Design 3 with Dynamic Color support (Android 12+)
+- OLED Black Mode for AMOLED screens
+- Intuitive navigation optimized for mobile
+- Responsive design for all screen sizes
+
+TECHNICAL EXCELLENCE
+- Kotlin-first development for performance
+- Privacy-focused WebView with tracker blocking
+- Modern architecture with MVVM pattern
+- Regular updates with new features
+- Optimized for battery life and performance
+
+MOBILE OPTIMIZATIONS
+- Fast loading times even on slower connections
+- Offline mode for cached content
+- Push notifications for server events (coming soon)
+- Designed for Android 7.0 and above
+
+WHY CHOOSE THIS APP?
+
+FREE & OPEN SOURCE - No hidden costs or subscriptions
+SECURE - Your data and accounts are protected
+REGULARLY UPDATED - New features and improvements monthly
+COMMUNITY DRIVEN - Features requested by players like you
+AD-FREE EXPERIENCE - Focus on what matters: your gameplay
+
+PERFECT FOR:
+
+Daily voters who want to maximize rewards
+Shop enthusiasts who browse items frequently
+Explorers who need map access on-the-go
+Community members who stay connected
+Players who want convenience without compromise
+
+IMPORTANT NOTE:
+This is an unofficial companion app created by fans for the SuperSMP community. It is not affiliated with or endorsed by the SuperSMP Minecraft Server team. All server content and branding remain property of their respective owners.
+
+SYSTEM REQUIREMENTS:
+Android 7.0 (API 24) or higher
+50MB free storage space
+Internet connection for real-time features
+
+UPCOMING FEATURES:
+Player statistics tracking
+In-game chat integration
+Push notifications for server events
+Multi-language support
+Offline mode enhancements
+
+COMMUNITY SUPPORT:
+Join our growing community of SuperSMP players! Report bugs, request features, and connect with fellow users through our GitHub repository. Your feedback helps shape the future of this app!
+
+Download now and take your SuperSMP experience to the next level!

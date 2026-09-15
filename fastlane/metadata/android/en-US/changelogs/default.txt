@@ -1,0 +1,2 @@
+• Added FreetimeSDK for Donations
+• Added something where you can save your Coordinates
