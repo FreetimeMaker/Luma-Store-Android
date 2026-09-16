@@ -49,6 +49,10 @@ import com.freetime.lumastore.data.supabase
 import com.freetime.lumastore.install.ApkInstaller
 import com.freetime.lumastore.notifications.NotificationSyncJobService
 import com.freetime.lumastore.notifications.SystemNotificationManager
+import com.freetime.lumastore.shared.SharedStoreRepository
+import com.freetime.lumastore.shared.SharedStoreSection
+import com.freetime.lumastore.shared.StoreInstaller
+import com.freetime.lumastore.shared.StoreSection
 import com.freetime.lumastore.ui.theme.LumaStoreTheme
 import io.github.jan.supabase.auth.handleDeeplinks
 
@@ -56,6 +60,7 @@ private enum class MainScreen { DISCOVER, SEARCH, MY_APPS, SOURCES, DEVELOPER }
 
 class MainActivity : ComponentActivity() {
     private val repository by lazy { AppRepository(applicationContext) }
+    private val sharedRepository by lazy { SharedStoreRepository() }
     private val developerRepository by lazy { DeveloperRepository() }
     private val installedAppsRevision = mutableIntStateOf(0)
     private val sourcesRevision = mutableIntStateOf(0)
@@ -159,14 +164,11 @@ class MainActivity : ComponentActivity() {
                     Box(Modifier.fillMaxSize().padding(padding)) {
                         PersistentScreen(visible = screen == MainScreen.DISCOVER) {
                             key(currentSourcesRevision) {
-                                FdroidDiscoverScreen(
-                                    repository = repository,
-                                    installedVersionCode = { installedVersionCode(it) },
-                                    installedVersionName = { installedVersionName(it) },
-                                    openInstalledApp = { openInstalledApp(it) },
-                                    canInstallPackages = { canInstallUnknownApps() },
-                                    requestInstallPermission = { openInstallPermission() },
-                                    install = installerCallback()
+                                SharedStoreSection(
+                                    section = StoreSection.DISCOVER,
+                                    repository = sharedRepository,
+                                    onOpenUrl = ::openExternalUrl,
+                                    installer = sharedInstallerCallback()
                                 )
                             }
                         }
@@ -174,14 +176,11 @@ class MainActivity : ComponentActivity() {
                         if (searchMounted) {
                             PersistentScreen(visible = screen == MainScreen.SEARCH) {
                                 key(currentSourcesRevision) {
-                                    FdroidSearchScreen(
-                                        repository = repository,
-                                        installedVersionCode = { installedVersionCode(it) },
-                                        installedVersionName = { installedVersionName(it) },
-                                        openInstalledApp = { openInstalledApp(it) },
-                                        canInstallPackages = { canInstallUnknownApps() },
-                                        requestInstallPermission = { openInstallPermission() },
-                                        install = installerCallback()
+                                    SharedStoreSection(
+                                        section = StoreSection.SEARCH,
+                                        repository = sharedRepository,
+                                        onOpenUrl = ::openExternalUrl,
+                                        installer = sharedInstallerCallback()
                                     )
                                 }
                             }
@@ -206,9 +205,10 @@ class MainActivity : ComponentActivity() {
 
                         if (sourcesMounted) {
                             PersistentScreen(visible = screen == MainScreen.SOURCES) {
-                                SettingsScreen(
-                                    repository = repository,
-                                    onBack = { screen = MainScreen.DISCOVER },
+                                SharedStoreSection(
+                                    section = StoreSection.SOURCES,
+                                    repository = sharedRepository,
+                                    onOpenUrl = ::openExternalUrl,
                                     onSourcesChanged = { sourcesRevision.intValue++ }
                                 )
                             }
@@ -276,6 +276,33 @@ class MainActivity : ComponentActivity() {
                 { error -> runOnUiThread { onError(error) } }
             )
         }
+
+    private fun sharedInstallerCallback(): StoreInstaller =
+        { app, onProgress, onReady, onError ->
+            if (!canInstallUnknownApps()) {
+                openInstallPermission()
+                onError(
+                    IllegalStateException(
+                        "Allow app installs for Luma Store, then try again."
+                    )
+                )
+            } else {
+                ApkInstaller.downloadAndInstall(
+                    this@MainActivity,
+                    app.id,
+                    app.downloadUrl,
+                    { runOnUiThread { onProgress(it) } },
+                    { runOnUiThread(onReady) },
+                    { error -> runOnUiThread { onError(error) } }
+                )
+            }
+        }
+
+    private fun openExternalUrl(url: String) {
+        runCatching {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        }
+    }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
