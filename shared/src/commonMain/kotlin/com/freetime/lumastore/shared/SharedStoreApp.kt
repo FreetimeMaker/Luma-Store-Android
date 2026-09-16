@@ -44,6 +44,19 @@ private enum class SharedStoreScreen {
     SOURCES,
 }
 
+enum class StoreSection {
+    DISCOVER,
+    SEARCH,
+    SOURCES,
+}
+
+typealias StoreInstaller = (
+    app: StoreApp,
+    onProgress: (Int) -> Unit,
+    onReady: () -> Unit,
+    onError: (Throwable) -> Unit,
+) -> Unit
+
 @Composable
 fun SharedStoreApp(
     repository: SharedStoreRepository? = null,
@@ -73,6 +86,7 @@ fun SharedStoreApp(
                     app = app,
                     onBack = { selectedApp = null },
                     onOpenUrl = onOpenUrl,
+                    installer = null,
                 )
             } ?: Scaffold(
                 bottomBar = {
@@ -136,6 +150,79 @@ fun SharedStoreApp(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun SharedStoreSection(
+    section: StoreSection,
+    repository: SharedStoreRepository,
+    onOpenUrl: (String) -> Unit = {},
+    installer: StoreInstaller? = null,
+    onSourcesChanged: () -> Unit = {},
+) {
+    var selectedApp by remember(section) { mutableStateOf<StoreApp?>(null) }
+    var apps by remember { mutableStateOf(emptyList<StoreApp>()) }
+    var loading by remember { mutableStateOf(section != StoreSection.SOURCES) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var refreshKey by remember { mutableIntStateOf(0) }
+
+    if (section != StoreSection.SOURCES) {
+        LaunchedEffect(repository, section, refreshKey) {
+            loading = true
+            error = null
+            runCatching { repository.loadApps() }
+                .onSuccess { apps = it }
+                .onFailure { throwable -> error = throwable.message ?: throwable::class.simpleName ?: "Unknown error" }
+            loading = false
+        }
+    }
+
+    Surface(modifier = Modifier.fillMaxSize()) {
+        selectedApp?.let { app ->
+            AppDetailsScreen(
+                app = app,
+                onBack = { selectedApp = null },
+                onOpenUrl = onOpenUrl,
+                installer = installer,
+            )
+        } ?: Column(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
+        ) {
+            if (section != StoreSection.SOURCES) {
+                StoreHeader(
+                    appCount = apps.size,
+                    platform = currentPlatform,
+                    refreshing = loading,
+                    onRefresh = { refreshKey++ },
+                )
+            }
+
+            when (section) {
+                StoreSection.DISCOVER -> CatalogContent(
+                    apps = apps,
+                    loading = loading,
+                    error = error,
+                    emptyText = "No apps are available from the enabled sources.",
+                    onAppClick = { selectedApp = it },
+                )
+
+                StoreSection.SEARCH -> SearchScreen(
+                    apps = apps,
+                    loading = loading,
+                    error = error,
+                    onAppClick = { selectedApp = it },
+                )
+
+                StoreSection.SOURCES -> SourcesScreen(
+                    sources = repository.sources(),
+                    onSourceChanged = { name, enabled ->
+                        repository.setSourceEnabled(name, enabled)
+                        onSourcesChanged()
+                    },
+                )
             }
         }
     }
@@ -289,7 +376,7 @@ private fun SourcesScreen(
                 text = "Sources",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(bottom = 8.dp),
+                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
             )
             Text(
                 text = "Enable Luma Store or F-Droid-compatible repositories. Changes refresh the catalog immediately.",
@@ -328,7 +415,12 @@ private fun AppDetailsScreen(
     app: StoreApp,
     onBack: () -> Unit,
     onOpenUrl: (String) -> Unit,
+    installer: StoreInstaller?,
 ) {
+    var installing by remember(app.id) { mutableStateOf(false) }
+    var progress by remember(app.id) { mutableIntStateOf(0) }
+    var installMessage by remember(app.id) { mutableStateOf<String?>(null) }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -375,8 +467,36 @@ private fun AppDetailsScreen(
 
         if (app.downloadUrl.isNotBlank()) {
             item {
-                Button(onClick = { onOpenUrl(app.downloadUrl) }) {
-                    Text("Open download")
+                if (installer != null) {
+                    Button(
+                        onClick = {
+                            installing = true
+                            progress = 0
+                            installMessage = null
+                            installer(
+                                app,
+                                { progress = it.coerceIn(0, 100) },
+                                {
+                                    installing = false
+                                    installMessage = "Installer opened."
+                                },
+                                { error ->
+                                    installing = false
+                                    installMessage = error.message ?: "Installation failed."
+                                },
+                            )
+                        },
+                        enabled = !installing,
+                    ) {
+                        Text(if (installing) "Downloading $progress%" else "Install / Update")
+                    }
+                } else {
+                    Button(onClick = { onOpenUrl(app.downloadUrl) }) {
+                        Text("Open download")
+                    }
+                }
+                installMessage?.let { message ->
+                    Text(message, style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
