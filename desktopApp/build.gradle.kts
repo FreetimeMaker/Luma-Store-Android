@@ -38,10 +38,29 @@ compose.desktop {
                 TargetFormat.Deb,
                 TargetFormat.Rpm,
             )
-            packageName = "LumaStore"
-            packageVersion = "1.0.3"
+            packageName = "Luma Store"
+            packageVersion = "2.0.0"
             description = "Luma Store desktop client"
-            vendor = "FreetimeMaker"
+            vendor = "Freetime Maker"
+            copyright = "Copyright © 2026 Freetime Maker"
+
+            windows {
+                // Make the installed app findable: Start menu entry + desktop shortcut
+                menu = true
+                menuGroup = "Luma Store"
+                shortcut = true
+                // Let the user see/pick the install folder in the setup wizard
+                dirChooser = true
+                // Per-user install: no admin rights needed, lands in %LOCALAPPDATA%
+                perUserInstall = true
+                // Fixed upgrade code so future versions upgrade instead of installing side-by-side
+                upgradeUuid = "446ac3ee-60c3-457c-b11d-7a335f8bf8eb"
+                iconFile.set(file("icons/icon.ico"))
+            }
+
+            linux {
+                iconFile.set(file("icons/icon.png"))
+            }
         }
     }
 }

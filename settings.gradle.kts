@@ -23,6 +23,6 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "Luma Store"
-include(":app")
+include(":androidApp")
 include(":shared")
 include(":desktopApp")
