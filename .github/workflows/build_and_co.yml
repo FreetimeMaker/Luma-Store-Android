@@ -150,7 +150,7 @@ jobs:
         run: |
           UNSIGNED_APK="androidApp/build/outputs/apk/release/androidApp-release-unsigned.apk"
           SIGNED_APK="Luma-Store-v${{ needs.prepare_release.outputs.version }}.apk"
-          KEYSTORE_PATH="./keystore/Luma-Store-KeyStore.jks"
+          KEYSTORE_PATH="./keystore/Luma-Store.jks"
 
           if [ ! -f "$UNSIGNED_APK" ]; then
             echo "Error: APK not found:"
