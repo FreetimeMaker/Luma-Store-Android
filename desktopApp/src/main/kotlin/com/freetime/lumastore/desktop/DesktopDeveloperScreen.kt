@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.auth.FlowType
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.Github
 import io.github.jan.supabase.auth.providers.Gitlab
@@ -51,14 +52,21 @@ import kotlinx.serialization.json.JsonPrimitive
 
 private const val SUPABASE_URL = "https://ndlaevedujqxhygbyxfh.supabase.co"
 private const val SUPABASE_PUBLISHABLE_KEY = "sb_publishable_HlppI4ILiXV7DZkpyrDEhQ_ytb2vV6g"
+private const val DESKTOP_OAUTH_PORT = 49152
 
 private val desktopSupabase = createSupabaseClient(
     supabaseUrl = SUPABASE_URL,
     supabaseKey = SUPABASE_PUBLISHABLE_KEY,
 ) {
     install(Postgrest)
-    // On JVM desktop Supabase Auth uses its HTTP callback server for OAuth.
-    install(Auth)
+    install(Auth) {
+        // Compose Desktop runs on the JVM. supabase-kt starts a local HTTP
+        // callback server for OAuth. A fixed port keeps the redirect URL stable
+        // so it can be allow-listed in Supabase Auth URL Configuration.
+        httpCallbackConfig.httpPort = DESKTOP_OAUTH_PORT
+        httpCallbackConfig.htmlTitle = "Luma Store"
+        flowType = FlowType.PKCE
+    }
 }
 
 @Serializable
