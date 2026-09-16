@@ -2,7 +2,7 @@
 
 Luma Store is a Kotlin Multiplatform app store project targeting **Android, Windows and Linux**.
 
-The existing Android client remains available with its app discovery, F-Droid sources, install/update flow and developer area. Shared platform-independent code lives in the `shared` KMP module, while the desktop client uses Compose Multiplatform for Windows and Linux.
+The catalog experience is shared with Compose Multiplatform. Android, Windows and Linux use the same KMP models, Luma Store/F-Droid repository loader, Discover screen, Search screen, Sources screen and app-details UI. Android keeps its platform-specific My Apps, developer area, notifications and APK installation flow.
 
 ## Targets
 
@@ -18,25 +18,32 @@ The shared module detects the active platform and selects the matching Luma Stor
 
 ```text
 Luma-Store-KMP/
-├── app/            # Android application
-├── shared/         # Kotlin Multiplatform shared code
+├── app/            # Android shell and Android-only features
+├── shared/         # Shared models, networking, sources and Compose UI
 │   └── src/
 │       ├── commonMain/
 │       ├── androidMain/
 │       └── desktopMain/
-└── desktopApp/     # Compose Multiplatform desktop application
+└── desktopApp/     # Windows/Linux Compose Multiplatform shell
 ```
 
-## Features
+## Shared features
 
-- Discover apps from the Luma Store catalog.
-- Optional F-Droid-compatible repositories.
-- Search and category filtering.
-- App details and metadata.
-- Android APK installation and updating.
+- Discover apps from the platform-specific Luma Store catalog.
+- Load F-Droid `index-v1.json` repositories.
+- Enable or disable sources.
+- Add and remove custom F-Droid-compatible sources in the shared repository layer.
+- Search by app name, package ID, summary or category.
+- App details with version, source, categories, license, author and anti-features.
+- Website, source-code, issue-tracker and download actions.
+- Shared Ktor networking and JSON parsing.
+
+## Android-only features
+
+- APK installation and updating from shared app details.
+- My Apps / installed-app handling.
 - Developer area backed by Supabase.
-- Shared KMP platform/API configuration for Android, Windows and Linux.
-- Native desktop packaging for Windows and Linux.
+- System notifications and background notification sync.
 
 ## Build from source
 
@@ -86,13 +93,7 @@ The packages are written below `desktopApp/build/compose/binaries/main/`.
 
 ## CI
 
-GitHub Actions contains separate checks for Kotlin Multiplatform compilation and native desktop packaging. Windows packages are built on a Windows runner and Linux packages on an Ubuntu runner.
-
-The existing Android release workflow continues to build and sign the APK using repository signing secrets.
-
-## App sources
-
-The Android client supports the Luma Store catalog and optional F-Droid-compatible sources. Custom repositories currently use the `index-v1.json` format.
+GitHub Actions checks KMP compilation and native desktop packaging. Windows packages are built on a Windows runner, Linux packages on Ubuntu, and the Android release workflow builds and signs the APK using repository signing secrets.
 
 ## Contributing
 
