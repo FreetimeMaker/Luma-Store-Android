@@ -8,8 +8,9 @@ plugins {
 }
 
 kotlin {
+    jvmToolchain(17)
     compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_11)
+        jvmTarget.set(JvmTarget.JVM_17)
     }
 }
 
@@ -24,8 +25,13 @@ compose.desktop {
         mainClass = "com.freetime.lumastore.desktop.MainKt"
 
         nativeDistributions {
-            targetFormats(TargetFormat.Exe, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Rpm)
-            packageName = "Luma Store"
+            targetFormats(
+                TargetFormat.Exe,
+                TargetFormat.Msi,
+                TargetFormat.Deb,
+                TargetFormat.Rpm,
+            )
+            packageName = "LumaStore"
             packageVersion = "1.0.3"
             description = "Luma Store desktop client"
             vendor = "FreetimeMaker"
