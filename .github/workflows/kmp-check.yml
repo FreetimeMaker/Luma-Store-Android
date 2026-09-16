@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - kmp-migration
+      - shared-store-ui
   pull_request:
     branches:
       - master
