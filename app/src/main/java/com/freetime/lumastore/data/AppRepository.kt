@@ -73,7 +73,7 @@ class AppRepository(context: Context) {
         AppSource("Freetime F-Droid", "https://fdroid.free-time.me/repo/index-v1.json", enabledByDefault = false),
         AppSource("F-Droid", "https://f-droid.org/repo/index-v1.json", enabledByDefault = false),
         AppSource("IzzyOnDroid", "https://apt.izzysoft.de/fdroid/repo/index-v1.json", enabledByDefault = false),
-        AppSource("Luma Store", "https://api.free-time.me/v2/lumastore/apps", SourceType.LUMA_API),
+        AppSource("Luma Store", "https://api.free-time.me/v2/lumastore/apps?platform=android", SourceType.LUMA_API),
     )
 
     val sources: List<AppSource>
