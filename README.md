@@ -1,79 +1,52 @@
 # Luma Store
 
-An Android app store for discovering, installing and updating apps from the Luma Store catalog and optional F-Droid repositories.
+Luma Store is a Kotlin Multiplatform app store project targeting **Android, Windows and Linux**.
 
-[![Android build](https://github.com/FreetimeMaker/Luma-Store-New/actions/workflows/build_and_co.yml/badge.svg)](https://github.com/FreetimeMaker/Luma-Store-New/actions/workflows/build_and_co.yml)
-![Android 7.0+](https://img.shields.io/badge/Android-7.0%2B-3DDC84)
+The existing Android client remains available with its app discovery, F-Droid sources, install/update flow and developer area. Shared platform-independent code lives in the `shared` KMP module, while the desktop client uses Compose Multiplatform for Windows and Linux.
+
+## Targets
+
+| Platform | Module | Output |
+| --- | --- | --- |
+| Android | `app` | APK |
+| Windows | `desktopApp` | MSI / EXE |
+| Linux | `desktopApp` | DEB / RPM |
+
+The shared module detects the active platform and selects the matching Luma Store API catalog (`android`, `windows` or `linux`).
+
+## Project structure
+
+```text
+Luma-Store-KMP/
+├── app/            # Android application
+├── shared/         # Kotlin Multiplatform shared code
+│   └── src/
+│       ├── commonMain/
+│       ├── androidMain/
+│       └── desktopMain/
+└── desktopApp/     # Compose Multiplatform desktop application
+```
 
 ## Features
 
-- **Discover apps:** Browse the catalog and filter by category.
-- **Search:** Find apps by name, description, package name or category.
-- **App details:** View available metadata, versions and sources, with links supplied by the catalog.
-- **Install and update:** Download APKs and open Android's installer, or launch apps already installed.
-- **Manage sources:** Enable or disable built-in sources and add, edit or remove custom F-Droid repository URLs.
-- **Cached catalog:** Browse previously loaded app information when available.
-- **Developer area:** Sign in with GitHub or GitLab to view your submissions, review feedback and notifications.
-
-## Get the app
-
-Luma Store is under active development and requires **Android 7.0 (API 24) or newer**.
-
-- **Published versions:** Check [GitHub Releases](https://github.com/FreetimeMaker/Luma-Store-New/releases) for release APKs.
-- **Development builds:** Open a successful [build workflow run](https://github.com/FreetimeMaker/Luma-Store-New/actions/workflows/build_and_co.yml) and download its APK artifact. GitHub may require you to sign in to download artifacts. Extract the archive to access the signed APK.
-
-If no release is listed, use a development build. Development builds may contain unfinished features.
-
-### Installation
-
-1. Download and open the Luma Store APK on your Android device.
-2. If prompted, allow your browser or file manager to install apps from this source.
-3. Open Luma Store and browse the catalog.
-4. When installing an app through Luma Store, grant Luma Store permission to install apps if Android requests it, then confirm the installation.
-
-## App sources
-
-The Luma Store catalog is enabled by default. Additional repositories can be enabled in the **Sources** tab.
-
-| Built-in source | Default state |
-| --- | --- |
-| Luma Store | Enabled |
-| Freetime F-Droid | Disabled |
-| F-Droid | Disabled |
-| IzzyOnDroid | Disabled |
-
-Custom repositories currently use the `index-v1.json` format. Enter a repository URL or a direct URL to its `index-v1.json` file. Compatibility depends on the repository's index format and available metadata.
-
-App availability and metadata depend on the enabled sources. Google Play is currently a placeholder and does not supply apps.
-
-## Developer area
-
-The **Developer** tab supports GitHub and GitLab sign-in through Supabase. After signing in, you can:
-
-- View submissions associated with your account and their review status.
-- Read review messages and comments.
-- View notifications and mark them as read.
-
-This area displays existing submissions; creating a new submission inside the Android app is not currently implemented.
-
-## Permissions
-
-| Permission | Purpose |
-| --- | --- |
-| Internet access | Load catalogs, images and APKs, and connect to developer services. |
-| Install packages | Request installation through Android's package installer. |
-| Query installed packages | Compare installed versions with catalog entries and offer install, update or open actions. |
-| Notifications | Show developer account notifications when permission is granted. |
+- Discover apps from the Luma Store catalog.
+- Optional F-Droid-compatible repositories.
+- Search and category filtering.
+- App details and metadata.
+- Android APK installation and updating.
+- Developer area backed by Supabase.
+- Shared KMP platform/API configuration for Android, Windows and Linux.
+- Native desktop packaging for Windows and Linux.
 
 ## Build from source
 
-The app uses Kotlin, Jetpack Compose and Material 3, with Coil for images and Supabase for developer authentication and data.
+Requirements:
 
-1. Clone this repository.
-2. Open it in Android Studio and install the Android SDK required by [the app configuration](app/build.gradle.kts).
-3. Let Gradle sync, then run the app on a device or emulator.
+- JDK 17
+- Android SDK for Android builds
+- A supported Windows or Linux host for native desktop packaging
 
-You can also build a debug APK with the included Gradle wrapper:
+### Android
 
 ```sh
 ./gradlew :app:assembleDebug
@@ -85,20 +58,44 @@ On Windows:
 .\gradlew.bat :app:assembleDebug
 ```
 
-The debug APK is written to `app/build/outputs/apk/debug/`.
+### Run desktop app
 
-The GitHub workflow builds release APKs, signs them and verifies their signatures. Its signing step uses repository secrets and a separate keystore repository. Local release builds need your own signing configuration.
+```sh
+./gradlew :desktopApp:run
+```
 
-## Contributing and support
+### Windows packages
+
+Run on Windows:
+
+```powershell
+.\gradlew.bat :desktopApp:packageMsi :desktopApp:packageExe
+```
+
+The packages are written below `desktopApp/build/compose/binaries/main/`.
+
+### Linux packages
+
+Run on Linux:
+
+```sh
+./gradlew :desktopApp:packageDeb :desktopApp:packageRpm
+```
+
+The packages are written below `desktopApp/build/compose/binaries/main/`.
+
+## CI
+
+GitHub Actions contains separate checks for Kotlin Multiplatform compilation and native desktop packaging. Windows packages are built on a Windows runner and Linux packages on an Ubuntu runner.
+
+The existing Android release workflow continues to build and sign the APK using repository signing secrets.
+
+## App sources
+
+The Android client supports the Luma Store catalog and optional F-Droid-compatible sources. Custom repositories currently use the `index-v1.json` format.
+
+## Contributing
 
 Bug reports, feature suggestions and pull requests are welcome.
-
-- [Report a bug or suggest a feature](https://github.com/FreetimeMaker/Luma-Store-New/issues)
-- [Browse the source code](https://github.com/FreetimeMaker/Luma-Store-New)
-- [Contact the maintainer](mailto:FreetimeMaker@proton.me)
-
-For bug reports, include your Android version, the Luma Store version or build commit, the affected source or app, and steps to reproduce the issue.
-
----
 
 Developed by [FreetimeMaker](https://github.com/FreetimeMaker).
