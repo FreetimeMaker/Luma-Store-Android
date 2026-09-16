@@ -39,7 +39,7 @@ compose.desktop {
                 TargetFormat.Rpm,
             )
             packageName = "Luma Store"
-            packageVersion = "2.0.1"
+            packageVersion = "2.0.2"
             description = "Luma Store desktop client"
             vendor = "Freetime Maker"
             copyright = "Copyright © 2026 Freetime Maker"
