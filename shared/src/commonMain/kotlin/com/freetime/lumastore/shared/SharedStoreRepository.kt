@@ -11,9 +11,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 
 class SharedStoreRepository(
@@ -30,6 +27,36 @@ class SharedStoreRepository(
         }
     }
 
+    fun addFdroidSource(name: String, repositoryUrl: String): Result<AppSource> = runCatching {
+        val cleanName = name.trim()
+        require(cleanName.isNotBlank()) { "Source name is required." }
+        require(sourceState.none { it.name.equals(cleanName, ignoreCase = true) }) {
+            "A source with this name already exists."
+        }
+
+        val normalizedUrl = normalizeFdroidUrl(repositoryUrl)
+        require(sourceState.none { it.url.equals(normalizedUrl, ignoreCase = true) }) {
+            "This repository is already added."
+        }
+
+        val source = AppSource(
+            name = cleanName,
+            url = normalizedUrl,
+            type = SourceType.FDROID_V1,
+            enabled = true,
+            custom = true,
+        )
+        sourceState = sourceState + source
+        source
+    }
+
+    fun removeSource(name: String): Boolean {
+        val source = sourceState.firstOrNull { it.name == name } ?: return false
+        if (!source.custom) return false
+        sourceState = sourceState.filterNot { it.name == name }
+        return true
+    }
+
     suspend fun loadApps(): List<StoreApp> {
         val enabledSources = sourceState.filter { it.enabled }
         if (enabledSources.isEmpty()) return emptyList()
@@ -44,6 +71,19 @@ class SharedStoreRepository(
         return collected
             .distinctBy { "${it.id}\u0000${it.sourceName}" }
             .sortedBy { it.name.lowercase() }
+    }
+
+    private fun normalizeFdroidUrl(rawUrl: String): String {
+        val clean = rawUrl.trim()
+        require(clean.isNotBlank()) { "Repository URL is required." }
+        require(clean.startsWith("https://") || clean.startsWith("http://")) {
+            "Repository URL must start with https:// or http://."
+        }
+        return when {
+            clean.endsWith("/index-v1.json", ignoreCase = true) -> clean
+            clean.endsWith("index-v1.json", ignoreCase = true) -> clean
+            else -> clean.trimEnd('/') + "/index-v1.json"
+        }
     }
 
     private suspend fun loadSource(source: AppSource): List<StoreApp> {
