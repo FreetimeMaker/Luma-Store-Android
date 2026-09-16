@@ -14,10 +14,11 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.longOrNull
 
 class SharedStoreRepository(
+    private val sourceStateStore: SourceStateStore = InMemorySourceStateStore(),
     private val client: HttpClient = HttpClient(),
 ) {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
-    private var sourceState: List<AppSource> = defaultStoreSources
+    private var sourceState: List<AppSource> = restoreSources(sourceStateStore.load())
 
     fun sources(): List<AppSource> = sourceState
 
@@ -25,6 +26,7 @@ class SharedStoreRepository(
         sourceState = sourceState.map { source ->
             if (source.name == name) source.copy(enabled = enabled) else source
         }
+        persistSources()
     }
 
     fun addFdroidSource(name: String, repositoryUrl: String): Result<AppSource> = runCatching {
@@ -47,6 +49,7 @@ class SharedStoreRepository(
             custom = true,
         )
         sourceState = sourceState + source
+        persistSources()
         source
     }
 
@@ -54,6 +57,7 @@ class SharedStoreRepository(
         val source = sourceState.firstOrNull { it.name == name } ?: return false
         if (!source.custom) return false
         sourceState = sourceState.filterNot { it.name == name }
+        persistSources()
         return true
     }
 
@@ -71,6 +75,67 @@ class SharedStoreRepository(
         return collected
             .distinctBy { "${it.id}\u0000${it.sourceName}" }
             .sortedBy { it.name.lowercase() }
+    }
+
+    private fun restoreSources(raw: String?): List<AppSource> {
+        if (raw.isNullOrBlank()) return defaultStoreSources
+
+        val saved = runCatching {
+            (json.parseToJsonElement(raw) as? JsonArray)
+                ?.mapNotNull { element ->
+                    val item = element as? JsonObject ?: return@mapNotNull null
+                    val name = item.string("name") ?: return@mapNotNull null
+                    val url = item.string("url", "indexUrl") ?: return@mapNotNull null
+                    val type = item.string("type")
+                        ?.let { runCatching { SourceType.valueOf(it) }.getOrNull() }
+                        ?: SourceType.FDROID_V1
+                    AppSource(
+                        name = name,
+                        url = url,
+                        type = type,
+                        enabled = item.boolean("enabled") ?: true,
+                        custom = item.boolean("custom") ?: false,
+                    )
+                }
+                .orEmpty()
+        }.getOrDefault(emptyList())
+
+        if (saved.isEmpty()) return defaultStoreSources
+
+        val restoredDefaults = defaultStoreSources.map { defaultSource ->
+            val previous = saved.firstOrNull {
+                !it.custom && it.name.equals(defaultSource.name, ignoreCase = true)
+            }
+            if (previous == null) defaultSource else defaultSource.copy(enabled = previous.enabled)
+        }
+        val customSources = saved
+            .filter { it.custom }
+            .filter { custom ->
+                restoredDefaults.none { default ->
+                    default.name.equals(custom.name, ignoreCase = true) ||
+                        default.url.equals(custom.url, ignoreCase = true)
+                }
+            }
+            .distinctBy { it.url.lowercase() }
+
+        return restoredDefaults + customSources
+    }
+
+    private fun persistSources() {
+        val value = JsonArray(
+            sourceState.map { source ->
+                JsonObject(
+                    mapOf(
+                        "name" to JsonPrimitive(source.name),
+                        "url" to JsonPrimitive(source.url),
+                        "type" to JsonPrimitive(source.type.name),
+                        "enabled" to JsonPrimitive(source.enabled),
+                        "custom" to JsonPrimitive(source.custom),
+                    )
+                )
+            }
+        ).toString()
+        sourceStateStore.save(value)
     }
 
     private fun normalizeFdroidUrl(rawUrl: String): String {
