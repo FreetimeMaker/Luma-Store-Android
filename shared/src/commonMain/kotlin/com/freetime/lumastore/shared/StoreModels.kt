@@ -31,6 +31,7 @@ data class AppSource(
     val url: String,
     val type: SourceType,
     val enabled: Boolean = true,
+    val custom: Boolean = false,
 )
 
 val defaultStoreSources: List<AppSource>
