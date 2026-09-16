@@ -1,4 +1,4 @@
-name: Build and Release GeoWeather
+name: Build and Release Luma Store
 
 on:
   push:
@@ -27,22 +27,45 @@ jobs:
 
       - name: Detect version & create tag
         id: versioncheck
+        shell: bash
         run: |
-          VERSION=$(grep 'versionName' androidApp/build.gradle.kts \
-            | sed -E 's/.*versionName[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/')
+          set -euo pipefail
 
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          VERSION=$(sed -nE 's/^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+)"[[:space:]]*$/\1/p' androidApp/build.gradle.kts | head -n 1)
 
-          git fetch --tags
-
-          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
-            echo "create_tag=false" >> "$GITHUB_OUTPUT"
-          else
-            git tag "v$VERSION"
-            git push origin "v$VERSION"
-            echo "create_tag=true" >> "$GITHUB_OUTPUT"
+          if [ -z "$VERSION" ]; then
+            echo "Error: Could not detect a valid versionName (expected x.y.z) from androidApp/build.gradle.kts"
+            grep -n 'versionName' androidApp/build.gradle.kts || true
+            exit 1
           fi
 
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: Invalid version '$VERSION'. Expected semantic version x.y.z"
+            exit 1
+          fi
+
+          echo "Detected version: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          # Builds run on all branches, but release tags must only be created from master.
+          if [ "$GITHUB_REF" != "refs/heads/master" ]; then
+            echo "Not on master; skipping tag creation."
+            echo "create_tag=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git fetch --tags --force
+          TAG="v$VERSION"
+
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "Tag $TAG already exists."
+            echo "create_tag=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Creating tag $TAG"
+            git tag "$TAG"
+            git push origin "$TAG"
+            echo "create_tag=true" >> "$GITHUB_OUTPUT"
+          fi
 
   build_linux:
     needs: prepare_release
@@ -246,7 +269,6 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-
   build_windows:
     needs: prepare_release
     runs-on: windows-latest
@@ -323,7 +345,6 @@ jobs:
           path: Luma-Store-v${{ needs.prepare_release.outputs.version }}.exe
           if-no-files-found: error
           retention-days: 90
-
 
   release:
     needs:
