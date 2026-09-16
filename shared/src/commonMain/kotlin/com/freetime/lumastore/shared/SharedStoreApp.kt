@@ -75,7 +75,9 @@ fun SharedStoreApp(
         error = null
         runCatching { storeRepository.loadApps() }
             .onSuccess { apps = it }
-            .onFailure { throwable -> error = throwable.message ?: throwable::class.simpleName ?: "Unknown error" }
+            .onFailure { throwable ->
+                error = throwable.message ?: throwable::class.simpleName ?: "Unknown error"
+            }
         loading = false
     }
 
@@ -142,11 +144,8 @@ fun SharedStoreApp(
                         )
 
                         SharedStoreScreen.SOURCES -> SourcesScreen(
-                            sources = storeRepository.sources(),
-                            onSourceChanged = { name, enabled ->
-                                storeRepository.setSourceEnabled(name, enabled)
-                                refreshKey++
-                            },
+                            repository = storeRepository,
+                            onSourcesChanged = { refreshKey++ },
                         )
                     }
                 }
@@ -175,7 +174,9 @@ fun SharedStoreSection(
             error = null
             runCatching { repository.loadApps() }
                 .onSuccess { apps = it }
-                .onFailure { throwable -> error = throwable.message ?: throwable::class.simpleName ?: "Unknown error" }
+                .onFailure { throwable ->
+                    error = throwable.message ?: throwable::class.simpleName ?: "Unknown error"
+                }
             loading = false
         }
     }
@@ -217,11 +218,8 @@ fun SharedStoreSection(
                 )
 
                 StoreSection.SOURCES -> SourcesScreen(
-                    sources = repository.sources(),
-                    onSourceChanged = { name, enabled ->
-                        repository.setSourceEnabled(name, enabled)
-                        onSourcesChanged()
-                    },
+                    repository = repository,
+                    onSourcesChanged = onSourcesChanged,
                 )
             }
         }
@@ -267,11 +265,15 @@ private fun SearchScreen(
     var query by remember { mutableStateOf("") }
     val filtered = remember(apps, query) {
         val normalized = query.trim().lowercase()
-        if (normalized.isBlank()) apps else apps.filter { app ->
-            app.name.lowercase().contains(normalized) ||
-                app.id.lowercase().contains(normalized) ||
-                app.summary.lowercase().contains(normalized) ||
-                app.categories.any { it.lowercase().contains(normalized) }
+        if (normalized.isBlank()) {
+            apps
+        } else {
+            apps.filter { app ->
+                app.name.lowercase().contains(normalized) ||
+                    app.id.lowercase().contains(normalized) ||
+                    app.summary.lowercase().contains(normalized) ||
+                    app.categories.any { it.lowercase().contains(normalized) }
+            }
         }
     }
 
@@ -301,15 +303,27 @@ private fun CatalogContent(
     onAppClick: (StoreApp) -> Unit,
 ) {
     when {
-        loading && apps.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        loading && apps.isEmpty() -> Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
             CircularProgressIndicator()
         }
-        error != null && apps.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+
+        error != null && apps.isEmpty() -> Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
             Text("Could not load apps: $error")
         }
-        apps.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+
+        apps.isEmpty() -> Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
             Text(emptyText)
         }
+
         else -> LazyColumn(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -343,7 +357,11 @@ private fun AppCard(app: StoreApp, onClick: () -> Unit) {
             }
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(app.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+                Text(
+                    text = app.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                )
                 if (app.summary.isNotBlank()) {
                     Text(
                         text = app.summary,
@@ -367,9 +385,15 @@ private fun AppCard(app: StoreApp, onClick: () -> Unit) {
 
 @Composable
 private fun SourcesScreen(
-    sources: List<AppSource>,
-    onSourceChanged: (String, Boolean) -> Unit,
+    repository: SharedStoreRepository,
+    onSourcesChanged: () -> Unit,
 ) {
+    var sourceRevision by remember { mutableIntStateOf(0) }
+    var sourceName by remember { mutableStateOf("") }
+    var sourceUrl by remember { mutableStateOf("") }
+    var sourceError by remember { mutableStateOf<String?>(null) }
+    val sources = remember(repository, sourceRevision) { repository.sources() }
+
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
             Text(
@@ -379,12 +403,56 @@ private fun SourcesScreen(
                 modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
             )
             Text(
-                text = "Enable Luma Store or F-Droid-compatible repositories. Changes refresh the catalog immediately.",
+                text = "Enable Luma Store or F-Droid-compatible repositories. Changes are saved on this device.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 12.dp),
+                modifier = Modifier.padding(bottom = 16.dp),
             )
+
+            OutlinedTextField(
+                value = sourceName,
+                onValueChange = { sourceName = it },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                label = { Text("Custom source name") },
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = sourceUrl,
+                onValueChange = { sourceUrl = it },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                label = { Text("F-Droid repository URL") },
+            )
+            sourceError?.let { message ->
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+            }
+            Button(
+                onClick = {
+                    repository.addFdroidSource(sourceName, sourceUrl)
+                        .onSuccess {
+                            sourceName = ""
+                            sourceUrl = ""
+                            sourceError = null
+                            sourceRevision++
+                            onSourcesChanged()
+                        }
+                        .onFailure { error ->
+                            sourceError = error.message ?: "Could not add source."
+                        }
+                },
+                enabled = sourceName.isNotBlank() && sourceUrl.isNotBlank(),
+                modifier = Modifier.padding(top = 10.dp, bottom = 14.dp),
+            ) {
+                Text("Add source")
+            }
         }
+
         items(sources, key = { it.name }) { source ->
             Row(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
@@ -399,14 +467,31 @@ private fun SourcesScreen(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    if (source.custom) {
+                        TextButton(
+                            onClick = {
+                                if (repository.removeSource(source.name)) {
+                                    sourceRevision++
+                                    onSourcesChanged()
+                                }
+                            },
+                        ) {
+                            Text("Remove")
+                        }
+                    }
                 }
                 Switch(
                     checked = source.enabled,
-                    onCheckedChange = { onSourceChanged(source.name, it) },
+                    onCheckedChange = { enabled ->
+                        repository.setSourceEnabled(source.name, enabled)
+                        sourceRevision++
+                        onSourcesChanged()
+                    },
                 )
             }
             HorizontalDivider()
         }
+        item { Spacer(Modifier.height(16.dp)) }
     }
 }
 
@@ -522,7 +607,11 @@ private fun AppDetailsScreen(
 @Composable
 private fun DetailLine(label: String, value: String) {
     Column {
-        Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+        )
         Text(value, style = MaterialTheme.typography.bodyLarge)
     }
 }
