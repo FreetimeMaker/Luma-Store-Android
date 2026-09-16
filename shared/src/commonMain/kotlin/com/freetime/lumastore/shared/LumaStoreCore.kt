@@ -2,7 +2,8 @@ package com.freetime.lumastore.shared
 
 enum class LumaPlatform(val apiValue: String) {
     ANDROID("android"),
-    DESKTOP("desktop")
+    WINDOWS("windows"),
+    LINUX("linux")
 }
 
 expect val currentPlatform: LumaPlatform
