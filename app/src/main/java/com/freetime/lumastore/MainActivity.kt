@@ -49,6 +49,7 @@ import com.freetime.lumastore.data.supabase
 import com.freetime.lumastore.install.ApkInstaller
 import com.freetime.lumastore.notifications.NotificationSyncJobService
 import com.freetime.lumastore.notifications.SystemNotificationManager
+import com.freetime.lumastore.shared.AndroidSourceStateStore
 import com.freetime.lumastore.shared.SharedStoreRepository
 import com.freetime.lumastore.shared.SharedStoreSection
 import com.freetime.lumastore.shared.StoreInstaller
@@ -60,7 +61,9 @@ private enum class MainScreen { DISCOVER, SEARCH, MY_APPS, SOURCES, DEVELOPER }
 
 class MainActivity : ComponentActivity() {
     private val repository by lazy { AppRepository(applicationContext) }
-    private val sharedRepository by lazy { SharedStoreRepository() }
+    private val sharedRepository by lazy {
+        SharedStoreRepository(AndroidSourceStateStore(applicationContext))
+    }
     private val developerRepository by lazy { DeveloperRepository() }
     private val installedAppsRevision = mutableIntStateOf(0)
     private val sourcesRevision = mutableIntStateOf(0)
