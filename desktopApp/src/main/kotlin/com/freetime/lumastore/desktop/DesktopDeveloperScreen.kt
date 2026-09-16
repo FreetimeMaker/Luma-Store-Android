@@ -53,6 +53,7 @@ import kotlinx.serialization.json.JsonPrimitive
 private const val SUPABASE_URL = "https://ndlaevedujqxhygbyxfh.supabase.co"
 private const val SUPABASE_PUBLISHABLE_KEY = "sb_publishable_HlppI4ILiXV7DZkpyrDEhQ_ytb2vV6g"
 private const val DESKTOP_OAUTH_PORT = 49152
+private const val DESKTOP_OAUTH_REDIRECT = "http://localhost:$DESKTOP_OAUTH_PORT"
 
 private val desktopSupabase = createSupabaseClient(
     supabaseUrl = SUPABASE_URL,
@@ -60,9 +61,6 @@ private val desktopSupabase = createSupabaseClient(
 ) {
     install(Postgrest)
     install(Auth) {
-        // Compose Desktop runs on the JVM. supabase-kt starts a local HTTP
-        // callback server for OAuth. A fixed port keeps the redirect URL stable
-        // so it can be allow-listed in Supabase Auth URL Configuration.
         httpCallbackConfig.httpPort = DESKTOP_OAUTH_PORT
         httpCallbackConfig.htmlTitle = "Luma Store"
         flowType = FlowType.PKCE
@@ -126,11 +124,11 @@ private class DesktopDeveloperRepository {
     }
 
     suspend fun signInWithGitHub() {
-        desktopSupabase.auth.signInWith(Github)
+        desktopSupabase.auth.signInWith(Github, redirectUrl = DESKTOP_OAUTH_REDIRECT)
     }
 
     suspend fun signInWithGitLab() {
-        desktopSupabase.auth.signInWith(Gitlab)
+        desktopSupabase.auth.signInWith(Gitlab, redirectUrl = DESKTOP_OAUTH_REDIRECT)
     }
 
     suspend fun signOut() {
@@ -377,15 +375,9 @@ fun DesktopDeveloperScreen() {
         }
 
         item { SectionTitle("App") }
-        item {
-            FormField("App name *", form.name) { form = form.copy(name = it) }
-        }
-        item {
-            FormField("Short description", form.shortDescription) { form = form.copy(shortDescription = it) }
-        }
-        item {
-            FormField("Description", form.description, singleLine = false) { form = form.copy(description = it) }
-        }
+        item { FormField("App name *", form.name) { form = form.copy(name = it) } }
+        item { FormField("Short description", form.shortDescription) { form = form.copy(shortDescription = it) } }
+        item { FormField("Description", form.description, singleLine = false) { form = form.copy(description = it) } }
         item {
             Text("Platform *", fontWeight = FontWeight.Medium)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -428,21 +420,14 @@ fun DesktopDeveloperScreen() {
         item { FormField("License", form.licenseType) { form = form.copy(licenseType = it) } }
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(
-                    checked = form.closedSource,
-                    onCheckedChange = { form = form.copy(closedSource = it) },
-                )
+                Checkbox(checked = form.closedSource, onCheckedChange = { form = form.copy(closedSource = it) })
                 Text("Closed source")
             }
         }
 
         item { SectionTitle("Media") }
         item { FormField("Icon URL", form.iconUrl) { form = form.copy(iconUrl = it) } }
-        item {
-            FormField("Screenshot URLs (one per line)", form.screenshots, singleLine = false) {
-                form = form.copy(screenshots = it)
-            }
-        }
+        item { FormField("Screenshot URLs (one per line)", form.screenshots, singleLine = false) { form = form.copy(screenshots = it) } }
 
         item { SectionTitle("Project links") }
         item { FormField("Repository URL", form.repoUrl) { form = form.copy(repoUrl = it) } }
@@ -464,13 +449,7 @@ fun DesktopDeveloperScreen() {
         item { FormField("Bitcoin", form.bitcoin) { form = form.copy(bitcoin = it) } }
         item { FormField("Litecoin", form.litecoin) { form = form.copy(litecoin = it) } }
         item { FormField("Anti-features (comma separated)", form.antiFeatures) { form = form.copy(antiFeatures = it) } }
-        item {
-            FormField(
-                "Localized metadata (optional JSON array)",
-                form.localizedMetadataJson,
-                singleLine = false,
-            ) { form = form.copy(localizedMetadataJson = it) }
-        }
+        item { FormField("Localized metadata (optional JSON array)", form.localizedMetadataJson, singleLine = false) { form = form.copy(localizedMetadataJson = it) } }
 
         error?.let { message -> item { Text(message, color = MaterialTheme.colorScheme.error) } }
         success?.let { message -> item { Text(message, color = MaterialTheme.colorScheme.primary) } }
@@ -518,10 +497,7 @@ fun DesktopDeveloperScreen() {
         } else {
             items(submissions, key = { it.id }) { submission ->
                 Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(
-                        modifier = Modifier.padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(submission.name, fontWeight = FontWeight.SemiBold)
                         Text("Status: ${submission.status}")
                         submission.version?.let { Text("Version: $it", style = MaterialTheme.typography.bodySmall) }
@@ -543,37 +519,23 @@ private fun validateSubmission(form: DeveloperSubmissionForm): String? {
     if (form.name.isBlank()) return "App name is required."
     if (form.version.isBlank()) return "Version is required."
     if (form.downloadUrl.isBlank()) return "Download URL is required."
-    if (!form.downloadUrl.startsWith("https://") && !form.downloadUrl.startsWith("http://")) {
-        return "Download URL must start with https:// or http://."
-    }
+    if (!form.downloadUrl.startsWith("https://") && !form.downloadUrl.startsWith("http://")) return "Download URL must start with https:// or http://."
     if (form.platform == "Android") {
         if (form.packageName.isBlank()) return "Android package name is required."
         val versionCode = form.versionCode.toLongOrNull()
         if (versionCode == null || versionCode <= 0) return "Android version code must be a positive number."
     }
-    if (form.platform == "Linux" && form.linuxPackageBase == null) {
-        return "Choose Debian-based or RPM-based for Linux."
-    }
+    if (form.platform == "Linux" && form.linuxPackageBase == null) return "Choose Debian-based or RPM-based for Linux."
     return null
 }
 
 @Composable
 private fun SectionTitle(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.padding(top = 8.dp),
-    )
+    Text(text = text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
 }
 
 @Composable
-private fun FormField(
-    label: String,
-    value: String,
-    singleLine: Boolean = true,
-    onValueChange: (String) -> Unit,
-) {
+private fun FormField(label: String, value: String, singleLine: Boolean = true, onValueChange: (String) -> Unit) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
