@@ -1,1 +1,1 @@
-• Updated Platform to be Android
+• Migrated to KMP
