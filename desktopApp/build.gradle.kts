@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 kotlin {
@@ -18,6 +19,12 @@ dependencies {
     implementation(project(":shared"))
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)
+
+    implementation(platform("io.github.jan-tennert.supabase:bom:3.8.0"))
+    implementation("io.github.jan-tennert.supabase:postgrest-kt")
+    implementation("io.github.jan-tennert.supabase:auth-kt")
+    implementation("io.ktor:ktor-client-cio:3.6.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
 }
 
 compose.desktop {
