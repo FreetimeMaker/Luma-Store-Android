@@ -38,11 +38,7 @@ data class StoreApp(
     val closedSource: Boolean = false
 )
 
-enum class SourceType {
-    FDROID_V1,
-    LUMA_API,
-    GOOGLE_PLAY
-}
+enum class SourceType { FDROID_V1, LUMA_API, GOOGLE_PLAY }
 
 data class AppSource(
     val name: String,
@@ -58,8 +54,7 @@ class AppRepository(context: Context) {
     private val cachePreferences = appContext.getSharedPreferences(CACHE_PREFERENCES, Context.MODE_PRIVATE)
     private val sourcePreferences = appContext.getSharedPreferences(SOURCE_PREFERENCES, Context.MODE_PRIVATE)
 
-    @Volatile
-    private var memoryApps: List<StoreApp>? = null
+    @Volatile private var memoryApps: List<StoreApp>? = null
 
     private val defaultSources = listOf(
         AppSource("Freetime F-Droid", "https://fdroid.free-time.me/repo/index-v1.json", enabledByDefault = false),
@@ -72,11 +67,10 @@ class AppRepository(context: Context) {
             type = SourceType.GOOGLE_PLAY,
             enabledByDefault = false,
             requiresAcknowledgement = true
-        ),
+        )
     )
 
-    val sources: List<AppSource>
-        get() = defaultSources + loadCustomSources()
+    val sources: List<AppSource> get() = defaultSources + loadCustomSources()
 
     fun isSourceEnabled(source: AppSource): Boolean =
         sourcePreferences.getBoolean(sourcePreferenceKey(source), source.enabledByDefault)
@@ -87,7 +81,6 @@ class AppRepository(context: Context) {
     }
 
     fun enabledSources(): List<AppSource> = sources.filter(::isSourceEnabled)
-
     fun isCustomSource(source: AppSource): Boolean = source.custom
 
     fun addCustomSource(name: String, repositoryUrl: String): Result<AppSource> = runCatching {
@@ -98,16 +91,12 @@ class AppRepository(context: Context) {
         require(parsed.protocol == "https" || parsed.protocol == "http") {
             appContext.getString(R.string.repository_url_invalid_scheme)
         }
-        require(sources.none { it.name.equals(cleanName, ignoreCase = true) }) {
-            appContext.getString(R.string.source_name_exists)
+        require(sources.none { it.name.equals(cleanName, true) }) { appContext.getString(R.string.source_name_exists) }
+        require(sources.none { it.indexUrl.equals(indexUrl, true) }) { appContext.getString(R.string.repository_already_added) }
+        AppSource(cleanName, indexUrl, SourceType.FDROID_V1, custom = true).also {
+            saveCustomSources(loadCustomSources() + it)
+            setSourceEnabled(it, true)
         }
-        require(sources.none { it.indexUrl.equals(indexUrl, ignoreCase = true) }) {
-            appContext.getString(R.string.repository_already_added)
-        }
-        val source = AppSource(cleanName, indexUrl, SourceType.FDROID_V1, custom = true)
-        saveCustomSources(loadCustomSources() + source)
-        setSourceEnabled(source, true)
-        source
     }
 
     fun updateCustomSource(source: AppSource, name: String, repositoryUrl: String): Result<AppSource> = runCatching {
@@ -119,18 +108,12 @@ class AppRepository(context: Context) {
         require(parsed.protocol == "https" || parsed.protocol == "http") {
             appContext.getString(R.string.repository_url_invalid_scheme)
         }
-        val existing = sources.filterNot { it.name == source.name && it.indexUrl == source.indexUrl }
-        require(existing.none { it.name.equals(cleanName, ignoreCase = true) }) {
-            appContext.getString(R.string.source_name_exists)
-        }
-        require(existing.none { it.indexUrl.equals(indexUrl, ignoreCase = true) }) {
-            appContext.getString(R.string.repository_already_added)
-        }
+        val others = sources.filterNot { it.name == source.name && it.indexUrl == source.indexUrl }
+        require(others.none { it.name.equals(cleanName, true) }) { appContext.getString(R.string.source_name_exists) }
+        require(others.none { it.indexUrl.equals(indexUrl, true) }) { appContext.getString(R.string.repository_already_added) }
         val updated = source.copy(name = cleanName, indexUrl = indexUrl)
-        saveCustomSources(loadCustomSources().map {
-            if (it.name == source.name && it.indexUrl == source.indexUrl) updated else it
-        })
         val wasEnabled = isSourceEnabled(source)
+        saveCustomSources(loadCustomSources().map { if (it == source) updated else it })
         sourcePreferences.edit().remove(sourcePreferenceKey(source)).apply()
         setSourceEnabled(updated, wasEnabled)
         updated
@@ -138,9 +121,7 @@ class AppRepository(context: Context) {
 
     fun removeCustomSource(source: AppSource): Boolean {
         if (!source.custom) return false
-        saveCustomSources(loadCustomSources().filterNot {
-            it.name == source.name && it.indexUrl == source.indexUrl
-        })
+        saveCustomSources(loadCustomSources().filterNot { it == source })
         sourcePreferences.edit().remove(sourcePreferenceKey(source)).apply()
         memoryApps = null
         return true
@@ -153,10 +134,8 @@ class AppRepository(context: Context) {
 
     fun loadCachedApps(): List<StoreApp> {
         val raw = cachePreferences.getString(CACHE_KEY_APPS, null) ?: return emptyList()
-        val enabledSourceNames = enabledSources().mapTo(mutableSetOf()) { it.name }
-        return runCatching { parseCachedApps(raw) }
-            .getOrDefault(emptyList())
-            .filter { it.sourceName in enabledSourceNames }
+        val enabled = enabledSources().mapTo(mutableSetOf()) { it.name }
+        return runCatching { parseCachedApps(raw) }.getOrDefault(emptyList()).filter { it.sourceName in enabled }
     }
 
     fun cacheTimestamp(): Long = cachePreferences.getLong(CACHE_KEY_TIMESTAMP, 0L)
@@ -165,43 +144,35 @@ class AppRepository(context: Context) {
         if (!forceRefresh) {
             memoryApps?.let { return@runCatching it }
             val cached = loadCachedApps()
-            if (cached.isNotEmpty()) {
-                memoryApps = cached
-                return@runCatching cached
-            }
+            if (cached.isNotEmpty()) return@runCatching cached.also { memoryApps = it }
         }
 
         val activeSources = enabledSources()
-        if (activeSources.isEmpty()) {
-            memoryApps = emptyList()
-            return@runCatching emptyList()
-        }
+        if (activeSources.isEmpty()) return@runCatching emptyList<StoreApp>().also { memoryApps = it }
 
         val variants = mutableListOf<StoreApp>()
         var successfulSources = 0
         activeSources.forEach { source ->
-            runCatching { loadSource(source) }
-                .onSuccess { loaded ->
-                    successfulSources++
-                    variants += loaded
-                }
+            runCatching { loadSource(source) }.onSuccess {
+                successfulSources++
+                variants += it
+            }
         }
 
         if (successfulSources == 0) {
             val cached = loadCachedApps()
             check(cached.isNotEmpty()) { appContext.getString(R.string.no_source_cache_available) }
-            memoryApps = cached
-            return@runCatching cached
+            return@runCatching cached.also { memoryApps = it }
         }
 
-        val normalized = variants
+        variants
             .groupBy { it.id to it.sourceName }
             .mapNotNull { (_, entries) -> entries.maxByOrNull { it.versionCode } }
             .sortedWith(compareBy<StoreApp> { it.name.lowercase() }.thenBy { it.sourceName.lowercase() })
-
-        memoryApps = normalized
-        saveCache(normalized)
-        normalized
+            .also {
+                memoryApps = it
+                saveCache(it)
+            }
     }
 
     private fun loadSource(source: AppSource): List<StoreApp> = when (source.type) {
@@ -211,8 +182,7 @@ class AppRepository(context: Context) {
     }
 
     private fun loadFdroidSource(source: AppSource): List<StoreApp> {
-        val raw = httpGet(source.indexUrl).trimStart('\uFEFF', ' ', '\n', '\r', '\t')
-        val root = JSONObject(raw)
+        val root = JSONObject(httpGet(source.indexUrl).trimStart('\uFEFF', ' ', '\n', '\r', '\t'))
         val packages = root.optJSONObject("packages") ?: return emptyList()
         val metadataByPackage = parseFdroidMetadata(root.opt("apps"))
         val results = ArrayList<StoreApp>(packages.length())
@@ -226,13 +196,33 @@ class AppRepository(context: Context) {
             if (apkName.isBlank()) continue
 
             val meta = metadataByPackage[packageName]
-            val name = localizedValue(meta?.opt("name")) ?: packageName
-            val summary = localizedValue(meta?.opt("summary")).orEmpty()
-            val description = localizedValue(meta?.opt("description")).orEmpty()
+            val localized = preferredLocalizedMetadata(meta)
             val versionCode = latest.optLong("versionCode", 0L)
             val versionName = latest.optString("versionName").ifBlank { versionCode.toString() }
-            val apkUrl = resolveFdroidAssetUrl(source, apkName) ?: continue
-            val icon = latest.optString("icon").ifBlank { stringValue(meta?.opt("icon")).orEmpty() }
+
+            val name = firstText(
+                localized?.opt("title"),
+                localized?.opt("name"),
+                meta?.opt("name")
+            ) ?: packageName
+
+            val summary = firstText(
+                localized?.opt("short_description"),
+                localized?.opt("summary"),
+                meta?.opt("summary")
+            ).orEmpty()
+
+            val description = firstText(
+                localized?.opt("full_description"),
+                localized?.opt("description"),
+                meta?.opt("description")
+            ).orEmpty()
+
+            val iconName = firstText(
+                localized?.opt("icon"),
+                latest.opt("icon"),
+                meta?.opt("icon")
+            ).orEmpty()
 
             results += StoreApp(
                 id = packageName,
@@ -241,10 +231,10 @@ class AppRepository(context: Context) {
                 description = description,
                 version = versionName,
                 versionCode = versionCode,
-                iconUrl = resolveFdroidAssetUrl(source, icon),
-                screenshotUrls = parseFdroidScreenshots(meta, source),
+                iconUrl = resolveFdroidAssetUrl(source, iconName),
+                screenshotUrls = parseFdroidScreenshots(meta, localized, source),
                 categories = jsonStringList(meta?.optJSONArray("categories")),
-                apkUrl = apkUrl,
+                apkUrl = resolveFdroidAssetUrl(source, apkName) ?: continue,
                 sourceName = source.name,
                 authorName = stringValue(meta?.opt("authorName")),
                 authorEmail = stringValue(meta?.opt("authorEmail")),
@@ -266,8 +256,23 @@ class AppRepository(context: Context) {
                 antiFeatures = parseAntiFeatures(meta?.opt("antiFeatures"))
             )
         }
-
         return results
+    }
+
+    private fun preferredLocalizedMetadata(meta: JSONObject?): JSONObject? {
+        val localized = meta?.optJSONObject("localized") ?: return null
+        val locale = Locale.getDefault()
+        val preferred = listOf(
+            locale.toLanguageTag(),
+            locale.language + "-" + locale.country,
+            locale.language,
+            "en-US",
+            "en"
+        ).filter { it.isNotBlank() }.distinct()
+        preferred.forEach { key -> localized.optJSONObject(key)?.let { return it } }
+        val keys = localized.keys()
+        while (keys.hasNext()) localized.optJSONObject(keys.next())?.let { return it }
+        return null
     }
 
     private fun parseFdroidMetadata(value: Any?): Map<String, JSONObject> {
@@ -305,21 +310,19 @@ class AppRepository(context: Context) {
         return best
     }
 
+    private fun firstText(vararg values: Any?): String? {
+        values.forEach { localizedValue(it)?.takeIf(String::isNotBlank)?.let { value -> return value } }
+        return null
+    }
+
     private fun localizedValue(value: Any?): String? = when (value) {
         null, JSONObject.NULL -> null
         is String -> value.takeIf { it.isNotBlank() }
         is JSONObject -> {
             val locale = Locale.getDefault()
-            val preferred = listOf(locale.toLanguageTag(), locale.language, "en-US", "en")
-            preferred.firstNotNullOfOrNull { key -> value.optString(key).takeIf { it.isNotBlank() } }
-                ?: run {
-                    val keys = value.keys()
-                    var found: String? = null
-                    while (keys.hasNext() && found == null) {
-                        found = value.optString(keys.next()).takeIf { it.isNotBlank() }
-                    }
-                    found
-                }
+            listOf(locale.toLanguageTag(), locale.language, "en-US", "en")
+                .firstNotNullOfOrNull { value.optString(it).takeIf(String::isNotBlank) }
+                ?: value.keys().asSequence().mapNotNull { value.optString(it).takeIf(String::isNotBlank) }.firstOrNull()
         }
         else -> value.toString().takeIf { it.isNotBlank() && it != "null" }
     }
@@ -330,23 +333,20 @@ class AppRepository(context: Context) {
         else -> value.toString().takeIf { it.isNotBlank() && it != "null" && !it.startsWith("{") && !it.startsWith("[") }
     }
 
-    private fun parseFdroidScreenshots(metadata: JSONObject?, source: AppSource): List<String> {
-        if (metadata == null) return emptyList()
-        val direct = metadata.optJSONArray("screenshots")
-        if (direct != null) {
-            return jsonStringList(direct).mapNotNull { resolveFdroidAssetUrl(source, it) }
+    private fun parseFdroidScreenshots(meta: JSONObject?, localized: JSONObject?, source: AppSource): List<String> {
+        val names = buildList {
+            addAll(jsonStringList(localized?.optJSONArray("phoneScreenshots")))
+            addAll(jsonStringList(localized?.optJSONArray("sevenInchScreenshots")))
+            addAll(jsonStringList(localized?.optJSONArray("tenInchScreenshots")))
+            addAll(jsonStringList(localized?.optJSONArray("wearScreenshots")))
+            if (isEmpty()) addAll(jsonStringList(meta?.optJSONArray("screenshots")))
         }
-        return emptyList()
+        return names.distinct().mapNotNull { resolveFdroidAssetUrl(source, it) }
     }
 
     private fun parseAntiFeatures(value: Any?): List<String> = when (value) {
         is JSONArray -> jsonStringList(value)
-        is JSONObject -> {
-            val result = mutableListOf<String>()
-            val keys = value.keys()
-            while (keys.hasNext()) result += keys.next()
-            result
-        }
+        is JSONObject -> value.keys().asSequence().toList()
         else -> emptyList()
     }
 
@@ -370,7 +370,7 @@ class AppRepository(context: Context) {
                 if (platforms != null) {
                     for (p in 0 until platforms.length()) {
                         val platform = platforms.optJSONObject(p) ?: continue
-                        if (platform.optString("platform").equals("Android", ignoreCase = true)) {
+                        if (platform.optString("platform").equals("Android", true)) {
                             androidDownloadUrl = platform.optDownloadUrl("download_url")
                             if (androidDownloadUrl != null) break
                         }
@@ -382,49 +382,38 @@ class AppRepository(context: Context) {
                     ?: item.optDownloadUrl("apk_url")
                     ?: continue
 
-                add(
-                    StoreApp(
-                        id = id,
-                        name = name,
-                        summary = item.optString("short_description").ifBlank { item.optString("summary") },
-                        description = item.optString("description"),
-                        version = item.optString("version_name").ifBlank { item.optString("version") },
-                        versionCode = item.optLong("version_code"),
-                        iconUrl = item.optNullableString("icon_url"),
-                        screenshotUrls = jsonStringList(item.optJSONArray("screenshots")).ifEmpty {
-                            jsonStringList(item.optJSONArray("screenshot_urls"))
-                        },
-                        categories = jsonStringList(item.optJSONArray("categories")).ifEmpty {
-                            item.optJSONObject("category")?.optString("name")
-                                ?.takeIf { it.isNotBlank() }
-                                ?.let(::listOf)
-                                ?: emptyList()
-                        },
-                        apkUrl = apkUrl,
-                        sourceName = source.name,
-                        authorName = item.optNullableString("author_name") ?: item.optNullableString("developer_name"),
-                        authorEmail = item.optNullableString("author_email"),
-                        authorWebsite = item.optNullableString("author_website"),
-                        websiteUrl = item.optNullableString("website_url"),
-                        sourceCodeUrl = item.optNullableString("source_code_url") ?: item.optNullableString("repo_url"),
-                        issueTrackerUrl = item.optNullableString("issue_tracker_url"),
-                        translationUrl = item.optNullableString("translation_url"),
-                        changelogUrl = item.optNullableString("changelog_url"),
-                        donationUrls = buildList {
-                            item.optNullableString("donate_url")?.let(::add)
-                            addAll(jsonStringList(item.optJSONArray("donation_urls")))
-                        },
-                        liberapay = item.optNullableString("liberapay"),
-                        openCollective = item.optNullableString("opencollective") ?: item.optNullableString("open_collective"),
-                        bitcoin = item.optNullableString("bitcoin"),
-                        litecoin = item.optNullableString("litecoin"),
-                        license = item.optNullableString("license_type") ?: item.optNullableString("license"),
-                        antiFeatures = jsonStringList(item.optJSONArray("ant_features")).ifEmpty {
-                            jsonStringList(item.optJSONArray("anti_features"))
-                        },
-                        closedSource = item.optBoolean("closed_source", false)
-                    )
-                )
+                add(StoreApp(
+                    id = id,
+                    name = name,
+                    summary = item.optString("short_description").ifBlank { item.optString("summary") },
+                    description = item.optString("description"),
+                    version = item.optString("version_name").ifBlank { item.optString("version") },
+                    versionCode = item.optLong("version_code"),
+                    iconUrl = item.optNullableString("icon_url"),
+                    screenshotUrls = jsonStringList(item.optJSONArray("screenshots")).ifEmpty { jsonStringList(item.optJSONArray("screenshot_urls")) },
+                    categories = jsonStringList(item.optJSONArray("categories")),
+                    apkUrl = apkUrl,
+                    sourceName = source.name,
+                    authorName = item.optNullableString("author_name") ?: item.optNullableString("developer_name"),
+                    authorEmail = item.optNullableString("author_email"),
+                    authorWebsite = item.optNullableString("author_website"),
+                    websiteUrl = item.optNullableString("website_url"),
+                    sourceCodeUrl = item.optNullableString("source_code_url") ?: item.optNullableString("repo_url"),
+                    issueTrackerUrl = item.optNullableString("issue_tracker_url"),
+                    translationUrl = item.optNullableString("translation_url"),
+                    changelogUrl = item.optNullableString("changelog_url"),
+                    donationUrls = buildList {
+                        item.optNullableString("donate_url")?.let(::add)
+                        addAll(jsonStringList(item.optJSONArray("donation_urls")))
+                    },
+                    liberapay = item.optNullableString("liberapay"),
+                    openCollective = item.optNullableString("opencollective") ?: item.optNullableString("open_collective"),
+                    bitcoin = item.optNullableString("bitcoin"),
+                    litecoin = item.optNullableString("litecoin"),
+                    license = item.optNullableString("license_type") ?: item.optNullableString("license"),
+                    antiFeatures = jsonStringList(item.optJSONArray("ant_features")).ifEmpty { jsonStringList(item.optJSONArray("anti_features")) },
+                    closedSource = item.optBoolean("closed_source", false)
+                ))
             }
         }
     }
@@ -445,8 +434,7 @@ class AppRepository(context: Context) {
                     val item = array.optJSONObject(i) ?: continue
                     val name = item.optString("name").trim()
                     val indexUrl = item.optString("indexUrl").trim()
-                    if (name.isBlank() || indexUrl.isBlank()) continue
-                    add(AppSource(name, indexUrl, SourceType.FDROID_V1, custom = true))
+                    if (name.isNotBlank() && indexUrl.isNotBlank()) add(AppSource(name, indexUrl, SourceType.FDROID_V1, custom = true))
                 }
             }
         }.getOrDefault(emptyList())
@@ -454,17 +442,14 @@ class AppRepository(context: Context) {
 
     private fun saveCustomSources(sources: List<AppSource>) {
         val array = JSONArray()
-        sources.forEach {
-            array.put(JSONObject().put("name", it.name).put("indexUrl", it.indexUrl))
-        }
+        sources.forEach { array.put(JSONObject().put("name", it.name).put("indexUrl", it.indexUrl)) }
         sourcePreferences.edit().putString(CUSTOM_SOURCES_KEY, array.toString()).apply()
     }
 
     private fun normalizeFdroidUrl(rawUrl: String): String {
         val clean = rawUrl.trim()
         require(clean.isNotBlank()) { appContext.getString(R.string.repository_url_required) }
-        return if (clean.endsWith("index-v1.json", ignoreCase = true)) clean
-        else clean.trimEnd('/') + "/index-v1.json"
+        return if (clean.endsWith("index-v1.json", true)) clean else clean.trimEnd('/') + "/index-v1.json"
     }
 
     private fun sourcePreferenceKey(source: AppSource): String =
@@ -472,41 +457,18 @@ class AppRepository(context: Context) {
 
     private fun saveCache(apps: List<StoreApp>) {
         val array = JSONArray()
-        apps.forEach { app ->
-            array.put(JSONObject().apply {
-                put("id", app.id)
-                put("name", app.name)
-                put("summary", app.summary)
-                put("description", app.description)
-                put("version", app.version)
-                put("versionCode", app.versionCode)
-                put("iconUrl", app.iconUrl)
-                put("screenshotUrls", JSONArray(app.screenshotUrls))
-                put("categories", JSONArray(app.categories))
-                put("apkUrl", app.apkUrl)
-                put("sourceName", app.sourceName)
-                put("authorName", app.authorName)
-                put("authorEmail", app.authorEmail)
-                put("authorWebsite", app.authorWebsite)
-                put("websiteUrl", app.websiteUrl)
-                put("sourceCodeUrl", app.sourceCodeUrl)
-                put("issueTrackerUrl", app.issueTrackerUrl)
-                put("translationUrl", app.translationUrl)
-                put("changelogUrl", app.changelogUrl)
-                put("donationUrls", JSONArray(app.donationUrls))
-                put("liberapay", app.liberapay)
-                put("openCollective", app.openCollective)
-                put("bitcoin", app.bitcoin)
-                put("litecoin", app.litecoin)
-                put("license", app.license)
-                put("antiFeatures", JSONArray(app.antiFeatures))
-                put("closedSource", app.closedSource)
-            })
-        }
-        cachePreferences.edit()
-            .putString(CACHE_KEY_APPS, array.toString())
-            .putLong(CACHE_KEY_TIMESTAMP, System.currentTimeMillis())
-            .apply()
+        apps.forEach { app -> array.put(JSONObject().apply {
+            put("id", app.id); put("name", app.name); put("summary", app.summary); put("description", app.description)
+            put("version", app.version); put("versionCode", app.versionCode); put("iconUrl", app.iconUrl)
+            put("screenshotUrls", JSONArray(app.screenshotUrls)); put("categories", JSONArray(app.categories))
+            put("apkUrl", app.apkUrl); put("sourceName", app.sourceName); put("authorName", app.authorName)
+            put("authorEmail", app.authorEmail); put("authorWebsite", app.authorWebsite); put("websiteUrl", app.websiteUrl)
+            put("sourceCodeUrl", app.sourceCodeUrl); put("issueTrackerUrl", app.issueTrackerUrl); put("translationUrl", app.translationUrl)
+            put("changelogUrl", app.changelogUrl); put("donationUrls", JSONArray(app.donationUrls)); put("liberapay", app.liberapay)
+            put("openCollective", app.openCollective); put("bitcoin", app.bitcoin); put("litecoin", app.litecoin)
+            put("license", app.license); put("antiFeatures", JSONArray(app.antiFeatures)); put("closedSource", app.closedSource)
+        }) }
+        cachePreferences.edit().putString(CACHE_KEY_APPS, array.toString()).putLong(CACHE_KEY_TIMESTAMP, System.currentTimeMillis()).apply()
     }
 
     private fun parseCachedApps(raw: String): List<StoreApp> {
@@ -517,37 +479,17 @@ class AppRepository(context: Context) {
                 val id = item.optString("id")
                 val name = item.optString("name")
                 if (id.isBlank() || name.isBlank()) continue
-                add(
-                    StoreApp(
-                        id = id,
-                        name = name,
-                        summary = item.optString("summary"),
-                        description = item.optString("description"),
-                        version = item.optString("version"),
-                        versionCode = item.optLong("versionCode"),
-                        iconUrl = item.optNullableString("iconUrl"),
-                        screenshotUrls = jsonStringList(item.optJSONArray("screenshotUrls")),
-                        categories = jsonStringList(item.optJSONArray("categories")),
-                        apkUrl = item.optString("apkUrl"),
-                        sourceName = item.optString("sourceName"),
-                        authorName = item.optNullableString("authorName"),
-                        authorEmail = item.optNullableString("authorEmail"),
-                        authorWebsite = item.optNullableString("authorWebsite"),
-                        websiteUrl = item.optNullableString("websiteUrl"),
-                        sourceCodeUrl = item.optNullableString("sourceCodeUrl"),
-                        issueTrackerUrl = item.optNullableString("issueTrackerUrl"),
-                        translationUrl = item.optNullableString("translationUrl"),
-                        changelogUrl = item.optNullableString("changelogUrl"),
-                        donationUrls = jsonStringList(item.optJSONArray("donationUrls")),
-                        liberapay = item.optNullableString("liberapay"),
-                        openCollective = item.optNullableString("openCollective"),
-                        bitcoin = item.optNullableString("bitcoin"),
-                        litecoin = item.optNullableString("litecoin"),
-                        license = item.optNullableString("license"),
-                        antiFeatures = jsonStringList(item.optJSONArray("antiFeatures")),
-                        closedSource = item.optBoolean("closedSource", false)
-                    )
-                )
+                add(StoreApp(
+                    id, name, item.optString("summary"), item.optString("description"), item.optString("version"),
+                    item.optLong("versionCode"), item.optNullableString("iconUrl"), jsonStringList(item.optJSONArray("screenshotUrls")),
+                    jsonStringList(item.optJSONArray("categories")), item.optString("apkUrl"), item.optString("sourceName"),
+                    item.optNullableString("authorName"), item.optNullableString("authorEmail"), item.optNullableString("authorWebsite"),
+                    item.optNullableString("websiteUrl"), item.optNullableString("sourceCodeUrl"), item.optNullableString("issueTrackerUrl"),
+                    item.optNullableString("translationUrl"), item.optNullableString("changelogUrl"), jsonStringList(item.optJSONArray("donationUrls")),
+                    item.optNullableString("liberapay"), item.optNullableString("openCollective"), item.optNullableString("bitcoin"),
+                    item.optNullableString("litecoin"), item.optNullableString("license"), jsonStringList(item.optJSONArray("antiFeatures")),
+                    item.optBoolean("closedSource", false)
+                ))
             }
         }
     }
@@ -564,15 +506,13 @@ class AppRepository(context: Context) {
             val code = connection.responseCode
             check(code in 200..299) { "HTTP $code for $url" }
             connection.inputStream.bufferedReader().use { it.readText() }
-        } finally {
-            connection.disconnect()
-        }
+        } finally { connection.disconnect() }
     }
 
     companion object {
         private const val CACHE_PREFERENCES = "app_cache"
         private const val SOURCE_PREFERENCES = "app_sources"
-        private const val CACHE_KEY_APPS = "apps_validated_download_urls"
+        private const val CACHE_KEY_APPS = "apps_validated_download_urls_v2"
         private const val CACHE_KEY_TIMESTAMP = "timestamp"
         private const val CUSTOM_SOURCES_KEY = "custom_sources"
     }
@@ -580,20 +520,13 @@ class AppRepository(context: Context) {
 
 private fun jsonStringList(array: JSONArray?): List<String> {
     if (array == null) return emptyList()
-    return buildList {
-        for (i in 0 until array.length()) {
-            array.optString(i).takeIf { it.isNotBlank() && it != "null" }?.let(::add)
-        }
-    }
+    return buildList { for (i in 0 until array.length()) array.optString(i).takeIf { it.isNotBlank() && it != "null" }?.let(::add) }
 }
 
-private fun JSONObject.optNullableString(name: String): String? =
-    optString(name).takeIf { it.isNotBlank() && it != "null" }
+private fun JSONObject.optNullableString(name: String): String? = optString(name).takeIf { it.isNotBlank() && it != "null" }
 
 private fun JSONObject.optDownloadUrl(name: String): String? {
     val value = optNullableString(name)?.trim() ?: return null
     val url = runCatching { URL(value) }.getOrNull() ?: return null
-    return value.takeIf {
-        (url.protocol == "http" || url.protocol == "https") && url.host.isNotBlank()
-    }
+    return value.takeIf { (url.protocol == "http" || url.protocol == "https") && url.host.isNotBlank() }
 }
