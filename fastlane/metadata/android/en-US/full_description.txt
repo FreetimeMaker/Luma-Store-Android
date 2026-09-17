@@ -18,7 +18,7 @@ REQUIREMENTS
 Android 7.0 or newer. An internet connection is needed to refresh catalogs, download apps and use developer services. Android may ask you to allow Luma Store to install apps.
 
 PROJECT STATUS
-Luma Store is under active development. Google Play catalog loading and creating new submissions inside the Android app are not currently implemented.
+Luma Store is under active development. Creating new submissions inside the Android app is not currently implemented.
 
 Feedback and bug reports:
 https://github.com/FreetimeMaker/Luma-Store-New/issues
