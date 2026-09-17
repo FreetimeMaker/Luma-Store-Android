@@ -137,11 +137,6 @@
     <string name="save">Save</string>
     <string name="cancel">Cancel</string>
     <string name="remove">Remove</string>
-    <string name="google_play_warning_title">Enable Google Play source?</string>
-    <string name="google_play_warning_message">Google Play is a proprietary service and is not an F-Droid repository. Luma Store cannot use an official public Google Play repository API to download apps directly. Enabling this source only acknowledges that you understand this limitation.</string>
-    <string name="i_understand">I understand</string>
-    <string name="enable_source">Enable source</string>
-    <string name="requires_acknowledgement">Requires acknowledgement before enabling</string>
 
     <string name="developer_notification_fallback">New developer notification</string>
     <string name="developer_notification_channel">Developer notifications</string>
