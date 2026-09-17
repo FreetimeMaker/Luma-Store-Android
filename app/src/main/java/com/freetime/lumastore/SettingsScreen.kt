@@ -23,8 +23,6 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
     var sourceUrl by remember { mutableStateOf("") }
     var addSourceError by remember { mutableStateOf<String?>(null) }
     var editingSource by remember { mutableStateOf<AppSource?>(null) }
-    var acknowledgementSource by remember { mutableStateOf<AppSource?>(null) }
-    var acknowledgementChecked by remember { mutableStateOf(false) }
     val sourceAddFailed = stringResource(R.string.source_add_failed)
     val enabledStates = remember {
         mutableStateMapOf<String, Boolean>().apply {
@@ -77,14 +75,7 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
                     enabled = enabledStates[source.name] ?: repository.isSourceEnabled(source),
                     removable = repository.isCustomSource(source),
                     editable = repository.isCustomSource(source),
-                    onEnabledChange = { checked ->
-                        if (checked && source.requiresAcknowledgement) {
-                            acknowledgementSource = source
-                            acknowledgementChecked = false
-                        } else {
-                            applySourceState(source, checked)
-                        }
-                    },
+                    onEnabledChange = { checked -> applySourceState(source, checked) },
                     onEdit = { editingSource = source },
                     onRemove = {
                         if (repository.removeCustomSource(source)) {
@@ -160,51 +151,6 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
             }
             Spacer(Modifier.height(28.dp))
         }
-    }
-
-    acknowledgementSource?.let { source ->
-        AlertDialog(
-            onDismissRequest = {
-                acknowledgementSource = null
-                acknowledgementChecked = false
-            },
-            title = { Text(stringResource(R.string.google_play_warning_title)) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(stringResource(R.string.google_play_warning_message))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(
-                            checked = acknowledgementChecked,
-                            onCheckedChange = { acknowledgementChecked = it }
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.i_understand))
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    enabled = acknowledgementChecked,
-                    onClick = {
-                        applySourceState(source, true)
-                        acknowledgementSource = null
-                        acknowledgementChecked = false
-                    }
-                ) {
-                    Text(stringResource(R.string.enable_source))
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        acknowledgementSource = null
-                        acknowledgementChecked = false
-                    }
-                ) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
-        )
     }
 
     editingSource?.let { source ->
@@ -301,13 +247,6 @@ private fun SourceCard(
                             stringResource(R.string.custom_source),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    if (source.requiresAcknowledgement) {
-                        Text(
-                            stringResource(R.string.requires_acknowledgement),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.error
                         )
                     }
                     Text(
