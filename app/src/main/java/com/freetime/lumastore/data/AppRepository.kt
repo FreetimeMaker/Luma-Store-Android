@@ -38,15 +38,14 @@ data class StoreApp(
     val closedSource: Boolean = false
 )
 
-enum class SourceType { FDROID_V1, LUMA_API, GOOGLE_PLAY }
+enum class SourceType { FDROID_V1, LUMA_API }
 
 data class AppSource(
     val name: String,
     val indexUrl: String,
     val type: SourceType = SourceType.FDROID_V1,
     val custom: Boolean = false,
-    val enabledByDefault: Boolean = true,
-    val requiresAcknowledgement: Boolean = false
+    val enabledByDefault: Boolean = true
 )
 
 class AppRepository(context: Context) {
@@ -60,14 +59,7 @@ class AppRepository(context: Context) {
         AppSource("Freetime F-Droid", "https://fdroid.free-time.me/repo/index-v1.json", enabledByDefault = false),
         AppSource("F-Droid", "https://f-droid.org/repo/index-v1.json", enabledByDefault = false),
         AppSource("IzzyOnDroid", "https://apt.izzysoft.de/fdroid/repo/index-v1.json", enabledByDefault = false),
-        AppSource("Luma Store", "https://api.free-time.me/v2/lumastore/apps?platform=android", SourceType.LUMA_API),
-        AppSource(
-            name = "Google Play",
-            indexUrl = "https://play.google.com/store/apps",
-            type = SourceType.GOOGLE_PLAY,
-            enabledByDefault = false,
-            requiresAcknowledgement = true
-        )
+        AppSource("Luma Store", "https://api.free-time.me/v2/lumastore/apps?platform=android", SourceType.LUMA_API)
     )
 
     val sources: List<AppSource> get() = defaultSources + loadCustomSources()
@@ -178,7 +170,6 @@ class AppRepository(context: Context) {
     private fun loadSource(source: AppSource): List<StoreApp> = when (source.type) {
         SourceType.FDROID_V1 -> loadFdroidSource(source)
         SourceType.LUMA_API -> loadLumaApiSource(source)
-        SourceType.GOOGLE_PLAY -> emptyList()
     }
 
     private fun loadFdroidSource(source: AppSource): List<StoreApp> {
