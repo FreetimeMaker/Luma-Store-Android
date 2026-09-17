@@ -61,7 +61,7 @@ jobs:
         uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 17
           cache: 'gradle'
 
       - name: Setup Gradle
@@ -70,11 +70,27 @@ jobs:
       - name: Build Android App
         run: ./gradlew :app:assembleRelease
 
-      - name: Find APKSIGNER
-        id: find_apksigner
+      - name: Install Android Build Tools 34.0.0
+        shell: bash
         run: |
-          APKSIGNER=$(find /usr/local/lib/android/sdk/build-tools -name apksigner | head -n 1)
-          echo "apksigner=$APKSIGNER" >> $GITHUB_OUTPUT
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -path '*/bin/sdkmanager' 2>/dev/null | sort -V | tail -n1)"
+          fi
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" "build-tools;34.0.0"
+
+      - name: Use APKSIGNER 34.0.0
+        id: find_apksigner
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          APKSIGNER="$SDK_ROOT/build-tools/34.0.0/apksigner"
+          test -x "$APKSIGNER"
+          "$APKSIGNER" version
+          echo "apksigner=$APKSIGNER" >> "$GITHUB_OUTPUT"
 
       - name: Sign Android
         id: sign_apk
@@ -92,7 +108,7 @@ jobs:
             --out "$SIGNED_APK" \
             "$UNSIGNED_APK"
 
-          echo "signed_apk=$SIGNED_APK" >> $GITHUB_OUTPUT
+          echo "signed_apk=$SIGNED_APK" >> "$GITHUB_OUTPUT"
 
       - name: Verify APK Signature
         run: |
