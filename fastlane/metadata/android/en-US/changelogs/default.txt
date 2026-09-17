@@ -1,1 +1,1 @@
-• Updated Platform to be Android
+• Changed back to Android only
