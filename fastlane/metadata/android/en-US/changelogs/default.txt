@@ -1,1 +1,1 @@
-• Changed back to Android only
+• Added Google Play as Source
