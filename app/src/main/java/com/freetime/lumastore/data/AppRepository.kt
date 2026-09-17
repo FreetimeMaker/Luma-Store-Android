@@ -53,14 +53,6 @@ data class AppSource(
     val requiresAcknowledgement: Boolean = false
 )
 
-private data class ClosedSourceMetadata(
-    val values: Map<String, String>,
-    val summary: String,
-    val description: String,
-    val changelog: String,
-    val screenshots: List<String>
-)
-
 class AppRepository(context: Context) {
     private val appContext = context.applicationContext
     private val cachePreferences = appContext.getSharedPreferences(CACHE_PREFERENCES, Context.MODE_PRIVATE)
@@ -94,65 +86,54 @@ class AppRepository(context: Context) {
     fun addCustomSource(name: String, repositoryUrl: String): Result<AppSource> = runCatching {
         val cleanName = name.trim()
         require(cleanName.isNotBlank()) { appContext.getString(R.string.source_name_required) }
-
         val indexUrl = normalizeFdroidUrl(repositoryUrl)
         val parsed = URL(indexUrl)
         require(parsed.protocol == "https" || parsed.protocol == "http") {
             appContext.getString(R.string.repository_url_invalid_scheme)
         }
-
-        val existingSources = sources
-        require(existingSources.none { it.name.equals(cleanName, ignoreCase = true) }) {
+        require(sources.none { it.name.equals(cleanName, ignoreCase = true) }) {
             appContext.getString(R.string.source_name_exists)
         }
-        require(existingSources.none { it.indexUrl.equals(indexUrl, ignoreCase = true) }) {
+        require(sources.none { it.indexUrl.equals(indexUrl, ignoreCase = true) }) {
             appContext.getString(R.string.repository_already_added)
         }
-
-        val source = AppSource(cleanName, indexUrl, SourceType.FDROID_V1, true)
+        val source = AppSource(cleanName, indexUrl, SourceType.FDROID_V1, custom = true)
         saveCustomSources(loadCustomSources() + source)
         setSourceEnabled(source, true)
-        memoryApps = null
         source
     }
 
     fun updateCustomSource(source: AppSource, name: String, repositoryUrl: String): Result<AppSource> = runCatching {
         require(source.custom) { appContext.getString(R.string.only_custom_sources_editable) }
-
         val cleanName = name.trim()
         require(cleanName.isNotBlank()) { appContext.getString(R.string.source_name_required) }
-
         val indexUrl = normalizeFdroidUrl(repositoryUrl)
         val parsed = URL(indexUrl)
         require(parsed.protocol == "https" || parsed.protocol == "http") {
             appContext.getString(R.string.repository_url_invalid_scheme)
         }
-
-        val currentCustomSources = loadCustomSources()
-        val existingSources = sources.filterNot { it.name == source.name && it.indexUrl == source.indexUrl }
-        require(existingSources.none { it.name.equals(cleanName, ignoreCase = true) }) {
+        val existing = sources.filterNot { it.name == source.name && it.indexUrl == source.indexUrl }
+        require(existing.none { it.name.equals(cleanName, ignoreCase = true) }) {
             appContext.getString(R.string.source_name_exists)
         }
-        require(existingSources.none { it.indexUrl.equals(indexUrl, ignoreCase = true) }) {
+        require(existing.none { it.indexUrl.equals(indexUrl, ignoreCase = true) }) {
             appContext.getString(R.string.repository_already_added)
         }
-
         val updated = source.copy(name = cleanName, indexUrl = indexUrl)
-        saveCustomSources(currentCustomSources.map {
+        saveCustomSources(loadCustomSources().map {
             if (it.name == source.name && it.indexUrl == source.indexUrl) updated else it
         })
-
         val wasEnabled = isSourceEnabled(source)
         sourcePreferences.edit().remove(sourcePreferenceKey(source)).apply()
         setSourceEnabled(updated, wasEnabled)
-        memoryApps = null
         updated
     }
 
     fun removeCustomSource(source: AppSource): Boolean {
         if (!source.custom) return false
-        val updated = loadCustomSources().filterNot { it.name == source.name && it.indexUrl == source.indexUrl }
-        saveCustomSources(updated)
+        saveCustomSources(loadCustomSources().filterNot {
+            it.name == source.name && it.indexUrl == source.indexUrl
+        })
         sourcePreferences.edit().remove(sourcePreferenceKey(source)).apply()
         memoryApps = null
         return true
@@ -160,9 +141,7 @@ class AppRepository(context: Context) {
 
     fun currentApps(): List<StoreApp> {
         memoryApps?.let { return it }
-        return loadCachedApps().also { cached ->
-            if (cached.isNotEmpty()) memoryApps = cached
-        }
+        return loadCachedApps().also { if (it.isNotEmpty()) memoryApps = it }
     }
 
     fun loadCachedApps(): List<StoreApp> {
@@ -209,12 +188,245 @@ class AppRepository(context: Context) {
         }
 
         val normalized = variants
-            .distinctBy { "${it.id}\u0000${it.sourceName}" }
+            .groupBy { it.id to it.sourceName }
+            .mapNotNull { (_, entries) -> entries.maxByOrNull { it.versionCode } }
             .sortedWith(compareBy<StoreApp> { it.name.lowercase() }.thenBy { it.sourceName.lowercase() })
 
         memoryApps = normalized
         saveCache(normalized)
         normalized
+    }
+
+    private fun loadSource(source: AppSource): List<StoreApp> = when (source.type) {
+        SourceType.FDROID_V1 -> loadFdroidSource(source)
+        SourceType.LUMA_API -> loadLumaApiSource(source)
+        SourceType.GOOGLE_PLAY -> emptyList()
+    }
+
+    private fun loadFdroidSource(source: AppSource): List<StoreApp> {
+        val raw = httpGet(source.indexUrl).trimStart('\uFEFF', ' ', '\n', '\r', '\t')
+        val root = JSONObject(raw)
+        val packages = root.optJSONObject("packages") ?: return emptyList()
+        val metadataByPackage = parseFdroidMetadata(root.opt("apps"))
+        val results = ArrayList<StoreApp>(packages.length())
+
+        val packageNames = packages.keys()
+        while (packageNames.hasNext()) {
+            val packageName = packageNames.next()
+            val versions = packages.optJSONArray(packageName) ?: continue
+            val latest = newestVersion(versions) ?: continue
+            val apkName = latest.optString("apkName").trim()
+            if (apkName.isBlank()) continue
+
+            val meta = metadataByPackage[packageName]
+            val name = localizedValue(meta?.opt("name")) ?: packageName
+            val summary = localizedValue(meta?.opt("summary")).orEmpty()
+            val description = localizedValue(meta?.opt("description")).orEmpty()
+            val versionCode = latest.optLong("versionCode", 0L)
+            val versionName = latest.optString("versionName").ifBlank { versionCode.toString() }
+            val apkUrl = resolveFdroidAssetUrl(source, apkName) ?: continue
+            val icon = latest.optString("icon").ifBlank { stringValue(meta?.opt("icon")).orEmpty() }
+
+            results += StoreApp(
+                id = packageName,
+                name = name,
+                summary = summary,
+                description = description,
+                version = versionName,
+                versionCode = versionCode,
+                iconUrl = resolveFdroidAssetUrl(source, icon),
+                screenshotUrls = parseFdroidScreenshots(meta, source),
+                categories = jsonStringList(meta?.optJSONArray("categories")),
+                apkUrl = apkUrl,
+                sourceName = source.name,
+                authorName = stringValue(meta?.opt("authorName")),
+                authorEmail = stringValue(meta?.opt("authorEmail")),
+                authorWebsite = stringValue(meta?.opt("authorWebSite")),
+                websiteUrl = stringValue(meta?.opt("webSite")),
+                sourceCodeUrl = stringValue(meta?.opt("sourceCode")),
+                issueTrackerUrl = stringValue(meta?.opt("issueTracker")),
+                translationUrl = stringValue(meta?.opt("translation")),
+                changelogUrl = stringValue(meta?.opt("changelog")),
+                donationUrls = buildList {
+                    stringValue(meta?.opt("donate"))?.let(::add)
+                    addAll(jsonStringList(meta?.optJSONArray("donationLinks")))
+                },
+                liberapay = stringValue(meta?.opt("liberapay")),
+                openCollective = stringValue(meta?.opt("openCollective")),
+                bitcoin = stringValue(meta?.opt("bitcoin")),
+                litecoin = stringValue(meta?.opt("litecoin")),
+                license = stringValue(meta?.opt("license")),
+                antiFeatures = parseAntiFeatures(meta?.opt("antiFeatures"))
+            )
+        }
+
+        return results
+    }
+
+    private fun parseFdroidMetadata(value: Any?): Map<String, JSONObject> {
+        val result = linkedMapOf<String, JSONObject>()
+        when (value) {
+            is JSONObject -> {
+                val keys = value.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    value.optJSONObject(key)?.let { result[key] = it }
+                }
+            }
+            is JSONArray -> {
+                for (i in 0 until value.length()) {
+                    val item = value.optJSONObject(i) ?: continue
+                    val packageName = item.optString("packageName").ifBlank { item.optString("package_name") }
+                    if (packageName.isNotBlank()) result[packageName] = item
+                }
+            }
+        }
+        return result
+    }
+
+    private fun newestVersion(versions: JSONArray): JSONObject? {
+        var best: JSONObject? = null
+        var bestCode = Long.MIN_VALUE
+        for (i in 0 until versions.length()) {
+            val candidate = versions.optJSONObject(i) ?: continue
+            val code = candidate.optLong("versionCode", Long.MIN_VALUE)
+            if (best == null || code > bestCode) {
+                best = candidate
+                bestCode = code
+            }
+        }
+        return best
+    }
+
+    private fun localizedValue(value: Any?): String? = when (value) {
+        null, JSONObject.NULL -> null
+        is String -> value.takeIf { it.isNotBlank() }
+        is JSONObject -> {
+            val locale = Locale.getDefault()
+            val preferred = listOf(locale.toLanguageTag(), locale.language, "en-US", "en")
+            preferred.firstNotNullOfOrNull { key -> value.optString(key).takeIf { it.isNotBlank() } }
+                ?: run {
+                    val keys = value.keys()
+                    var found: String? = null
+                    while (keys.hasNext() && found == null) {
+                        found = value.optString(keys.next()).takeIf { it.isNotBlank() }
+                    }
+                    found
+                }
+        }
+        else -> value.toString().takeIf { it.isNotBlank() && it != "null" }
+    }
+
+    private fun stringValue(value: Any?): String? = when (value) {
+        null, JSONObject.NULL -> null
+        is String -> value.takeIf { it.isNotBlank() }
+        else -> value.toString().takeIf { it.isNotBlank() && it != "null" && !it.startsWith("{") && !it.startsWith("[") }
+    }
+
+    private fun parseFdroidScreenshots(metadata: JSONObject?, source: AppSource): List<String> {
+        if (metadata == null) return emptyList()
+        val direct = metadata.optJSONArray("screenshots")
+        if (direct != null) {
+            return jsonStringList(direct).mapNotNull { resolveFdroidAssetUrl(source, it) }
+        }
+        return emptyList()
+    }
+
+    private fun parseAntiFeatures(value: Any?): List<String> = when (value) {
+        is JSONArray -> jsonStringList(value)
+        is JSONObject -> {
+            val result = mutableListOf<String>()
+            val keys = value.keys()
+            while (keys.hasNext()) result += keys.next()
+            result
+        }
+        else -> emptyList()
+    }
+
+    private fun loadLumaApiSource(source: AppSource): List<StoreApp> {
+        val raw = httpGet(source.indexUrl).trim()
+        val apps = when {
+            raw.startsWith("[") -> JSONArray(raw)
+            raw.startsWith("{") -> JSONObject(raw).optJSONArray("apps") ?: JSONArray()
+            else -> JSONArray()
+        }
+
+        return buildList {
+            for (i in 0 until apps.length()) {
+                val item = apps.optJSONObject(i) ?: continue
+                val id = item.optString("package_name").ifBlank { item.optString("id") }
+                val name = item.optString("name")
+                if (id.isBlank() || name.isBlank()) continue
+
+                val platforms = item.optJSONArray("platforms")
+                var androidDownloadUrl: String? = null
+                if (platforms != null) {
+                    for (p in 0 until platforms.length()) {
+                        val platform = platforms.optJSONObject(p) ?: continue
+                        if (platform.optString("platform").equals("Android", ignoreCase = true)) {
+                            androidDownloadUrl = platform.optDownloadUrl("download_url")
+                            if (androidDownloadUrl != null) break
+                        }
+                    }
+                }
+
+                val apkUrl = androidDownloadUrl
+                    ?: item.optDownloadUrl("download_url")
+                    ?: item.optDownloadUrl("apk_url")
+                    ?: continue
+
+                add(
+                    StoreApp(
+                        id = id,
+                        name = name,
+                        summary = item.optString("short_description").ifBlank { item.optString("summary") },
+                        description = item.optString("description"),
+                        version = item.optString("version_name").ifBlank { item.optString("version") },
+                        versionCode = item.optLong("version_code"),
+                        iconUrl = item.optNullableString("icon_url"),
+                        screenshotUrls = jsonStringList(item.optJSONArray("screenshots")).ifEmpty {
+                            jsonStringList(item.optJSONArray("screenshot_urls"))
+                        },
+                        categories = jsonStringList(item.optJSONArray("categories")).ifEmpty {
+                            item.optJSONObject("category")?.optString("name")
+                                ?.takeIf { it.isNotBlank() }
+                                ?.let(::listOf)
+                                ?: emptyList()
+                        },
+                        apkUrl = apkUrl,
+                        sourceName = source.name,
+                        authorName = item.optNullableString("author_name") ?: item.optNullableString("developer_name"),
+                        authorEmail = item.optNullableString("author_email"),
+                        authorWebsite = item.optNullableString("author_website"),
+                        websiteUrl = item.optNullableString("website_url"),
+                        sourceCodeUrl = item.optNullableString("source_code_url") ?: item.optNullableString("repo_url"),
+                        issueTrackerUrl = item.optNullableString("issue_tracker_url"),
+                        translationUrl = item.optNullableString("translation_url"),
+                        changelogUrl = item.optNullableString("changelog_url"),
+                        donationUrls = buildList {
+                            item.optNullableString("donate_url")?.let(::add)
+                            addAll(jsonStringList(item.optJSONArray("donation_urls")))
+                        },
+                        liberapay = item.optNullableString("liberapay"),
+                        openCollective = item.optNullableString("opencollective") ?: item.optNullableString("open_collective"),
+                        bitcoin = item.optNullableString("bitcoin"),
+                        litecoin = item.optNullableString("litecoin"),
+                        license = item.optNullableString("license_type") ?: item.optNullableString("license"),
+                        antiFeatures = jsonStringList(item.optJSONArray("ant_features")).ifEmpty {
+                            jsonStringList(item.optJSONArray("anti_features"))
+                        },
+                        closedSource = item.optBoolean("closed_source", false)
+                    )
+                )
+            }
+        }
+    }
+
+    private fun resolveFdroidAssetUrl(source: AppSource, asset: String): String? {
+        if (asset.isBlank()) return null
+        if (asset.startsWith("http://") || asset.startsWith("https://")) return asset
+        val base = source.indexUrl.substringBeforeLast('/')
+        return "$base/${asset.trimStart('/')}"
     }
 
     private fun loadCustomSources(): List<AppSource> {
@@ -227,7 +439,7 @@ class AppRepository(context: Context) {
                     val name = item.optString("name").trim()
                     val indexUrl = item.optString("indexUrl").trim()
                     if (name.isBlank() || indexUrl.isBlank()) continue
-                    add(AppSource(name, indexUrl, SourceType.FDROID_V1, true))
+                    add(AppSource(name, indexUrl, SourceType.FDROID_V1, custom = true))
                 }
             }
         }.getOrDefault(emptyList())
@@ -235,8 +447,8 @@ class AppRepository(context: Context) {
 
     private fun saveCustomSources(sources: List<AppSource>) {
         val array = JSONArray()
-        sources.forEach { source ->
-            array.put(JSONObject().put("name", source.name).put("indexUrl", source.indexUrl))
+        sources.forEach {
+            array.put(JSONObject().put("name", it.name).put("indexUrl", it.indexUrl))
         }
         sourcePreferences.edit().putString(CUSTOM_SOURCES_KEY, array.toString()).apply()
     }
@@ -244,12 +456,12 @@ class AppRepository(context: Context) {
     private fun normalizeFdroidUrl(rawUrl: String): String {
         val clean = rawUrl.trim()
         require(clean.isNotBlank()) { appContext.getString(R.string.repository_url_required) }
-        return when {
-            clean.endsWith("/index-v1.json", ignoreCase = true) -> clean
-            clean.endsWith("index-v1.json", ignoreCase = true) -> clean
-            else -> clean.trimEnd('/') + "/index-v1.json"
-        }
+        return if (clean.endsWith("index-v1.json", ignoreCase = true)) clean
+        else clean.trimEnd('/') + "/index-v1.json"
     }
+
+    private fun sourcePreferenceKey(source: AppSource): String =
+        "source_enabled_${source.name}_${source.indexUrl}".hashCode().toString()
 
     private fun saveCache(apps: List<StoreApp>) {
         val array = JSONArray()
@@ -306,9 +518,9 @@ class AppRepository(context: Context) {
                         description = item.optString("description"),
                         version = item.optString("version"),
                         versionCode = item.optLong("versionCode"),
-                        iconUrl = item.optString("iconUrl").takeIf { it.isNotBlank() && it != "null" },
-                        screenshotUrls = item.optJSONArray("screenshotUrls").toStringList(),
-                        categories = item.optJSONArray("categories").toStringList(),
+                        iconUrl = item.optNullableString("iconUrl"),
+                        screenshotUrls = jsonStringList(item.optJSONArray("screenshotUrls")),
+                        categories = jsonStringList(item.optJSONArray("categories")),
                         apkUrl = item.optString("apkUrl"),
                         sourceName = item.optString("sourceName"),
                         authorName = item.optNullableString("authorName"),
@@ -319,13 +531,13 @@ class AppRepository(context: Context) {
                         issueTrackerUrl = item.optNullableString("issueTrackerUrl"),
                         translationUrl = item.optNullableString("translationUrl"),
                         changelogUrl = item.optNullableString("changelogUrl"),
-                        donationUrls = item.optJSONArray("donationUrls").toStringList(),
+                        donationUrls = jsonStringList(item.optJSONArray("donationUrls")),
                         liberapay = item.optNullableString("liberapay"),
                         openCollective = item.optNullableString("openCollective"),
                         bitcoin = item.optNullableString("bitcoin"),
                         litecoin = item.optNullableString("litecoin"),
                         license = item.optNullableString("license"),
-                        antiFeatures = item.optJSONArray("antiFeatures").toStringList(),
+                        antiFeatures = jsonStringList(item.optJSONArray("antiFeatures")),
                         closedSource = item.optBoolean("closedSource", false)
                     )
                 )
@@ -333,210 +545,37 @@ class AppRepository(context: Context) {
         }
     }
 
-    private fun sourcePreferenceKey(source: AppSource): String =
-        "source_enabled_${source.name}_${source.indexUrl}".hashCode().toString()
-
-    private fun loadSource(source: AppSource): List<StoreApp> = when (source.type) {
-        SourceType.FDROID_V1 -> loadFdroidSource(source)
-        SourceType.LUMA_API -> loadLumaApiSource(source)
-        SourceType.GOOGLE_PLAY -> emptyList()
-    }
-
-    private fun loadFdroidSource(source: AppSource): List<StoreApp> {
-        val root = JSONObject(httpGet(source.indexUrl))
-        val packages = root.optJSONObject("packages") ?: return emptyList()
-        val metadata = root.optJSONObject("apps") ?: JSONObject()
-        val results = mutableListOf<StoreApp>()
-
-        packages.keys().forEach { packageName ->
-            val versions = packages.optJSONArray(packageName) ?: return@forEach
-            val appMetadata = metadata.optJSONObject(packageName)
-            val appName = localizedString(appMetadata?.optJSONObject("name"))
-                ?: appMetadata?.optString("name")?.takeIf { it.isNotBlank() }
-                ?: packageName
-            val summary = localizedString(appMetadata?.optJSONObject("summary"))
-                ?: appMetadata?.optString("summary").orEmpty()
-            val description = localizedString(appMetadata?.optJSONObject("description"))
-                ?: appMetadata?.optString("description").orEmpty()
-            val categories = appMetadata?.optJSONArray("categories").toStringList()
-            val license = appMetadata?.optString("license")?.takeIf { it.isNotBlank() }
-            val sourceCode = appMetadata?.optString("sourceCode")?.takeIf { it.isNotBlank() }
-            val issueTracker = appMetadata?.optString("issueTracker")?.takeIf { it.isNotBlank() }
-            val translation = appMetadata?.optString("translation")?.takeIf { it.isNotBlank() }
-            val changelog = appMetadata?.optString("changelog")?.takeIf { it.isNotBlank() }
-            val webSite = appMetadata?.optString("webSite")?.takeIf { it.isNotBlank() }
-            val authorName = appMetadata?.optString("authorName")?.takeIf { it.isNotBlank() }
-            val authorEmail = appMetadata?.optString("authorEmail")?.takeIf { it.isNotBlank() }
-            val authorWebSite = appMetadata?.optString("authorWebSite")?.takeIf { it.isNotBlank() }
-            val donationUrls = buildList {
-                appMetadata?.optString("donate")?.takeIf { it.isNotBlank() }?.let(::add)
-                addAll(appMetadata?.optJSONArray("donationLinks").toStringList())
-            }
-            val antiFeatures = appMetadata?.optJSONArray("antiFeatures").toStringList()
-            val screenshots = parseFdroidScreenshots(appMetadata, source)
-
-            for (i in 0 until versions.length()) {
-                val version = versions.optJSONObject(i) ?: continue
-                val apkName = version.optString("apkName")
-                if (apkName.isBlank()) continue
-                val versionName = version.optString("versionName").ifBlank { version.optLong("versionCode").toString() }
-                val versionCode = version.optLong("versionCode")
-                val iconUrl = resolveFdroidAssetUrl(source, version.optString("icon").ifBlank { appMetadata?.optString("icon").orEmpty() })
-                results += StoreApp(
-                    id = packageName,
-                    name = appName,
-                    summary = summary,
-                    description = description,
-                    version = versionName,
-                    versionCode = versionCode,
-                    iconUrl = iconUrl,
-                    screenshotUrls = screenshots,
-                    categories = categories,
-                    apkUrl = resolveFdroidAssetUrl(source, apkName) ?: continue,
-                    sourceName = source.name,
-                    authorName = authorName,
-                    authorEmail = authorEmail,
-                    authorWebsite = authorWebSite,
-                    websiteUrl = webSite,
-                    sourceCodeUrl = sourceCode,
-                    issueTrackerUrl = issueTracker,
-                    translationUrl = translation,
-                    changelogUrl = changelog,
-                    donationUrls = donationUrls,
-                    license = license,
-                    antiFeatures = antiFeatures
-                )
-            }
-        }
-        return results
-    }
-
-    private fun loadLumaApiSource(source: AppSource): List<StoreApp> {
-        val raw = httpGet(source.indexUrl).trim()
-        val apps = when {
-            raw.startsWith("[") -> JSONArray(raw)
-            raw.startsWith("{") -> JSONObject(raw).optJSONArray("apps") ?: JSONArray()
-            else -> JSONArray()
-        }
-
-        return buildList {
-            for (i in 0 until apps.length()) {
-                val item = apps.optJSONObject(i) ?: continue
-                val id = item.optString("package_name").ifBlank { item.optString("id") }
-                val name = item.optString("name")
-                if (id.isBlank() || name.isBlank()) continue
-
-                val platforms = item.optJSONArray("platforms")
-                var androidDownloadUrl: String? = null
-                if (platforms != null) {
-                    for (platformIndex in 0 until platforms.length()) {
-                        val platform = platforms.optJSONObject(platformIndex) ?: continue
-                        if (platform.optString("platform").equals("Android", ignoreCase = true)) {
-                            androidDownloadUrl = platform.optDownloadUrl("download_url")
-                            if (androidDownloadUrl != null) break
-                        }
-                    }
-                }
-
-                val apkUrl = androidDownloadUrl
-                    ?: item.optDownloadUrl("download_url")
-                    ?: item.optDownloadUrl("apk_url")
-                    ?: continue
-
-                add(
-                    StoreApp(
-                        id = id,
-                        name = name,
-                        summary = item.optString("short_description").ifBlank { item.optString("summary") },
-                        description = item.optString("description"),
-                        version = item.optString("version_name").ifBlank { item.optString("version") },
-                        versionCode = item.optLong("version_code"),
-                        iconUrl = item.optNullableString("icon_url"),
-                        screenshotUrls = item.optJSONArray("screenshots").toStringList().ifEmpty {
-                            item.optJSONArray("screenshot_urls").toStringList()
-                        },
-                        categories = item.optJSONArray("categories").toStringList().ifEmpty {
-                            item.optJSONObject("category")?.optString("name")
-                                ?.takeIf { it.isNotBlank() }
-                                ?.let(::listOf)
-                                ?: emptyList()
-                        },
-                        apkUrl = apkUrl,
-                        sourceName = source.name,
-                        authorName = item.optNullableString("author_name") ?: item.optNullableString("developer_name"),
-                        authorEmail = item.optNullableString("author_email"),
-                        authorWebsite = item.optNullableString("author_website"),
-                        websiteUrl = item.optNullableString("website_url"),
-                        sourceCodeUrl = item.optNullableString("source_code_url") ?: item.optNullableString("repo_url"),
-                        issueTrackerUrl = item.optNullableString("issue_tracker_url"),
-                        translationUrl = item.optNullableString("translation_url"),
-                        changelogUrl = item.optNullableString("changelog_url"),
-                        donationUrls = buildList {
-                            item.optNullableString("donate_url")?.let(::add)
-                            addAll(item.optJSONArray("donation_urls").toStringList())
-                        },
-                        liberapay = item.optNullableString("liberapay"),
-                        openCollective = item.optNullableString("opencollective") ?: item.optNullableString("open_collective"),
-                        bitcoin = item.optNullableString("bitcoin"),
-                        litecoin = item.optNullableString("litecoin"),
-                        license = item.optNullableString("license_type") ?: item.optNullableString("license"),
-                        antiFeatures = item.optJSONArray("ant_features").toStringList().ifEmpty {
-                            item.optJSONArray("anti_features").toStringList()
-                        },
-                        closedSource = item.optBoolean("closed_source", false)
-                    )
-                )
-            }
-        }
-    }
-
-    private fun parseFdroidScreenshots(metadata: JSONObject?, source: AppSource): List<String> = emptyList()
-
-    private fun resolveFdroidAssetUrl(source: AppSource, asset: String): String? {
-        if (asset.isBlank()) return null
-        if (asset.startsWith("http://") || asset.startsWith("https://")) return asset
-        val base = source.indexUrl.substringBeforeLast('/')
-        return "$base/${asset.trimStart('/')}"
-    }
-
-    private fun localizedString(value: JSONObject?): String? {
-        if (value == null) return null
-        val locale = Locale.getDefault()
-        val preferred = listOf(locale.toLanguageTag(), locale.language, "en-US", "en")
-        preferred.forEach { key ->
-            value.optString(key).takeIf { it.isNotBlank() }?.let { return it }
-        }
-        val keys = value.keys()
-        while (keys.hasNext()) {
-            value.optString(keys.next()).takeIf { it.isNotBlank() }?.let { return it }
-        }
-        return null
-    }
-
     private fun httpGet(url: String): String {
         val connection = URL(url).openConnection() as HttpURLConnection
         connection.connectTimeout = 15_000
         connection.readTimeout = 20_000
         connection.requestMethod = "GET"
+        connection.instanceFollowRedirects = true
         connection.setRequestProperty("Accept", "application/json")
-        return connection.inputStream.bufferedReader().use { it.readText() }
+        connection.setRequestProperty("User-Agent", "Luma-Store-Android")
+        return try {
+            val code = connection.responseCode
+            check(code in 200..299) { "HTTP $code for $url" }
+            connection.inputStream.bufferedReader().use { it.readText() }
+        } finally {
+            connection.disconnect()
+        }
     }
 
     companion object {
         private const val CACHE_PREFERENCES = "app_cache"
         private const val SOURCE_PREFERENCES = "app_sources"
-        // Reload snapshots written before download URL validation was introduced.
         private const val CACHE_KEY_APPS = "apps_validated_download_urls"
         private const val CACHE_KEY_TIMESTAMP = "timestamp"
         private const val CUSTOM_SOURCES_KEY = "custom_sources"
     }
 }
 
-private fun JSONArray?.toStringList(): List<String> {
-    if (this == null) return emptyList()
+private fun jsonStringList(array: JSONArray?): List<String> {
+    if (array == null) return emptyList()
     return buildList {
-        for (i in 0 until length()) {
-            optString(i).takeIf { it.isNotBlank() }?.let(::add)
+        for (i in 0 until array.length()) {
+            array.optString(i).takeIf { it.isNotBlank() && it != "null" }?.let(::add)
         }
     }
 }
