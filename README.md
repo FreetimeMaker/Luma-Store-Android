@@ -19,7 +19,7 @@
 [![Latest release](https://img.shields.io/github/v/release/FreetimeMaker/Luma-Store-Android?style=for-the-badge)](https://github.com/FreetimeMaker/Luma-Store-Android/releases)
 ![F-Droid latest release](https://img.shields.io/f-droid/v/com.freetime.lumastore?color=%23ea9010&style=for-the-badge)
 [![GitHub license](https://img.shields.io/github/license/FreetimeMaker/Luma-Store-Android?style=for-the-badge)](https://github.com/FreetimeMaker/Luma-Store-Android/blob/main/LICENSE)
-[![GitHub Downloads (all time)](https://img.shields.io/github/downloads/FreetimeMaker/GeoWeatLuma-Store-Android/total?style=for-the-badge)](https://github.com/FreetimeMaker/Luma-Store-Android/releases)
+[![GitHub Downloads (all time)](https://img.shields.io/github/downloads/FreetimeMaker/Luma-Store-Android/total?style=for-the-badge)](https://github.com/FreetimeMaker/Luma-Store-Android/releases)
 ![F-Droid Downloads (all time)](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgithub.com%2Fkitswas%2Ffdroid-metrics-dashboard%2Fraw%2Frefs%2Fheads%2Fmain%2Fprocessed%2Ftotal%2Fcom.freetime.lumastore.json&query=%24.total_downloads&logo=fdroid&label=Downloads%20(all%20time))
 [![GitHub stars](https://img.shields.io/github/stars/FreetimeMaker/Luma-Store-Android?color=%2359a14f&style=for-the-badge)](https://github.com/FreetimeMaker/Luma-Store-Android/stargazers)
 [![Android Build, Sign and Release](https://github.com/FreetimeMaker/Luma-Store-Android/actions/workflows/build_and_co.yml/badge.svg)](https://github.com/FreetimeMaker/Luma-Store-Android/actions/workflows/build_and_co.yml)
@@ -57,24 +57,24 @@ Luma Store is a modern Android application that allows you to discover, install,
 
 ### Get the Latest Version
 
-You can download the latest version of GeoWeather from the following platforms:
+You can download the latest version of Luma Store from the following platforms:
 
 - **GitHub Releases**: [Direct Download](https://github.com/FreetimeMaker/Luma-Store-Android/releases/latest)
-- **F-Droid**: [com.freetime.geoweather](https://f-droid.org/packages/com.freetime.lumastore)
+- **F-Droid**: [com.freetime.lumastore](https://f-droid.org/packages/com.freetime.lumastore)
 - **OpenApk**: [OpenAPK](https://www.openapk.net/de/lumastore/com.freetime.lumastore/)
 - **GitHub Store**: [Open in GitHub Store](https://github-store.org/app?repo=FreetimeMaker/Luma-Store-Android)
 
 <div align="center">
 
-[<img src="media-resources/badge_github.png" alt="Get it on GitHub" height="82">](https://github.com/FreetimeMaker/GeoWeather/releases/latest)
+[<img src="media-resources/badge_github.png" alt="Get it on GitHub" height="82">](https://github.com/FreetimeMaker/Luma-Store-Andrid/releases/latest)
 
-[<img src="media-resources/badge_f_droid.png" alt="Get it on F-Droid" height="80">](https://f-droid.org/packages/com.freetime.geoweather)
+[<img src="media-resources/badge_f_droid.png" alt="Get it on F-Droid" height="80">](https://f-droid.org/packages/com.freetime.lumastore)
 
 [<img src="media-resources/badge_obtainium.png" alt="Get it on Obtainium" width="194">]()
 
-[<img src="media-resources/openapk-badge.png" alt="Get it on OpenAPK.net" height="80">](https://www.openapk.net/de/geoweather/com.freetime.geoweather/)
+[<img src="media-resources/openapk-badge.png" alt="Get it on OpenAPK.net" height="80">](https://www.openapk.net/de/lumastore/com.freetime.lumastore/)
 
-[<img src="media-resources/badge_github_store.png" alt="Get it on GitHub Store" height="70">](https://github-store.org/app?repo=FreetimeMaker/GeoWeather)
+[<img src="media-resources/badge_github_store.png" alt="Get it on GitHub Store" height="70">](https://github-store.org/app?repo=FreetimeMaker/Luma-Store-Android)
 </div>
 
 ## 📄 License
