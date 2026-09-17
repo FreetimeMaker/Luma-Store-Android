@@ -1,104 +1,139 @@
-# Luma Store
+<div align="center">
+<h1>🛍️ Luma Store</h1>
+<p><i>A modern app store client for Android, focusing on F-Droid and community sources</i></p>
+</div>
 
-An Android app store for discovering, installing and updating apps from the Luma Store catalog and optional F-Droid repositories.
+<div align="center">
+<h1>📸 Screenshots</h1>
 
-[![Android build](https://github.com/FreetimeMaker/Luma-Store-New/actions/workflows/build_and_co.yml/badge.svg)](https://github.com/FreetimeMaker/Luma-Store-New/actions/workflows/build_and_co.yml)
-![Android 7.0+](https://img.shields.io/badge/Android-7.0%2B-3DDC84)
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" alt="Discover"  width="19%">
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" alt="Search"  width="19%">
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" alt="My Apps"  width="19%">
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" alt="Sources"  width="19%">
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" alt="App Details"  width="19%">
+</div>
 
-## Features
+# Repository, Build and App Informations
+<div align="center">
 
-- **Discover apps:** Browse the catalog and filter by category.
-- **Search:** Find apps by name, description, package name or category.
-- **App details:** View available metadata, versions and sources, with links supplied by the catalog.
-- **Install and update:** Download APKs and open Android's installer, or launch apps already installed.
-- **Manage sources:** Enable or disable built-in sources and add, edit or remove custom F-Droid repository URLs.
-- **Cached catalog:** Browse previously loaded app information when available.
-- **Developer area:** Sign in with GitHub or GitLab to view your submissions, review feedback and notifications.
+[![Latest release](https://img.shields.io/github/v/release/FreetimeMaker/Luma-Store-Android?style=for-the-badge)](https://github.com/FreetimeMaker/Luma-Store-Android/releases)
+![F-Droid latest release](https://img.shields.io/f-droid/v/com.freetime.lumastore?color=%23ea9010&style=for-the-badge)
+[![GitHub license](https://img.shields.io/github/license/FreetimeMaker/Luma-Store-Android?style=for-the-badge)](https://github.com/FreetimeMaker/Luma-Store-Android/blob/main/LICENSE)
+[![GitHub Downloads (all time)](https://img.shields.io/github/downloads/FreetimeMaker/GeoWeatLuma-Store-Android/total?style=for-the-badge)](https://github.com/FreetimeMaker/Luma-Store-Android/releases)
+![F-Droid Downloads (all time)](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgithub.com%2Fkitswas%2Ffdroid-metrics-dashboard%2Fraw%2Frefs%2Fheads%2Fmain%2Fprocessed%2Ftotal%2Fcom.freetime.lumastore.json&query=%24.total_downloads&logo=fdroid&label=Downloads%20(all%20time))
+[![GitHub stars](https://img.shields.io/github/stars/FreetimeMaker/Luma-Store-Android?color=%2359a14f&style=for-the-badge)](https://github.com/FreetimeMaker/Luma-Store-Android/stargazers)
+[![Android Build, Sign and Release](https://github.com/FreetimeMaker/Luma-Store-Android/actions/workflows/build_and_co.yml/badge.svg)](https://github.com/FreetimeMaker/Luma-Store-Android/actions/workflows/build_and_co.yml)
+[![API](https://img.shields.io/badge/API-26%2B-brightgreen.svg?style=flat)](https://android-arsenal.com/api?level=24)
+<img alt="Kotlin" src="https://ziadoua.github.io/m3-Markdown-Badges/badges/Kotlin/kotlin1.svg" />
+<img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/Android/android1.svg" />
+<a href="https://github.com/FreetimeMaker/Luma-Store-Android/issues">
+<img src="https://m3-markdown-badges.vercel.app/issues/1/2/FreetimeMaker/Luma-Store-Android" alt="Issues"/>
+</a>
+</div>
 
-## Get the app
+Luma Store is a modern Android application that allows you to discover, install, and update apps from various sources. With a focus on F-Droid and community-driven repositories, it offers a clean and intuitive interface following Material 3 guidelines.
 
-Luma Store is under active development and requires **Android 7.0 (API 24) or newer**.
+## ✨ Key Features
 
-- **Published versions:** Check [GitHub Releases](https://github.com/FreetimeMaker/Luma-Store-New/releases) for release APKs.
-- **Development builds:** Open a successful [build workflow run](https://github.com/FreetimeMaker/Luma-Store-New/actions/workflows/build_and_co.yml) and download its APK artifact. GitHub may require you to sign in to download artifacts. Extract the archive to access the signed APK.
+- 🌍 **Multiple Sources**: Support for F-Droid repositories (index-v1.json) and custom community sources.
+- 🔍 **Powerful Search**: Quickly find apps across all enabled repositories.
+- 📦 **App Management**: Manage your installed apps, view details, and keep them up to date.
+- 🛡️ **Source Filtering**: Filter apps by license (Open Source / Closed Source) and specific repositories.
+- 🎨 **Material 3 & Dynamic Colors**: A modern UI that adapts to your system theme and wallpaper (Android 12+).
+- ⚙️ **Custom Repositories**: Add your own F-Droid repo URLs easily.
+- 🔔 **Background Updates**: Automatic background sync for updates and developer notifications.
+- 👨‍💻 **Developer Area**: Integration with Supabase (GitHub/GitLab) for developers to manage their submissions.
 
-If no release is listed, use a development build. Development builds may contain unfinished features.
+## 🛠️ Technology Stack
 
-### Installation
+- **Jetpack Compose**: Modern UI framework for declarative and reactive interfaces.
+- **Kotlin**: The primary language for robust and concise Android development.
+- **Ktor**: Asynchronous HTTP client for fetching repository indices and APKs.
+- **Supabase**: Backend integration for authentication and app metadata.
+- **Coil 3**: Efficient image loading with support for modern Compose features.
+- **WorkManager**: Reliable background processing for periodic sync tasks.
 
-1. Download and open the Luma Store APK on your Android device.
-2. If prompted, allow your browser or file manager to install apps from this source.
-3. Open Luma Store and browse the catalog.
-4. When installing an app through Luma Store, grant Luma Store permission to install apps if Android requests it, then confirm the installation.
+## 📥 Download & Installation
 
-## App sources
+### Get the Latest Version
 
-The Luma Store catalog is enabled by default. Additional repositories can be enabled in the **Sources** tab.
+You can download the latest version of GeoWeather from the following platforms:
 
-| Built-in source | Default state |
-| --- | --- |
-| Luma Store | Enabled |
-| Freetime F-Droid | Disabled |
-| F-Droid | Disabled |
-| IzzyOnDroid | Disabled |
+- **GitHub Releases**: [Direct Download](https://github.com/FreetimeMaker/Luma-Store-Android/releases/latest)
+- **F-Droid**: [com.freetime.geoweather](https://f-droid.org/packages/com.freetime.lumastore)
+- **OpenApk**: [OpenAPK](https://www.openapk.net/de/lumastore/com.freetime.lumastore/)
+- **GitHub Store**: [Open in GitHub Store](https://github-store.org/app?repo=FreetimeMaker/Luma-Store-Android)
 
-Custom repositories currently use the `index-v1.json` format. Enter a repository URL or a direct URL to its `index-v1.json` file. Compatibility depends on the repository's index format and available metadata.
+<div align="center">
 
-App availability and metadata depend on the enabled sources. Google Play is currently a placeholder and does not supply apps.
+[<img src="media-resources/badge_github.png" alt="Get it on GitHub" height="82">](https://github.com/FreetimeMaker/GeoWeather/releases/latest)
 
-## Developer area
+[<img src="media-resources/badge_f_droid.png" alt="Get it on F-Droid" height="80">](https://f-droid.org/packages/com.freetime.geoweather)
 
-The **Developer** tab supports GitHub and GitLab sign-in through Supabase. After signing in, you can:
+[<img src="media-resources/badge_obtainium.png" alt="Get it on Obtainium" width="194">]()
 
-- View submissions associated with your account and their review status.
-- Read review messages and comments.
-- View notifications and mark them as read.
+[<img src="media-resources/openapk-badge.png" alt="Get it on OpenAPK.net" height="80">](https://www.openapk.net/de/geoweather/com.freetime.geoweather/)
 
-This area displays existing submissions; creating a new submission inside the Android app is not currently implemented.
+[<img src="media-resources/badge_github_store.png" alt="Get it on GitHub Store" height="70">](https://github-store.org/app?repo=FreetimeMaker/GeoWeather)
+</div>
 
-## Permissions
+## 📄 License
 
-| Permission | Purpose |
-| --- | --- |
-| Internet access | Load catalogs, images and APKs, and connect to developer services. |
-| Install packages | Request installation through Android's package installer. |
-| Query installed packages | Compare installed versions with catalog entries and offer install, update or open actions. |
-| Notifications | Show developer account notifications when permission is granted. |
+This project is licensed under the [GPL-3.0 License](LICENSE).
 
-## Build from source
+## ❤️ Support This Project
 
-The app uses Kotlin, Jetpack Compose and Material 3, with Coil for images and Supabase for developer authentication and data.
+Luma Store is 100% free and open source.
 
-1. Clone this repository.
-2. Open it in Android Studio and install the Android SDK required by [the app configuration](app/build.gradle.kts).
-3. Let Gradle sync, then run the app on a device or emulator.
-
-You can also build a debug APK with the included Gradle wrapper:
-
-```sh
-./gradlew :app:assembleDebug
-```
-
-On Windows:
-
-```powershell
-.\gradlew.bat :app:assembleDebug
-```
-
-The debug APK is written to `app/build/outputs/apk/debug/`.
-
-The GitHub workflow builds release APKs, signs them and verifies their signatures. Its signing step uses repository secrets and a separate keystore repository. Local release builds need your own signing configuration.
-
-## Contributing and support
-
-Bug reports, feature suggestions and pull requests are welcome.
-
-- [Report a bug or suggest a feature](https://github.com/FreetimeMaker/Luma-Store-New/issues)
-- [Browse the source code](https://github.com/FreetimeMaker/Luma-Store-New)
-- [Contact the maintainer](mailto:FreetimeMaker@proton.me)
-
-For bug reports, include your Android version, the Luma Store version or build commit, the affected source or app, and steps to reproduce the issue.
+- ⭐ **[Star](https://github.com/FreetimeMaker/Luma-Store-Android/star)** this repository
+- 🐛 **[Report](https://github.com/FreetimeMaker/Luma-Store-Android/issues)** bugs and issues
+- 💡 **[Suggest](https://github.com/FreetimeMaker/Luma-Store-Android/issues)** new features
+- 📧 **[Contact](mailto:FreetimeMaker@proton.me)** via Email
 
 ---
 
-Developed by [FreetimeMaker](https://github.com/FreetimeMaker).
+<div align="center">
+
+## 🤝 Contributing
+
+Contributions are welcome! Feel free to open issues or submit pull requests.
+
+### Contributors :handshake:
+
+<a href="https://github.com/FreetimeMaker/Luma-Store-Android/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=FreetimeMaker/Luma-Store-Android"  alt="Icons of contributors to Luma Store Android"/>
+</a>
+
+## 🌟 Star History
+
+<a href="https://www.star-history.com/?repos=freetimemaker%2Fluma-store-android&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=freetimemaker/luma-store-android&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=freetimemaker/luma-store-android&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=freetimemaker/luma-store-android&type=date&legend=top-left" />
+ </picture>
+</a>
+
+</div>
+
+---
+
+## 🤝 Donations
+
+If you like GeoWeather, I'd appreciate a small donation — thank you! Below are some common cryptocurrency options.
+
+<div align="center">
+
+[![Bitcoin](https://img.shields.io/badge/Bitcoin-BTC-FF9900?style=for-the-badge&logo=bitcoin&logoColor=white)](https://blockchair.com/bitcoin/address/1DsCAVrzvGokrzXpe6YR33QuTo5EppiKRE)
+[![Litecoin](https://img.shields.io/badge/Litecoin-LTC-345D9D?style=for-the-badge&logo=litecoin&logoColor=white)](https://blockchair.com/litecoin/address/LU2ERRXKTeKnzpuieQcpsBteViEY7ff5Wg)
+
+</div>
+
+Alternatively, you can also display the addresses directly:
+
+- Bitcoin (BTC): `1DsCAVrzvGokrzXpe6YR33QuTo5EppiKRE` — or open in block explorer by clicking the badge above
+- Litecoin (LTC): `LU2ERRXKTeKnzpuieQcpsBteViEY7ff5Wg` — or open in block explorer by clicking the badge above
+
+<div align="center">
+<p><i>Developed with ❤️ by FreetimeMaker</i></p>
+</div>
