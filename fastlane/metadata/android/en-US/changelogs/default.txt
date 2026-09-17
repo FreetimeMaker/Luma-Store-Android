@@ -1,1 +1,3 @@
-• Added Google Play as Source
+• Improved F-Droid metadata parsing
+• Fixed Liberapay and OpenCollective links
+• Removed Google Play source
