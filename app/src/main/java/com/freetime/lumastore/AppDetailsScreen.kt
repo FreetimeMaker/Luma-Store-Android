@@ -168,8 +168,14 @@ fun AppDetailsScreen(
                     app.donationUrls.forEach { url ->
                         DetailActionRow(stringResource(R.string.donation_link), url) { onOpenUri(url) }
                     }
-                    app.liberapay?.let { DetailValueRow(stringResource(R.string.liberapay), it) }
-                    app.openCollective?.let { DetailValueRow(stringResource(R.string.open_collective), it) }
+                    app.liberapay?.let { value ->
+                        val url = fundingUrl("https://liberapay.com/", value)
+                        DetailActionRow(stringResource(R.string.liberapay), value) { onOpenUri(url) }
+                    }
+                    app.openCollective?.let { value ->
+                        val url = fundingUrl("https://opencollective.com/", value)
+                        DetailActionRow(stringResource(R.string.open_collective), value) { onOpenUri(url) }
+                    }
                     app.bitcoin?.let { value ->
                         DetailActionRow(stringResource(R.string.bitcoin), value) {
                             onOpenUri(cryptoUri("bitcoin", value))
@@ -214,6 +220,14 @@ fun AppDetailsScreen(
             Spacer(Modifier.height(16.dp))
         }
     }
+}
+
+private fun fundingUrl(base: String, value: String): String {
+    val trimmed = value.trim()
+    if (trimmed.startsWith("https://", ignoreCase = true) || trimmed.startsWith("http://", ignoreCase = true)) {
+        return trimmed
+    }
+    return base + trimmed.trim('/')
 }
 
 private fun cryptoUri(scheme: String, value: String): String {
