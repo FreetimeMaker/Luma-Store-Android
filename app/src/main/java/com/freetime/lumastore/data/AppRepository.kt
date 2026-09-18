@@ -427,17 +427,27 @@ class AppRepository(context: Context) {
     ): String? {
         val base = source.indexUrl.substringBeforeLast('/')
 
+        fun absoluteOrRepoPath(value: String): String {
+            val icon = value.trim()
+            if (icon.startsWith("http://", true) || icon.startsWith("https://", true)) return icon
+            return "$base/${icon.trimStart('/')}"
+        }
+
         localizedIcon?.takeIf { it.isNotBlank() }?.let { icon ->
-            if (icon.startsWith("http://") || icon.startsWith("https://")) return icon
+            if (icon.startsWith("http://", true) || icon.startsWith("https://", true)) return icon
             val clean = icon.trimStart('/')
-            if (clean.contains('/')) return "$base/$clean"
-            if (!locale.isNullOrBlank()) return "$base/$packageName/$locale/$clean"
+            if (clean.contains('/')) return absoluteOrRepoPath(clean)
+
+            // F-Droid localized graphics live below <package>/<locale>/icon/.
+            // Some third-party repositories still expose the older flat layout,
+            // which is handled below through the legacy icon metadata.
+            if (!locale.isNullOrBlank()) return "$base/$packageName/$locale/icon/$clean"
         }
 
         legacyIcon?.takeIf { it.isNotBlank() }?.let { icon ->
-            if (icon.startsWith("http://") || icon.startsWith("https://")) return icon
+            if (icon.startsWith("http://", true) || icon.startsWith("https://", true)) return icon
             val clean = icon.trimStart('/')
-            if (clean.contains('/')) return "$base/$clean"
+            if (clean.contains('/')) return absoluteOrRepoPath(clean)
             return "$base/icons-160/$clean"
         }
 
