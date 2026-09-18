@@ -17,7 +17,7 @@ class NotificationSyncJobService : JobService() {
     override fun onStartJob(params: JobParameters): Boolean {
         runningJob = scope.launch {
             try {
-                val repository = DeveloperRepository()
+                val repository = DeveloperRepository(applicationContext)
                 val session = repository.savedSession()
                 if (session != null) {
                     val dashboard = repository.loadDashboard(session)
