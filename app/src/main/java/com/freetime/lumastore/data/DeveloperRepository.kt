@@ -1,5 +1,7 @@
 package com.freetime.lumastore.data
 
+import android.content.Context
+import com.freetime.lumastore.R
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.Github
 import io.github.jan.supabase.auth.providers.Gitlab
@@ -21,7 +23,8 @@ import java.util.TimeZone
 @Serializable data class DeveloperNotification(val id: String, @SerialName("submission_id") val submissionId: String, val type: String, val title: String, val message: String? = null, @SerialName("created_at") val createdAt: String? = null, @SerialName("read_at") val readAt: String? = null)
 data class DeveloperDashboard(val submissions: List<DeveloperSubmission>, val comments: List<DeveloperComment>, val notifications: List<DeveloperNotification>)
 
-class DeveloperRepository {
+class DeveloperRepository(context: Context) {
+    private val appContext = context.applicationContext
     fun sessionFlow(): Flow<DeveloperSession?> = supabase.auth.sessionStatus.map { supabase.auth.currentSessionOrNull()?.toDeveloperSession() }
     suspend fun savedSession(): DeveloperSession? { supabase.auth.awaitInitialization(); return supabase.auth.currentSessionOrNull()?.toDeveloperSession() }
     suspend fun signInWithGitHub() { supabase.auth.signInWith(Github, redirectUrl = OAUTH_REDIRECT_URL) }
@@ -45,7 +48,7 @@ class DeveloperRepository {
     private suspend fun loadNotifications(session: DeveloperSession): List<DeveloperNotification> = supabase.from("luma_developer_notifications").select(columns = Columns.list("id", "submission_id", "type", "title", "message", "created_at", "read_at")) { filter { eq("user_id", session.userId); exact("read_at", null) }; order("created_at", Order.DESCENDING); limit(100) }.decodeList()
 
     private fun io.github.jan.supabase.auth.user.UserSession.toDeveloperSession(): DeveloperSession {
-        val currentUser = user ?: error("Supabase session does not contain a user.")
+        val currentUser = user ?: error(appContext.getString(R.string.supabase_session_missing_user))
         return DeveloperSession(accessToken, refreshToken, currentUser.id, currentUser.email)
     }
 
