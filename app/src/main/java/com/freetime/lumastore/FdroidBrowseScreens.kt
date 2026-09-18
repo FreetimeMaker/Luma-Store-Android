@@ -83,8 +83,9 @@ fun FdroidDiscoverScreen(
 
     val appVariants = remember(apps) { apps.groupBy { it.id } }
     val selectedApps = remember(appVariants) {
-        appVariants.values.mapNotNull { variants -> variants.maxByOrNull { it.versionCode } }
-            .sortedBy { it.name.lowercase() }
+        appVariants.mapNotNull { (packageName, variants) ->
+            repository.preferredVariant(packageName, variants)
+        }.sortedBy { it.name.lowercase() }
     }
     val categories = remember(selectedApps) {
         selectedApps.flatMap { it.categories }.distinct().sortedBy { it.lowercase() }
@@ -182,6 +183,7 @@ fun FdroidDiscoverScreen(
     }
 
     FdroidDetailsHost(
+        repository = repository,
         selectedAppId = selectedAppId,
         appVariants = appVariants,
         installedVersionCode = installedVersionCode,
@@ -216,8 +218,9 @@ fun FdroidSearchScreen(
 
     val appVariants = remember(apps) { apps.groupBy { it.id } }
     val selectedApps = remember(appVariants) {
-        appVariants.values.mapNotNull { variants -> variants.maxByOrNull { it.versionCode } }
-            .sortedBy { it.name.lowercase() }
+        appVariants.mapNotNull { (packageName, variants) ->
+            repository.preferredVariant(packageName, variants)
+        }.sortedBy { it.name.lowercase() }
     }
     val categories = remember(selectedApps) {
         selectedApps.flatMap { it.categories }.distinct().sortedBy { it.lowercase() }
@@ -296,6 +299,7 @@ fun FdroidSearchScreen(
     }
 
     FdroidDetailsHost(
+        repository = repository,
         selectedAppId = selectedAppId,
         appVariants = appVariants,
         installedVersionCode = installedVersionCode,
@@ -410,6 +414,7 @@ private fun BrowseAppIcon(app: StoreApp, size: Int) {
 
 @Composable
 private fun FdroidDetailsHost(
+    repository: AppRepository,
     selectedAppId: String?,
     appVariants: Map<String, List<StoreApp>>,
     installedVersionCode: (String) -> Long?,
@@ -426,7 +431,9 @@ private fun FdroidDetailsHost(
     var progress by remember { mutableIntStateOf(0) }
 
     val variants = selectedAppId?.let { appVariants[it] }.orEmpty().sortedBy { it.sourceName }
-    val app = variants.firstOrNull { it.sourceName == selectedSource } ?: variants.maxByOrNull { it.versionCode }
+    val installedCodeForSelection = selectedAppId?.let(installedVersionCode)
+    val app = variants.firstOrNull { it.sourceName == selectedSource }
+        ?: selectedAppId?.let { repository.preferredVariant(it, variants, installedCodeForSelection) }
 
     if (app != null) {
         val installedCode = installedVersionCode(app.id)
@@ -451,6 +458,7 @@ private fun FdroidDetailsHost(
                 } else if (!canInstallPackages()) {
                     requestInstallPermission()
                 } else {
+                    repository.rememberPreferredSource(app)
                     installingKey = key
                     progress = 0
                     install(
@@ -461,7 +469,10 @@ private fun FdroidDetailsHost(
                     )
                 }
             },
-            onSourceSelected = { selectedSource = it.sourceName },
+            onSourceSelected = {
+                selectedSource = it.sourceName
+                repository.rememberPreferredSource(it)
+            },
             onScreenshotSelected = {},
             onOpenUri = { uriHandler.openUri(it) }
         )
