@@ -35,7 +35,8 @@ data class StoreApp(
     val litecoin: String? = null,
     val license: String? = null,
     val antiFeatures: List<String> = emptyList(),
-    val closedSource: Boolean = false
+    val closedSource: Boolean = false,
+    val versionChangelog: String? = null
 )
 
 enum class SourceType { FDROID_V1, LUMA_API }
@@ -249,6 +250,11 @@ class AppRepository(context: Context) {
                 issueTrackerUrl = stringValue(meta?.opt("issueTracker")),
                 translationUrl = stringValue(meta?.opt("translation")),
                 changelogUrl = stringValue(meta?.opt("changelog")),
+                versionChangelog = firstText(
+                    localized?.opt("whatsNew"),
+                    localized?.opt("whats_new"),
+                    meta?.opt("whatsNew")
+                ),
                 donationUrls = buildList {
                     stringValue(meta?.opt("donate"))?.let(::add)
                     addAll(jsonStringList(meta?.optJSONArray("donationLinks")))
@@ -470,6 +476,9 @@ class AppRepository(context: Context) {
                     issueTrackerUrl = item.optNullableString("issue_tracker_url"),
                     translationUrl = item.optNullableString("translation_url"),
                     changelogUrl = item.optNullableString("changelog_url"),
+                    versionChangelog = item.optNullableString("changelog")
+                        ?: item.optNullableString("release_notes")
+                        ?: item.optNullableString("whats_new"),
                     donationUrls = buildList {
                         item.optNullableString("donate_url")?.let(::add)
                         addAll(jsonStringList(item.optJSONArray("donation_urls")))
@@ -535,6 +544,7 @@ class AppRepository(context: Context) {
             put("changelogUrl", app.changelogUrl); put("donationUrls", JSONArray(app.donationUrls)); put("liberapay", app.liberapay)
             put("openCollective", app.openCollective); put("bitcoin", app.bitcoin); put("litecoin", app.litecoin)
             put("license", app.license); put("antiFeatures", JSONArray(app.antiFeatures)); put("closedSource", app.closedSource)
+            put("versionChangelog", app.versionChangelog)
         }) }
         cachePreferences.edit().putString(CACHE_KEY_APPS, array.toString()).putLong(CACHE_KEY_TIMESTAMP, System.currentTimeMillis()).apply()
     }
@@ -556,7 +566,7 @@ class AppRepository(context: Context) {
                     item.optNullableString("translationUrl"), item.optNullableString("changelogUrl"), jsonStringList(item.optJSONArray("donationUrls")),
                     item.optNullableString("liberapay"), item.optNullableString("openCollective"), item.optNullableString("bitcoin"),
                     item.optNullableString("litecoin"), item.optNullableString("license"), jsonStringList(item.optJSONArray("antiFeatures")),
-                    item.optBoolean("closedSource", false)
+                    item.optBoolean("closedSource", false), item.optNullableString("versionChangelog")
                 ))
             }
         }
@@ -580,7 +590,7 @@ class AppRepository(context: Context) {
     companion object {
         private const val CACHE_PREFERENCES = "app_cache"
         private const val SOURCE_PREFERENCES = "app_sources"
-        private const val CACHE_KEY_APPS = "apps_validated_download_urls_v2"
+        private const val CACHE_KEY_APPS = "apps_validated_download_urls_v3"
         private const val CACHE_KEY_TIMESTAMP = "timestamp"
         private const val CUSTOM_SOURCES_KEY = "custom_sources"
     }
