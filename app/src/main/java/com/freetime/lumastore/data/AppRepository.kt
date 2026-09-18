@@ -56,10 +56,10 @@ class AppRepository(context: Context) {
     @Volatile private var memoryApps: List<StoreApp>? = null
 
     private val defaultSources = listOf(
-        AppSource("Freetime F-Droid", "https://fdroid.free-time.me/repo/index-v1.json", enabledByDefault = false),
-        AppSource("F-Droid", "https://f-droid.org/repo/index-v1.json", enabledByDefault = false),
-        AppSource("IzzyOnDroid", "https://apt.izzysoft.de/fdroid/repo/index-v1.json", enabledByDefault = false),
-        AppSource("Luma Store", "https://api.free-time.me/v2/lumastore/apps?platform=android", SourceType.LUMA_API)
+        AppSource(appContext.getString(R.string.source_freetime_fdroid), "https://fdroid.free-time.me/repo/index-v1.json", enabledByDefault = false),
+        AppSource(appContext.getString(R.string.source_fdroid), "https://f-droid.org/repo/index-v1.json", enabledByDefault = false),
+        AppSource(appContext.getString(R.string.source_izzyondroid), "https://apt.izzysoft.de/fdroid/repo/index-v1.json", enabledByDefault = false),
+        AppSource(appContext.getString(R.string.source_luma_store), "https://api.free-time.me/v2/lumastore/apps?platform=android", SourceType.LUMA_API)
     )
 
     val sources: List<AppSource> get() = defaultSources + loadCustomSources()
@@ -572,7 +572,7 @@ class AppRepository(context: Context) {
         connection.setRequestProperty("User-Agent", "Luma-Store-Android")
         return try {
             val code = connection.responseCode
-            check(code in 200..299) { "HTTP $code for $url" }
+            check(code in 200..299) { appContext.getString(R.string.http_request_failed, code, url) }
             connection.inputStream.bufferedReader().use { it.readText() }
         } finally { connection.disconnect() }
     }
