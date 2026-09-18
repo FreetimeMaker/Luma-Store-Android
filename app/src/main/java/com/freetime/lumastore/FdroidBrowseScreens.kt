@@ -30,6 +30,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
@@ -93,8 +96,10 @@ fun FdroidDiscoverScreen(
     }
 
 
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState())
+
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name), maxLines = 1) },
@@ -103,6 +108,7 @@ fun FdroidDiscoverScreen(
                         Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.refresh))
                     }
                 }
+                scrollBehavior = scrollBehavior
             )
         }
     ) { padding ->
