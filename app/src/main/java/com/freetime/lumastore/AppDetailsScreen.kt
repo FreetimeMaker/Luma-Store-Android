@@ -45,6 +45,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
@@ -54,6 +55,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.freetime.lumastore.data.StoreApp
+import com.freetime.lumastore.ui.glass.lumaLiquidGlass
+import com.freetime.lumastore.ui.glass.rememberLumaBackdrop
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,6 +76,8 @@ fun AppDetailsScreen(
     val topAppBarState = rememberTopAppBarState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(topAppBarState)
     val scrollState = rememberScrollState()
+    val backdrop = rememberLumaBackdrop()
+    val glassShape = RoundedCornerShape(20.dp)
 
     Scaffold(
         modifier = Modifier
@@ -122,7 +127,11 @@ fun AppDetailsScreen(
                 ElevatedCard(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                        .lumaLiquidGlass(backdrop, glassShape, interactive = false),
+                    shape = glassShape,
+                    colors = CardDefaults.elevatedCardColors(containerColor = Color.Transparent),
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
                 ) {
                     Text(
                         stringResource(R.string.whats_new_version, app.version),
@@ -177,7 +186,11 @@ fun AppDetailsScreen(
                 ElevatedCard(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                        .lumaLiquidGlass(backdrop, glassShape, interactive = false),
+                    shape = glassShape,
+                    colors = CardDefaults.elevatedCardColors(containerColor = Color.Transparent),
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
                 ) {
                     Text(
                         stringResource(R.string.donations),
@@ -237,7 +250,7 @@ fun AppDetailsScreen(
                 )
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(96.dp))
         }
     }
 }
