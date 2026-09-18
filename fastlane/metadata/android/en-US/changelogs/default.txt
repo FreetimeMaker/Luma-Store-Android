@@ -1,2 +1,1 @@
-• Use Liquid Glass everywhere
 • Fixed the bottom nav bar
