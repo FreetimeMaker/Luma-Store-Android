@@ -53,6 +53,7 @@ class AppRepository(context: Context) {
     private val appContext = context.applicationContext
     private val cachePreferences = appContext.getSharedPreferences(CACHE_PREFERENCES, Context.MODE_PRIVATE)
     private val sourcePreferences = appContext.getSharedPreferences(SOURCE_PREFERENCES, Context.MODE_PRIVATE)
+    private val appSourcePreferences = appContext.getSharedPreferences(APP_SOURCE_PREFERENCES, Context.MODE_PRIVATE)
 
     @Volatile private var memoryApps: List<StoreApp>? = null
 
@@ -75,6 +76,31 @@ class AppRepository(context: Context) {
 
     fun enabledSources(): List<AppSource> = sources.filter(::isSourceEnabled)
     fun isCustomSource(source: AppSource): Boolean = source.custom
+
+    fun preferredSourceName(packageName: String): String? =
+        appSourcePreferences.getString(APP_SOURCE_KEY_PREFIX + packageName, null)
+
+    fun rememberPreferredSource(app: StoreApp) {
+        appSourcePreferences.edit()
+            .putString(APP_SOURCE_KEY_PREFIX + app.id, app.sourceName)
+            .apply()
+    }
+
+    fun preferredVariant(packageName: String, variants: List<StoreApp>, installedVersionCode: Long? = null): StoreApp? {
+        val preferredSource = preferredSourceName(packageName)
+        variants.firstOrNull { it.sourceName == preferredSource }?.let { return it }
+
+        if (variants.size == 1) return variants.first()
+
+        if (installedVersionCode != null) {
+            variants.firstOrNull { it.versionCode == installedVersionCode }?.let {
+                rememberPreferredSource(it)
+                return it
+            }
+        }
+
+        return variants.maxByOrNull { it.versionCode }
+    }
 
     fun addCustomSource(name: String, repositoryUrl: String): Result<AppSource> = runCatching {
         val cleanName = name.trim()
@@ -590,6 +616,8 @@ class AppRepository(context: Context) {
     companion object {
         private const val CACHE_PREFERENCES = "app_cache"
         private const val SOURCE_PREFERENCES = "app_sources"
+        private const val APP_SOURCE_PREFERENCES = "luma_store_source_preferences"
+        private const val APP_SOURCE_KEY_PREFIX = "source_"
         private const val CACHE_KEY_APPS = "apps_validated_download_urls_v3"
         private const val CACHE_KEY_TIMESTAMP = "timestamp"
         private const val CUSTOM_SOURCES_KEY = "custom_sources"
