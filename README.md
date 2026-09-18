@@ -13,6 +13,12 @@
 <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" alt="App Details"  width="19%">
 </div>
 
+# Translations
+<div align="center">
+
+[![Translations Status](https://translate.codeberg.org/widget/luma-store/luma-store/287x66-grey.png)](https://translate.codeberg.org/engage/luma-store/)
+</div>
+
 # Repository, Build and App Informations
 <div align="center">
 

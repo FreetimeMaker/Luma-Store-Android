@@ -1,2 +1,3 @@
-• Improved F-Droid metadata parsing
-• Made the Dev Screen and Notifications only on new events
+• Added Liquid Glass UI
+• Made Translations possible
+• Updated the App Screen that the Changelog will always be shown for that version
