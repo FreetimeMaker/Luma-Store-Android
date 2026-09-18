@@ -1,3 +1,2 @@
 • Improved F-Droid metadata parsing
-• Fixed Liberapay and OpenCollective links
-• Removed Google Play source
+• Made the Dev Screen and Notifications only on new events
