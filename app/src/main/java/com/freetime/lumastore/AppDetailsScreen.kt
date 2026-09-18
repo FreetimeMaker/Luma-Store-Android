@@ -210,25 +210,31 @@ fun AppDetailsScreen(
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
-                    app.donationUrls.forEach { url ->
-                        DetailActionRow(stringResource(R.string.donation_link), url, Icons.Filled.AttachMoney) { onOpenUri(url) }
-                    }
-                    app.liberapay?.let { value ->
-                        val url = fundingUrl("https://liberapay.com/", value)
-                        DetailActionRow(stringResource(R.string.liberapay), value, Icons.Filled.AttachMoney) { onOpenUri(url) }
-                    }
-                    app.openCollective?.let { value ->
-                        val url = fundingUrl("https://opencollective.com/", value)
-                        DetailActionRow(stringResource(R.string.open_collective), value, Icons.Filled.AttachMoney) { onOpenUri(url) }
-                    }
-                    app.bitcoin?.let { value ->
-                        DetailActionRow(stringResource(R.string.bitcoin), value, Icons.Filled.AttachMoney) {
-                            onOpenUri(cryptoUri("bitcoin", value))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        app.donationUrls.forEach { url ->
+                            DetailActionItem(stringResource(R.string.donation_link), Icons.Filled.AttachMoney) { onOpenUri(url) }
                         }
-                    }
-                    app.litecoin?.let { value ->
-                        DetailActionRow(stringResource(R.string.litecoin), value, Icons.Filled.AttachMoney) {
-                            onOpenUri(cryptoUri("litecoin", value))
+                        app.liberapay?.let { value ->
+                            val url = fundingUrl("https://liberapay.com/", value)
+                            DetailActionItem(stringResource(R.string.liberapay), Icons.Filled.AttachMoney) { onOpenUri(url) }
+                        }
+                        app.openCollective?.let { value ->
+                            val url = fundingUrl("https://opencollective.com/", value)
+                            DetailActionItem(stringResource(R.string.open_collective), Icons.Filled.AttachMoney) { onOpenUri(url) }
+                        }
+                        app.bitcoin?.let { value ->
+                            DetailActionItem(stringResource(R.string.bitcoin), Icons.Filled.AttachMoney) {
+                                onOpenUri(cryptoUri("bitcoin", value))
+                            }
+                        }
+                        app.litecoin?.let { value ->
+                            DetailActionItem(stringResource(R.string.litecoin), Icons.Filled.AttachMoney) {
+                                onOpenUri(cryptoUri("litecoin", value))
+                            }
                         }
                     }
                     Spacer(Modifier.height(8.dp))
@@ -253,8 +259,14 @@ fun AppDetailsScreen(
             if (!app.authorName.isNullOrBlank() || !app.authorEmail.isNullOrBlank() || !app.authorWebsite.isNullOrBlank()) {
                 DetailsExpandableSection(stringResource(R.string.developer_contact)) {
                     app.authorName?.let { DetailValueRow(stringResource(R.string.author), it) }
-                    app.authorWebsite?.let { DetailActionRow(stringResource(R.string.author_website), it, Icons.Filled.Language) { onOpenUri(it) } }
-                    app.authorEmail?.let { DetailActionRow(stringResource(R.string.email), it, Icons.Filled.Email) { onOpenUri("mailto:$it") } }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        app.authorWebsite?.let { DetailActionItem(stringResource(R.string.author_website), Icons.Filled.Language) { onOpenUri(it) } }
+                        app.authorEmail?.let { DetailActionItem(stringResource(R.string.email), Icons.Filled.Email) { onOpenUri("mailto:$it") } }
+                    }
                 }
             }
 
