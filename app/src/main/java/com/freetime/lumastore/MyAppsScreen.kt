@@ -55,13 +55,11 @@ fun MyAppsScreen(
     val allVariants = remember(repository, installedAppsRevision) {
         repository.loadCachedApps().groupBy { it.id }
     }
-    val allApps = remember(allVariants) {
-        allVariants.values.mapNotNull { variants -> variants.maxByOrNull { it.versionCode } }
-    }
-    val installed = remember(allApps, installedAppsRevision) {
-        allApps.mapNotNull { app ->
-            val code = installedVersionCode(app.id) ?: return@mapNotNull null
-            InstalledStoreApp(app, code, installedVersionName(app.id))
+    val installed = remember(allVariants, installedAppsRevision) {
+        allVariants.mapNotNull { (packageName, variants) ->
+            val code = installedVersionCode(packageName) ?: return@mapNotNull null
+            val app = repository.preferredVariant(packageName, variants, code) ?: return@mapNotNull null
+            InstalledStoreApp(app, code, installedVersionName(packageName))
         }.sortedBy { it.app.name.lowercase() }
     }
     val updates = remember(installed) { installed.filter { it.app.versionCode > it.installedCode } }
@@ -82,6 +80,7 @@ fun MyAppsScreen(
             requestInstallPermission()
             return
         }
+        repository.rememberPreferredSource(item.app)
         installingId = item.app.id
         installProgress = 0
         install(
@@ -174,8 +173,9 @@ fun MyAppsScreen(
     }
 
     val variants = selectedAppId?.let { allVariants[it] }.orEmpty().sortedBy { it.sourceName }
+    val selectedInstalledCode = selectedAppId?.let(installedVersionCode)
     val selectedApp = variants.firstOrNull { it.sourceName == selectedSource }
-        ?: variants.maxByOrNull { it.versionCode }
+        ?: selectedAppId?.let { repository.preferredVariant(it, variants, selectedInstalledCode) }
 
     if (selectedApp != null) {
         val installedCode = installedVersionCode(selectedApp.id)
@@ -200,6 +200,7 @@ fun MyAppsScreen(
                 } else if (!canInstallPackages()) {
                     requestInstallPermission()
                 } else {
+                    repository.rememberPreferredSource(selectedApp)
                     installingId = selectedApp.id
                     installProgress = 0
                     install(
@@ -216,7 +217,10 @@ fun MyAppsScreen(
                     )
                 }
             },
-            onSourceSelected = { selectedSource = it.sourceName },
+            onSourceSelected = {
+                selectedSource = it.sourceName
+                repository.rememberPreferredSource(it)
+            },
             onScreenshotSelected = {},
             onOpenUri = { uriHandler.openUri(it) }
         )
