@@ -21,6 +21,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
@@ -28,6 +37,7 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -46,6 +56,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
@@ -200,23 +211,23 @@ fun AppDetailsScreen(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
                     app.donationUrls.forEach { url ->
-                        DetailActionRow(stringResource(R.string.donation_link), url) { onOpenUri(url) }
+                        DetailActionRow(stringResource(R.string.donation_link), url, Icons.Filled.AttachMoney) { onOpenUri(url) }
                     }
                     app.liberapay?.let { value ->
                         val url = fundingUrl("https://liberapay.com/", value)
-                        DetailActionRow(stringResource(R.string.liberapay), value) { onOpenUri(url) }
+                        DetailActionRow(stringResource(R.string.liberapay), value, Icons.Filled.AttachMoney) { onOpenUri(url) }
                     }
                     app.openCollective?.let { value ->
                         val url = fundingUrl("https://opencollective.com/", value)
-                        DetailActionRow(stringResource(R.string.open_collective), value) { onOpenUri(url) }
+                        DetailActionRow(stringResource(R.string.open_collective), value, Icons.Filled.AttachMoney) { onOpenUri(url) }
                     }
                     app.bitcoin?.let { value ->
-                        DetailActionRow(stringResource(R.string.bitcoin), value) {
+                        DetailActionRow(stringResource(R.string.bitcoin), value, Icons.Filled.AttachMoney) {
                             onOpenUri(cryptoUri("bitcoin", value))
                         }
                     }
                     app.litecoin?.let { value ->
-                        DetailActionRow(stringResource(R.string.litecoin), value) {
+                        DetailActionRow(stringResource(R.string.litecoin), value, Icons.Filled.AttachMoney) {
                             onOpenUri(cryptoUri("litecoin", value))
                         }
                     }
@@ -225,19 +236,19 @@ fun AppDetailsScreen(
             }
 
             DetailsExpandableSection(stringResource(R.string.links)) {
-                app.websiteUrl?.let { DetailActionRow(stringResource(R.string.website), it) { onOpenUri(it) } }
-                app.issueTrackerUrl?.let { DetailActionRow(stringResource(R.string.issue_tracker), it) { onOpenUri(it) } }
-                app.changelogUrl?.let { DetailActionRow(stringResource(R.string.changelog), it) { onOpenUri(it) } }
-                app.translationUrl?.let { DetailActionRow(stringResource(R.string.translation), it) { onOpenUri(it) } }
-                app.sourceCodeUrl?.let { DetailActionRow(stringResource(R.string.source_code), it) { onOpenUri(it) } }
+                app.websiteUrl?.let { DetailActionRow(stringResource(R.string.website), it, Icons.Filled.Language) { onOpenUri(it) } }
+                app.issueTrackerUrl?.let { DetailActionRow(stringResource(R.string.issue_tracker), it, Icons.Filled.BugReport) { onOpenUri(it) } }
+                app.changelogUrl?.let { DetailActionRow(stringResource(R.string.changelog), it, Icons.Filled.History) { onOpenUri(it) } }
+                app.translationUrl?.let { DetailActionRow(stringResource(R.string.translation), it, Icons.Filled.Translate) { onOpenUri(it) } }
+                app.sourceCodeUrl?.let { DetailActionRow(stringResource(R.string.source_code), it, Icons.Filled.Code) { onOpenUri(it) } }
                 app.license?.let { DetailValueRow(stringResource(R.string.license), it) }
             }
 
             if (!app.authorName.isNullOrBlank() || !app.authorEmail.isNullOrBlank() || !app.authorWebsite.isNullOrBlank()) {
                 DetailsExpandableSection(stringResource(R.string.developer_contact)) {
                     app.authorName?.let { DetailValueRow(stringResource(R.string.author), it) }
-                    app.authorWebsite?.let { DetailActionRow(stringResource(R.string.author_website), it) { onOpenUri(it) } }
-                    app.authorEmail?.let { DetailActionRow(stringResource(R.string.email), it) { onOpenUri("mailto:$it") } }
+                    app.authorWebsite?.let { DetailActionRow(stringResource(R.string.author_website), it, Icons.Filled.Language) { onOpenUri(it) } }
+                    app.authorEmail?.let { DetailActionRow(stringResource(R.string.email), it, Icons.Filled.Email) { onOpenUri("mailto:$it") } }
                 }
             }
 
@@ -375,7 +386,7 @@ private fun DetailValueRow(label: String, value: String) {
 }
 
 @Composable
-private fun DetailActionRow(label: String, value: String, onClick: () -> Unit) {
+private fun DetailActionRow(label: String, value: String, icon: ImageVector = Icons.Filled.OpenInNew, onClick: () -> Unit) {
     // Keep URLs, wallet addresses and e-mail addresses out of the visible UI.
     // The complete target is still used by the click action.
     Column(
@@ -385,6 +396,13 @@ private fun DetailActionRow(label: String, value: String, onClick: () -> Unit) {
             .padding(horizontal = 12.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(Modifier.height(6.dp))
         Text(
             text = label,
             style = MaterialTheme.typography.bodyLarge,
