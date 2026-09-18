@@ -1,3 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_name">Luma Store</string>
+    <string name="developer">Entwickler</string>
+    <string name="settings">Einstellungen</string>
+    <string name="search">Suchen</string>
 </resources>
