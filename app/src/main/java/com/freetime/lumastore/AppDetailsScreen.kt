@@ -236,11 +236,17 @@ fun AppDetailsScreen(
             }
 
             DetailsExpandableSection(stringResource(R.string.links)) {
-                app.websiteUrl?.let { DetailActionRow(stringResource(R.string.website), it, Icons.Filled.Language) { onOpenUri(it) } }
-                app.issueTrackerUrl?.let { DetailActionRow(stringResource(R.string.issue_tracker), it, Icons.Filled.BugReport) { onOpenUri(it) } }
-                app.changelogUrl?.let { DetailActionRow(stringResource(R.string.changelog), it, Icons.Filled.History) { onOpenUri(it) } }
-                app.translationUrl?.let { DetailActionRow(stringResource(R.string.translation), it, Icons.Filled.Translate) { onOpenUri(it) } }
-                app.sourceCodeUrl?.let { DetailActionRow(stringResource(R.string.source_code), it, Icons.Filled.Code) { onOpenUri(it) } }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    app.websiteUrl?.let { DetailActionItem(stringResource(R.string.website), Icons.Filled.Language) { onOpenUri(it) } }
+                    app.issueTrackerUrl?.let { DetailActionItem(stringResource(R.string.issue_tracker), Icons.Filled.BugReport) { onOpenUri(it) } }
+                    app.changelogUrl?.let { DetailActionItem(stringResource(R.string.changelog), Icons.Filled.History) { onOpenUri(it) } }
+                    app.translationUrl?.let { DetailActionItem(stringResource(R.string.translation), Icons.Filled.Translate) { onOpenUri(it) } }
+                    app.sourceCodeUrl?.let { DetailActionItem(stringResource(R.string.source_code), Icons.Filled.Code) { onOpenUri(it) } }
+                }
                 app.license?.let { DetailValueRow(stringResource(R.string.license), it) }
             }
 
@@ -382,6 +388,32 @@ private fun DetailValueRow(label: String, value: String) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(2.dp))
         Text(value, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@Composable
+private fun DetailActionItem(label: String, icon: ImageVector, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .widthIn(min = 56.dp, max = 76.dp)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 6.dp, vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Center,
+            maxLines = 2
+        )
     }
 }
 
