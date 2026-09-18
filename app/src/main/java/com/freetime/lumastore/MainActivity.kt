@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -42,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -101,7 +103,7 @@ class MainActivity : ComponentActivity() {
 
             LumaStoreTheme {
                 val backdrop = rememberLumaBackdrop()
-                val navigationShape = RoundedCornerShape(28.dp)
+                val navigationShape = RoundedCornerShape(32.dp)
 
                 Scaffold(
                     containerColor = MaterialTheme.colorScheme.background,
@@ -109,7 +111,8 @@ class MainActivity : ComponentActivity() {
                         NavigationBar(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                                .padding(horizontal = 14.dp, vertical = 10.dp)
+                                .heightIn(min = 72.dp)
                                 .lumaLiquidGlass(
                                     backdrop = backdrop,
                                     shape = navigationShape,
@@ -265,9 +268,16 @@ class MainActivity : ComponentActivity() {
             selected = selected,
             onClick = onClick,
             icon = icon,
-            label = { Text(label) },
+            label = {
+                Text(
+                    label,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                )
+            },
+            alwaysShowLabel = false,
             colors = NavigationBarItemDefaults.colors(
-                indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.42f),
+                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
                 selectedTextColor = MaterialTheme.colorScheme.primary,
                 selectedIconColor = MaterialTheme.colorScheme.primary
             )
