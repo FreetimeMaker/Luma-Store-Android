@@ -62,7 +62,7 @@ private enum class MainScreen { DISCOVER, SEARCH, MY_APPS, SOURCES, DEVELOPER }
 
 class MainActivity : ComponentActivity() {
     private val repository by lazy { AppRepository(applicationContext) }
-    private val developerRepository by lazy { DeveloperRepository() }
+    private val developerRepository by lazy { DeveloperRepository(applicationContext) }
     private val installedAppsRevision = mutableIntStateOf(0)
     private val sourcesRevision = mutableIntStateOf(0)
 
