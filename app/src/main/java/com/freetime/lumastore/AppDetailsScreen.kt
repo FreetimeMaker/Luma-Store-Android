@@ -89,7 +89,7 @@ fun AppDetailsScreen(
                 },
                 navigationIcon = {
                     TextButton(onClick = onBack) {
-                        Text("‹", style = MaterialTheme.typography.headlineSmall)
+                        Text(stringResource(R.string.symbol_back_chevron), style = MaterialTheme.typography.headlineSmall)
                     }
                 },
                 scrollBehavior = scrollBehavior
@@ -321,7 +321,7 @@ private fun DetailsExpandableSection(title: String, content: @Composable ColumnS
         ElevatedCard(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.elevatedCardColors()) {
             Row(modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                Text(if (expanded) "⌃" else "⌄")
+                Text(if (expanded) stringResource(R.string.symbol_collapse) else stringResource(R.string.symbol_expand))
             }
             if (expanded) {
                 HorizontalDivider()
