@@ -119,7 +119,7 @@ fun FdroidDiscoverScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
-                contentPadding = PaddingValues(bottom = 24.dp)
+                contentPadding = PaddingValues(bottom = 88.dp)
             ) {
                 if (shownApps.isNotEmpty()) {
                     item("discover_carousel") {
@@ -256,7 +256,7 @@ fun FdroidSearchScreen(
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(bottom = 24.dp)
+            contentPadding = PaddingValues(bottom = 88.dp)
         ) {
             if (query.isBlank()) {
                 if (matchingCategories.isNotEmpty()) {
