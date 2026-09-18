@@ -53,9 +53,7 @@ class DeveloperRepository(context: Context) {
             .decodeList()
 
         val canonicalSubmissionIds = supabase.from("store_apps")
-            .select(columns = Columns.list("luma_submission_id")) {
-                filter { not("luma_submission_id", io.github.jan.supabase.postgrest.query.filter.FilterOperator.IS, "null") }
-            }
+            .select(columns = Columns.list("luma_submission_id"))
             .decodeList<StoreAppSubmissionRef>()
             .mapNotNull { it.lumaSubmissionId }
             .toSet()
