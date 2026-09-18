@@ -105,8 +105,13 @@ class MainActivity : ComponentActivity() {
                 val backdrop = rememberLumaBackdrop()
                 val navigationShape = RoundedCornerShape(32.dp)
 
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .lumaBackdropSource(backdrop)
+                ) {
                 Scaffold(
-                    containerColor = MaterialTheme.colorScheme.background,
+                    containerColor = Color.Transparent,
                     bottomBar = {
                         NavigationBar(
                             modifier = Modifier
@@ -183,7 +188,6 @@ class MainActivity : ComponentActivity() {
                         Modifier
                             .fillMaxSize()
                             .padding(innerPadding)
-                            .lumaBackdropSource(backdrop)
                     ) {
                         PersistentScreen(visible = screen == MainScreen.DISCOVER) {
                             key(currentSourcesRevision) {
@@ -252,6 +256,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
+                }
                 }
             }
         }
