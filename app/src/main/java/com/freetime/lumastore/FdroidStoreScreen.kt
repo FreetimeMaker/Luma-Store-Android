@@ -519,7 +519,7 @@ private fun FdroidAppCarousel(
                 modifier = Modifier.size(36.dp).clickable(onClick = onTitleTap)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text("›", style = MaterialTheme.typography.titleLarge)
+                    Text(stringResource(R.string.symbol_forward_chevron), style = MaterialTheme.typography.titleLarge)
                 }
             }
         }
