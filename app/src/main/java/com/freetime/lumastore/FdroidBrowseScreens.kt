@@ -107,7 +107,7 @@ fun FdroidDiscoverScreen(
                     IconButton(onClick = { refreshKey++ }) {
                         Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.refresh))
                     }
-                }
+                },
                 scrollBehavior = scrollBehavior
             )
         }
