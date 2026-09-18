@@ -21,6 +21,7 @@ import java.util.TimeZone
 @Serializable data class DeveloperSubmission(val id: String, val name: String, val status: String, @SerialName("review_message") val reviewMessage: String? = null, val version: String? = null, @SerialName("package_name") val packageName: String? = null, @SerialName("submitted_at") val submittedAt: String? = null, @SerialName("status_updated_at") val statusUpdatedAt: String? = null)
 @Serializable data class DeveloperComment(val id: String, @SerialName("submission_id") val submissionId: String, val body: String, @SerialName("created_at") val createdAt: String? = null, @SerialName("user_id") val userId: String? = null)
 @Serializable data class DeveloperNotification(val id: String, @SerialName("submission_id") val submissionId: String, val type: String, val title: String, val message: String? = null, @SerialName("created_at") val createdAt: String? = null, @SerialName("read_at") val readAt: String? = null)
+@Serializable private data class StoreAppSubmissionRef(@SerialName("luma_submission_id") val lumaSubmissionId: String? = null)
 data class DeveloperDashboard(val submissions: List<DeveloperSubmission>, val comments: List<DeveloperComment>, val notifications: List<DeveloperNotification>)
 
 class DeveloperRepository(context: Context) {
@@ -43,7 +44,26 @@ class DeveloperRepository(context: Context) {
         supabase.from("luma_developer_notifications").update({ set("read_at", now) }) { filter { eq("id", notificationId) } }
     }
 
-    private suspend fun loadSubmissions(session: DeveloperSession): List<DeveloperSubmission> = supabase.from("luma_submissions").select(columns = Columns.list("id", "name", "status", "review_message", "version", "package_name", "submitted_at", "status_updated_at")) { filter { eq("user_id", session.userId) }; order("submitted_at", Order.DESCENDING) }.decodeList()
+    private suspend fun loadSubmissions(session: DeveloperSession): List<DeveloperSubmission> {
+        val submissions: List<DeveloperSubmission> = supabase.from("luma_submissions")
+            .select(columns = Columns.list("id", "name", "status", "review_message", "version", "package_name", "submitted_at", "status_updated_at")) {
+                filter { eq("user_id", session.userId) }
+                order("submitted_at", Order.DESCENDING)
+            }
+            .decodeList()
+
+        val canonicalSubmissionIds = supabase.from("store_apps")
+            .select(columns = Columns.list("luma_submission_id")) {
+                filter { not("luma_submission_id", io.github.jan.supabase.postgrest.query.filter.FilterOperator.IS, "null") }
+            }
+            .decodeList<StoreAppSubmissionRef>()
+            .mapNotNull { it.lumaSubmissionId }
+            .toSet()
+
+        return submissions.filter { submission ->
+            submission.status != "Approved" || submission.id in canonicalSubmissionIds
+        }
+    }
     private suspend fun loadComments(submissionIds: List<String>): List<DeveloperComment> = supabase.from("luma_review_comments").select(columns = Columns.list("id", "submission_id", "body", "created_at", "user_id")) { filter { isIn("submission_id", submissionIds) }; order("created_at", Order.DESCENDING) }.decodeList()
     private suspend fun loadNotifications(session: DeveloperSession): List<DeveloperNotification> = supabase.from("luma_developer_notifications").select(columns = Columns.list("id", "submission_id", "type", "title", "message", "created_at", "read_at")) { filter { eq("user_id", session.userId); exact("read_at", null) }; order("created_at", Order.DESCENDING); limit(100) }.decodeList()
 
