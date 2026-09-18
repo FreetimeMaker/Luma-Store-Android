@@ -126,7 +126,7 @@ Contributions are welcome! Feel free to open issues or submit pull requests.
 
 ## 🤝 Donations
 
-If you like GeoWeather, I'd appreciate a small donation — thank you! Below are some common cryptocurrency options.
+If you like Luma Store, I'd appreciate a small donation — thank you! Below are some common cryptocurrency options.
 
 <div align="center">
 
