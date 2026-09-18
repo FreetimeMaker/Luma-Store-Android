@@ -57,8 +57,8 @@ fun Modifier.lumaLiquidGlass(
     shape: Shape,
     interactive: Boolean = true,
 ): Modifier {
-    val fallback = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.82f)
-    val outline = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
+    val fallback = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.72f)
+    val outline = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f)
     val glassScrim = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) {
         Color.Black
     } else {
@@ -84,11 +84,11 @@ fun Modifier.lumaLiquidGlass(
                 val pressed = press.value
                 vibrancy()
                 colorControls(
-                    brightness = 0.05f,
-                    contrast = 1f,
-                    saturation = 1.5f,
+                    brightness = 0.08f,
+                    contrast = 1.08f,
+                    saturation = 1.7f,
                 )
-                blur(10.dp.toPx() + 2.dp.toPx() * pressed)
+                blur(18.dp.toPx() + 3.dp.toPx() * pressed)
                 lens(
                     size.minDimension / 4f + 2.dp.toPx() * pressed,
                     size.minDimension / 2f,
@@ -96,7 +96,7 @@ fun Modifier.lumaLiquidGlass(
                 )
             },
             onDrawSurface = {
-                drawRect(glassScrim.copy(alpha = 0.16f))
+                drawRect(glassScrim.copy(alpha = 0.22f))
                 val pressed = press.value
                 if (pressed > 0f) {
                     drawRect(
