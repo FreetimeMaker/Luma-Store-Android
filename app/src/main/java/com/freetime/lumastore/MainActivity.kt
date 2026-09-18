@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -101,7 +102,7 @@ class MainActivity : ComponentActivity() {
 
             LumaStoreTheme {
                 val backdrop = rememberLumaBackdrop()
-                val navigationShape = RoundedCornerShape(32.dp)
+                val navigationShape = RoundedCornerShape(26.dp)
 
                 Scaffold(
                     containerColor = MaterialTheme.colorScheme.background,
@@ -109,7 +110,8 @@ class MainActivity : ComponentActivity() {
                         NavigationBar(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                                .height(64.dp)
                                 .lumaLiquidGlass(
                                     backdrop = backdrop,
                                     shape = navigationShape,
@@ -175,10 +177,11 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     }
-                ) { _ ->
+                ) { innerPadding ->
                     Box(
                         Modifier
                             .fillMaxSize()
+                            .padding(innerPadding)
                             .lumaBackdropSource(backdrop)
                     ) {
                         PersistentScreen(visible = screen == MainScreen.DISCOVER) {
