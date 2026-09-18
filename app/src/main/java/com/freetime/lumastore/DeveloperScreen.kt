@@ -12,13 +12,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.core.content.ContextCompat
 import com.freetime.lumastore.data.*
 import com.freetime.lumastore.notifications.SystemNotificationManager
+import com.freetime.lumastore.ui.glass.lumaLiquidGlass
+import com.freetime.lumastore.ui.glass.rememberLumaBackdrop
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -28,6 +32,7 @@ fun DeveloperScreen(
     onBack: () -> Unit,
     active: Boolean = true
 ) {
+    val backdrop = rememberLumaBackdrop()
     val context = LocalContext.current
     val systemNotifications = remember(context) { SystemNotificationManager(context) }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -137,8 +142,9 @@ fun DeveloperScreen(
     val comments = data?.comments?.groupBy { it.submissionId }.orEmpty()
 
     LazyColumn(
-        Modifier.fillMaxSize().padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        Modifier.fillMaxSize().padding(horizontal = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(bottom = 88.dp)
     ) {
         item {
             Row(
@@ -207,8 +213,15 @@ fun DeveloperScreen(
 
 @Composable
 private fun NotificationCard(notification: DeveloperNotification, onMarkRead: (() -> Unit)?) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    val backdrop = rememberLumaBackdrop()
+    val shape = RoundedCornerShape(18.dp)
+    Card(
+        modifier = Modifier.fillMaxWidth().lumaLiquidGlass(backdrop, shape, interactive = false),
+        shape = shape,
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                 Text(notification.title, fontWeight = FontWeight.SemiBold)
                 if (notification.readAt == null) Text(stringResource(R.string.new_label), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
@@ -222,8 +235,15 @@ private fun NotificationCard(notification: DeveloperNotification, onMarkRead: ((
 
 @Composable
 private fun SubmissionCard(submission: DeveloperSubmission, comments: List<String>) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+    val backdrop = rememberLumaBackdrop()
+    val shape = RoundedCornerShape(18.dp)
+    Card(
+        modifier = Modifier.fillMaxWidth().lumaLiquidGlass(backdrop, shape, interactive = false),
+        shape = shape,
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(submission.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text(stringResource(R.string.status_value, localizedSubmissionStatus(submission.status)), color = statusColor(submission.status))
             submission.version?.let { Text(stringResource(R.string.version_value, it), style = MaterialTheme.typography.bodySmall) }
