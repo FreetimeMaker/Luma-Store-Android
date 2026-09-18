@@ -131,6 +131,7 @@ fun FdroidStoreScreen(
     fun selectSource(appId: String, sourceName: String) {
         selectedSources[appId] = sourceName
         sourcePreferences.edit().putString(fdroidSourcePreferenceKey(appId), sourceName).apply()
+        variantsById[appId]?.firstOrNull { it.sourceName == sourceName }?.let(repository::rememberPreferredSource)
     }
 
     val selectionSnapshot = selectedSources.toMap()
@@ -194,6 +195,7 @@ fun FdroidStoreScreen(
             requestInstallPermission()
             return
         }
+        repository.rememberPreferredSource(app)
         val key = fdroidVariantKey(app)
         installingKey = key
         installProgress = 0
