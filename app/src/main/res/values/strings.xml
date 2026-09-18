@@ -64,7 +64,7 @@
     <string name="issue_tracker">Issue Tracker</string>
     <string name="translation">Translation</string>
     <string name="changelog">Changelog</string>
-    <string name="whats_new_version">What&apos;s new in %1$s</string>
+    <string name="whats_new_version">What\'s new in %1$s</string>
     <string name="license">License</string>
     <string name="donations">Donations</string>
     <string name="donation_link">Donation link</string>
