@@ -118,6 +118,26 @@ fun AppDetailsScreen(
                 onSourceSelected = onSourceSelected
             )
 
+            app.versionChangelog?.takeIf { it.isNotBlank() }?.let { changelog ->
+                ElevatedCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        stringResource(R.string.whats_new_version, app.version),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 6.dp)
+                    )
+                    Text(
+                        changelog,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 14.dp)
+                    )
+                }
+            }
+
             if (app.screenshotUrls.isNotEmpty()) {
                 DetailsScreenshots(app, onScreenshotSelected)
             }
