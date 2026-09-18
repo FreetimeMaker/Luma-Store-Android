@@ -187,7 +187,9 @@ class AppRepository(context: Context) {
             if (apkName.isBlank()) continue
 
             val meta = metadataByPackage[packageName]
-            val localized = preferredLocalizedMetadata(meta)
+            val localizedEntry = preferredLocalizedMetadata(meta)
+            val localizedLocale = localizedEntry?.first
+            val localized = localizedEntry?.second
             val versionCode = latest.optLong("versionCode", 0L)
             val versionName = latest.optString("versionName").ifBlank { versionCode.toString() }
 
@@ -222,8 +224,20 @@ class AppRepository(context: Context) {
                 description = description,
                 version = versionName,
                 versionCode = versionCode,
-                iconUrl = resolveFdroidAssetUrl(source, iconName),
-                screenshotUrls = parseFdroidScreenshots(meta, localized, source),
+                iconUrl = resolveFdroidIconUrl(
+                    source = source,
+                    packageName = packageName,
+                    locale = localizedLocale,
+                    localizedIcon = firstText(localized?.opt("icon")),
+                    legacyIcon = firstText(latest.opt("icon"), meta?.opt("icon"))
+                ),
+                screenshotUrls = parseFdroidScreenshots(
+                    meta = meta,
+                    localized = localized,
+                    source = source,
+                    packageName = packageName,
+                    locale = localizedLocale
+                ),
                 categories = jsonStringList(meta?.optJSONArray("categories")),
                 apkUrl = resolveFdroidAssetUrl(source, apkName) ?: continue,
                 sourceName = source.name,
@@ -250,7 +264,7 @@ class AppRepository(context: Context) {
         return results
     }
 
-    private fun preferredLocalizedMetadata(meta: JSONObject?): JSONObject? {
+    private fun preferredLocalizedMetadata(meta: JSONObject?): Pair<String, JSONObject>? {
         val localized = meta?.optJSONObject("localized") ?: return null
         val locale = Locale.getDefault()
         val preferred = listOf(
@@ -260,9 +274,16 @@ class AppRepository(context: Context) {
             "en-US",
             "en"
         ).filter { it.isNotBlank() }.distinct()
-        preferred.forEach { key -> localized.optJSONObject(key)?.let { return it } }
+
+        preferred.forEach { key ->
+            localized.optJSONObject(key)?.let { return key to it }
+        }
+
         val keys = localized.keys()
-        while (keys.hasNext()) localized.optJSONObject(keys.next())?.let { return it }
+        while (keys.hasNext()) {
+            val key = keys.next()
+            localized.optJSONObject(key)?.let { return key to it }
+        }
         return null
     }
 
@@ -324,15 +345,71 @@ class AppRepository(context: Context) {
         else -> value.toString().takeIf { it.isNotBlank() && it != "null" && !it.startsWith("{") && !it.startsWith("[") }
     }
 
-    private fun parseFdroidScreenshots(meta: JSONObject?, localized: JSONObject?, source: AppSource): List<String> {
-        val names = buildList {
-            addAll(jsonStringList(localized?.optJSONArray("phoneScreenshots")))
-            addAll(jsonStringList(localized?.optJSONArray("sevenInchScreenshots")))
-            addAll(jsonStringList(localized?.optJSONArray("tenInchScreenshots")))
-            addAll(jsonStringList(localized?.optJSONArray("wearScreenshots")))
-            if (isEmpty()) addAll(jsonStringList(meta?.optJSONArray("screenshots")))
+    private fun parseFdroidScreenshots(
+        meta: JSONObject?,
+        localized: JSONObject?,
+        source: AppSource,
+        packageName: String,
+        locale: String?
+    ): List<String> {
+        val localizedScreenshots = buildList {
+            addAll(resolveLocalizedScreenshotList(source, packageName, locale, "phoneScreenshots", localized?.optJSONArray("phoneScreenshots")))
+            addAll(resolveLocalizedScreenshotList(source, packageName, locale, "sevenInchScreenshots", localized?.optJSONArray("sevenInchScreenshots")))
+            addAll(resolveLocalizedScreenshotList(source, packageName, locale, "tenInchScreenshots", localized?.optJSONArray("tenInchScreenshots")))
+            addAll(resolveLocalizedScreenshotList(source, packageName, locale, "tvScreenshots", localized?.optJSONArray("tvScreenshots")))
+            addAll(resolveLocalizedScreenshotList(source, packageName, locale, "wearScreenshots", localized?.optJSONArray("wearScreenshots")))
         }
-        return names.distinct().mapNotNull { resolveFdroidAssetUrl(source, it) }
+        if (localizedScreenshots.isNotEmpty()) return localizedScreenshots.distinct()
+
+        return jsonStringList(meta?.optJSONArray("screenshots"))
+            .mapNotNull { resolveFdroidAssetUrl(source, it) }
+            .distinct()
+    }
+
+    private fun resolveLocalizedScreenshotList(
+        source: AppSource,
+        packageName: String,
+        locale: String?,
+        directory: String,
+        screenshots: JSONArray?
+    ): List<String> {
+        if (screenshots == null || locale.isNullOrBlank()) return emptyList()
+        return jsonStringList(screenshots).mapNotNull { fileName ->
+            if (fileName.startsWith("http://") || fileName.startsWith("https://")) {
+                fileName
+            } else {
+                val base = source.indexUrl.substringBeforeLast('/')
+                val cleanName = fileName.trimStart('/')
+                if (cleanName.contains('/')) "$base/$cleanName"
+                else "$base/$packageName/$locale/$directory/$cleanName"
+            }
+        }
+    }
+
+    private fun resolveFdroidIconUrl(
+        source: AppSource,
+        packageName: String,
+        locale: String?,
+        localizedIcon: String?,
+        legacyIcon: String?
+    ): String? {
+        val base = source.indexUrl.substringBeforeLast('/')
+
+        localizedIcon?.takeIf { it.isNotBlank() }?.let { icon ->
+            if (icon.startsWith("http://") || icon.startsWith("https://")) return icon
+            val clean = icon.trimStart('/')
+            if (clean.contains('/')) return "$base/$clean"
+            if (!locale.isNullOrBlank()) return "$base/$packageName/$locale/$clean"
+        }
+
+        legacyIcon?.takeIf { it.isNotBlank() }?.let { icon ->
+            if (icon.startsWith("http://") || icon.startsWith("https://")) return icon
+            val clean = icon.trimStart('/')
+            if (clean.contains('/')) return "$base/$clean"
+            return "$base/icons-160/$clean"
+        }
+
+        return null
     }
 
     private fun parseAntiFeatures(value: Any?): List<String> = when (value) {
