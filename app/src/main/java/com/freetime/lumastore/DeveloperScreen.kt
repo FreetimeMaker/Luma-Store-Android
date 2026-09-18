@@ -201,7 +201,7 @@ fun DeveloperScreen(
                 }
             }
         }
-        item { Spacer(Modifier.height(28.dp)) }
+        item { Spacer(Modifier.height(88.dp)) }
     }
 }
 
