@@ -15,9 +15,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.freetime.lumastore.data.AppRepository
 import com.freetime.lumastore.data.AppSource
+import com.freetime.lumastore.ui.glass.lumaLiquidGlass
+import com.freetime.lumastore.ui.glass.rememberLumaBackdrop
 
 @Composable
 fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChanged: () -> Unit) {
+    val backdrop = rememberLumaBackdrop()
     var sourceList by remember { mutableStateOf(repository.sources) }
     var sourceName by remember { mutableStateOf("") }
     var sourceUrl by remember { mutableStateOf("") }
@@ -59,9 +62,9 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 12.dp)
         ) {
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
             Text(
                 stringResource(R.string.manage_sources_description),
                 style = MaterialTheme.typography.bodyMedium,
@@ -85,7 +88,7 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
                         }
                     }
                 )
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(8.dp))
             }
 
             if (sourceList.none { enabledStates[it.name] ?: repository.isSourceEnabled(it) }) {
@@ -97,7 +100,7 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
                 Spacer(Modifier.height(12.dp))
             }
 
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(10.dp))
             Text(
                 stringResource(R.string.add_another_source),
                 style = MaterialTheme.typography.titleLarge,
@@ -149,7 +152,7 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
             ) {
                 Text(stringResource(R.string.add_source))
             }
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(96.dp))
         }
     }
 
@@ -233,8 +236,17 @@ private fun SourceCard(
     onEdit: () -> Unit,
     onRemove: () -> Unit
 ) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp)) {
+    val backdrop = rememberLumaBackdrop()
+    val shape = RoundedCornerShape(20.dp)
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .lumaLiquidGlass(backdrop, shape, interactive = false),
+        shape = shape,
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(Modifier.padding(12.dp)) {
             Row(
                 Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
