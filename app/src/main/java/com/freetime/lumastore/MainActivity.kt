@@ -37,6 +37,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -101,7 +102,18 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            LumaStoreTheme {
+            // Automatic day/night theme without weather or location data.
+            // Light from 07:00 to 19:00, dark for the rest of the day.
+            var currentHour by remember { mutableIntStateOf(java.time.LocalTime.now().hour) }
+            LaunchedEffect(Unit) {
+                while (true) {
+                    currentHour = java.time.LocalTime.now().hour
+                    kotlinx.coroutines.delay(60_000)
+                }
+            }
+            val darkTheme = currentHour < 7 || currentHour >= 19
+
+            LumaStoreTheme(darkTheme = darkTheme) {
                 val backdrop = rememberLumaBackdrop()
                 val navigationShape = RoundedCornerShape(32.dp)
 
