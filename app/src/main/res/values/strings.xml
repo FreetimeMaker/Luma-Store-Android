@@ -95,6 +95,7 @@
     <string name="github_sign_in_failed">GitHub sign-in failed.</string>
     <string name="gitlab_sign_in_failed">GitLab sign-in failed.</string>
     <string name="supabase_sign_in_load_failed">Supabase sign-in could not be loaded.</string>
+    <string name="supabase_session_missing_user">Supabase session does not contain a user.</string>
     <string name="developer_data_load_failed">Developer data could not be loaded.</string>
     <string name="sign_out">Sign out</string>
     <string name="sign_out_failed">Sign out failed.</string>
