@@ -42,7 +42,7 @@ class DeveloperRepository {
 
     private suspend fun loadSubmissions(session: DeveloperSession): List<DeveloperSubmission> = supabase.from("luma_submissions").select(columns = Columns.list("id", "name", "status", "review_message", "version", "package_name", "submitted_at", "status_updated_at")) { filter { eq("user_id", session.userId) }; order("submitted_at", Order.DESCENDING) }.decodeList()
     private suspend fun loadComments(submissionIds: List<String>): List<DeveloperComment> = supabase.from("luma_review_comments").select(columns = Columns.list("id", "submission_id", "body", "created_at", "user_id")) { filter { isIn("submission_id", submissionIds) }; order("created_at", Order.DESCENDING) }.decodeList()
-    private suspend fun loadNotifications(session: DeveloperSession): List<DeveloperNotification> = supabase.from("luma_developer_notifications").select(columns = Columns.list("id", "submission_id", "type", "title", "message", "created_at", "read_at")) { filter { eq("user_id", session.userId) }; order("created_at", Order.DESCENDING); limit(100) }.decodeList()
+    private suspend fun loadNotifications(session: DeveloperSession): List<DeveloperNotification> = supabase.from("luma_developer_notifications").select(columns = Columns.list("id", "submission_id", "type", "title", "message", "created_at", "read_at")) { filter { eq("user_id", session.userId); isExact("read_at", null) }; order("created_at", Order.DESCENDING); limit(100) }.decodeList()
 
     private fun io.github.jan.supabase.auth.user.UserSession.toDeveloperSession(): DeveloperSession {
         val currentUser = user ?: error("Supabase session does not contain a user.")
