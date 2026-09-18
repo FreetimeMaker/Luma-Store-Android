@@ -222,7 +222,7 @@ fun MyAppsScreen(
                 repository.rememberPreferredSource(it)
             },
             onScreenshotSelected = {},
-            onOpenUri = { uriHandler.openUri(it) }
+            onOpenUri = { uri -> runCatching { uriHandler.openUri(uri) } }
         )
     }
 }
