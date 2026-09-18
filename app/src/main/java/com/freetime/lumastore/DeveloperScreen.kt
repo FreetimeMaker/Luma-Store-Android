@@ -225,7 +225,7 @@ private fun SubmissionCard(submission: DeveloperSubmission, comments: List<Strin
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             Text(submission.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text(stringResource(R.string.status_value, submission.status), color = statusColor(submission.status))
+            Text(stringResource(R.string.status_value, localizedSubmissionStatus(submission.status)), color = statusColor(submission.status))
             submission.version?.let { Text(stringResource(R.string.version_value, it), style = MaterialTheme.typography.bodySmall) }
             submission.packageName?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             submission.reviewMessage?.let {
@@ -236,10 +236,18 @@ private fun SubmissionCard(submission: DeveloperSubmission, comments: List<Strin
             if (comments.isNotEmpty()) {
                 HorizontalDivider()
                 Text(stringResource(R.string.comments_feedback), fontWeight = FontWeight.SemiBold)
-                comments.forEach { Text("• $it") }
+                comments.forEach { Text(stringResource(R.string.comment_bullet, it)) }
             }
         }
     }
+}
+
+@Composable
+private fun localizedSubmissionStatus(status: String): String = when (status) {
+    "Approved" -> stringResource(R.string.status_approved)
+    "Rejected" -> stringResource(R.string.status_rejected)
+    "Changes Requested" -> stringResource(R.string.status_changes_requested)
+    else -> status
 }
 
 @Composable
