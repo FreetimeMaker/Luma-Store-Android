@@ -1,3 +1,2 @@
-• Fixed the Litecoin crashing error
-• Added a bit more like F-Droid
-• Much More
+• Use the same Liquid Glass as GeoWeather
+• Fixed some things with the App Details
