@@ -5,6 +5,10 @@
     <string name="search">Search</string>
     <string name="discover">Discover</string>
     <string name="back">Back</string>
+    <string name="symbol_back_chevron" translatable="false">‹</string>
+    <string name="symbol_forward_chevron" translatable="false">›</string>
+    <string name="symbol_collapse" translatable="false">⌃</string>
+    <string name="symbol_expand" translatable="false">⌄</string>
     <string name="back_to_store">← Back to Store</string>
     <string name="store_back">← Store</string>
 
@@ -108,9 +112,17 @@
     <string name="version_value">Version: %1$s</string>
     <string name="review_feedback">Review Feedback</string>
     <string name="comments_feedback">Comments / Feedback</string>
+    <string name="comment_bullet">• %1$s</string>
+    <string name="status_approved">Approved</string>
+    <string name="status_rejected">Rejected</string>
+    <string name="status_changes_requested">Changes Requested</string>
 
     <string name="configure_luma_store">Configure Luma Store</string>
     <string name="manage_sources">Manage sources</string>
+    <string name="source_freetime_fdroid" translatable="false">Freetime F-Droid</string>
+    <string name="source_fdroid" translatable="false">F-Droid</string>
+    <string name="source_izzyondroid" translatable="false">IzzyOnDroid</string>
+    <string name="source_luma_store" translatable="false">Luma Store</string>
     <string name="manage_sources_description">Enable only the repositories you want to load apps from.</string>
     <string name="no_source_enabled">No source is enabled. The store will not show any apps until you enable at least one source again.</string>
     <string name="add_another_source">Add another source</string>
