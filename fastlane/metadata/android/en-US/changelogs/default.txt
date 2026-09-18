@@ -1,3 +1,2 @@
-• Added Liquid Glass UI
-• Made Translations possible
-• Updated the App Screen that the Changelog will always be shown for that version
+• Use Liquid Glass everywhere
+• Fixed the bottom nav bar
