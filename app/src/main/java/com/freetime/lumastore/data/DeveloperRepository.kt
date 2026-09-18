@@ -58,8 +58,21 @@ class DeveloperRepository(context: Context) {
             .mapNotNull { it.lumaSubmissionId }
             .toSet()
 
-        return submissions.filter { submission ->
+        val canonicalSubmissions = submissions.filter { submission ->
             submission.status != "Approved" || submission.id in canonicalSubmissionIds
+        }
+
+        val seenApprovedApps = mutableSetOf<String>()
+        return canonicalSubmissions.filter { submission ->
+            if (submission.status != "Approved") return@filter true
+
+            val appKey = submission.packageName
+                ?.trim()
+                ?.lowercase()
+                ?.takeIf { it.isNotEmpty() }
+                ?: submission.name.trim().lowercase()
+
+            seenApprovedApps.add(appKey)
         }
     }
     private suspend fun loadComments(submissionIds: List<String>): List<DeveloperComment> = supabase.from("luma_review_comments").select(columns = Columns.list("id", "submission_id", "body", "created_at", "user_id")) { filter { isIn("submission_id", submissionIds) }; order("created_at", Order.DESCENDING) }.decodeList()
