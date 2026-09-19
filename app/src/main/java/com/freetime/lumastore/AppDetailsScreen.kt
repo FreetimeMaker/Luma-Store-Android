@@ -211,48 +211,39 @@ fun AppDetailsScreen(
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
-                    Row(
+                    LazyRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
                         verticalAlignment = Alignment.Top
                     ) {
-                        app.donationUrls.forEach { url ->
-                            DetailActionItem(stringResource(R.string.donation_link), Icons.Filled.AttachMoney) { onOpenUri(url) }
-                        }
-                        app.liberapay?.let { value ->
+                        items(app.donationUrls, key = { it }) { url -> DetailActionItem(stringResource(R.string.donation_link), Icons.Filled.AttachMoney) { onOpenUri(url) } }
+                        app.liberapay?.let { value -> item("liberapay") {
                             val url = fundingUrl("https://liberapay.com/", value)
-                            DetailActionItem(stringResource(R.string.liberapay), Icons.Filled.AttachMoney) { onOpenUri(url) }
-                        }
-                        app.openCollective?.let { value ->
+                            DetailActionItem(stringResource(R.string.liberapay), Icons.Filled.AttachMoney) { onOpenUri(url) } } }
+                        app.openCollective?.let { value -> item("opencollective") {
                             val url = fundingUrl("https://opencollective.com/", value)
-                            DetailActionItem(stringResource(R.string.open_collective), Icons.Filled.AttachMoney) { onOpenUri(url) }
-                        }
-                        app.bitcoin?.let { value ->
-                            DetailActionItem(stringResource(R.string.bitcoin), Icons.Filled.AttachMoney) {
-                                onOpenUri(cryptoUri("bitcoin", value))
-                            }
-                        }
-                        app.litecoin?.let { value ->
-                            DetailActionItem(stringResource(R.string.litecoin), Icons.Filled.AttachMoney) {
-                                onOpenUri(cryptoUri("litecoin", value))
-                            }
-                        }
+                            DetailActionItem(stringResource(R.string.open_collective), Icons.Filled.AttachMoney) { onOpenUri(url) } } }
+                        app.bitcoin?.let { value -> item("bitcoin") { DetailActionItem(stringResource(R.string.bitcoin), Icons.Filled.AttachMoney) { onOpenUri(cryptoUri("bitcoin", value)) } } }
+                        app.litecoin?.let { value -> item("litecoin") { DetailActionItem(stringResource(R.string.litecoin), Icons.Filled.AttachMoney) { onOpenUri(cryptoUri("litecoin", value)) } } }
+                    
                     }
                     Spacer(Modifier.height(8.dp))
                 }
             }
 
             DetailsExpandableSection(stringResource(R.string.links)) {
-                Row(
+                LazyRow(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
                     verticalAlignment = Alignment.Top
                 ) {
-                    app.websiteUrl?.let { DetailActionItem(stringResource(R.string.website), Icons.Filled.Language) { onOpenUri(it) } }
-                    app.issueTrackerUrl?.let { DetailActionItem(stringResource(R.string.issue_tracker), Icons.Filled.BugReport) { onOpenUri(it) } }
-                    app.changelogUrl?.let { DetailActionItem(stringResource(R.string.changelog), Icons.Filled.History) { onOpenUri(it) } }
-                    app.translationUrl?.let { DetailActionItem(stringResource(R.string.translation), Icons.Filled.Translate) { onOpenUri(it) } }
-                    app.sourceCodeUrl?.let { DetailActionItem(stringResource(R.string.source_code), Icons.Filled.Code) { onOpenUri(it) } }
+                    app.websiteUrl?.let { url -> item("website") { DetailActionItem(stringResource(R.string.website), Icons.Filled.Language) { onOpenUri(url) } } }
+                    app.issueTrackerUrl?.let { url -> item("issues") { DetailActionItem(stringResource(R.string.issue_tracker), Icons.Filled.BugReport) { onOpenUri(url) } } }
+                    app.changelogUrl?.let { url -> item("changelog") { DetailActionItem(stringResource(R.string.changelog), Icons.Filled.History) { onOpenUri(url) } } }
+                    app.translationUrl?.let { url -> item("translation") { DetailActionItem(stringResource(R.string.translation), Icons.Filled.Translate) { onOpenUri(url) } } }
+                    app.sourceCodeUrl?.let { url -> item("source") { DetailActionItem(stringResource(R.string.source_code), Icons.Filled.Code) { onOpenUri(url) } } }
                 }
                 app.license?.let { DetailValueRow(stringResource(R.string.license), it) }
             }
