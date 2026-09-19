@@ -477,7 +477,20 @@ fun FdroidStoreScreen(
                 onAction = { runAppAction(app) },
                 onSourceSelected = { variant -> selectSource(appId, variant.sourceName) },
                 onScreenshotSelected = { selectedScreenshotUrl = it },
-                onOpenUri = { uriHandler.openUri(it) }
+                onOpenUri = { uriHandler.openUri(it) },
+                isFavorite = repository.isFavorite(app.id),
+                onFavoriteToggle = { repository.setFavorite(app.id, !repository.isFavorite(app.id)) },
+                isUpdateIgnored = repository.isUpdateIgnored(app),
+                onIgnoreUpdateToggle = {
+                    if (repository.isUpdateIgnored(app)) repository.clearIgnoredVersion(app.id) else repository.ignoreVersion(app)
+                },
+                lockedSourceName = repository.lockedSourceName(app.id),
+                onSourceLockToggle = {
+                    if (repository.lockedSourceName(app.id) == app.sourceName) repository.setSourceLock(app.id, null)
+                    else repository.setSourceLock(app.id, app.sourceName)
+                },
+                signatureConflict = repository.signatureConflict(variants),
+                verifiedMetadata = repository.verifiedMetadata(app)
             )
         }
     }
