@@ -86,6 +86,8 @@ class MainActivity : ComponentActivity() {
                 mutableStateOf(
                     if (intent.getBooleanExtra(SystemNotificationManager.EXTRA_OPEN_DEVELOPER, false)) {
                         MainScreen.DEVELOPER
+                    } else if (intent.data?.scheme == "lumastore" && intent.data?.host == "app") {
+                        MainScreen.SEARCH
                     } else {
                         MainScreen.DISCOVER
                     }
