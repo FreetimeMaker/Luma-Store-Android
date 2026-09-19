@@ -284,7 +284,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun installerCallback(): (StoreApp, (Int) -> Unit, () -> Unit, (Throwable) -> Unit) -> Unit =
+    private fun installerCallback(): (StoreApp, (Int) -> Unit, () -> Unit, (Throwable) -> Unit) -> ApkInstaller.DownloadHandle =
         { app, onProgress, onReady, onError ->
             ApkInstaller.downloadAndInstall(
                 this@MainActivity,
