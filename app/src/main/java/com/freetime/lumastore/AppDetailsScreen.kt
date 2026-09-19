@@ -93,6 +93,7 @@ fun AppDetailsScreen(
     val glassShape = RoundedCornerShape(20.dp)
 
     Scaffold(
+        containerColor = Color.Transparent,
         modifier = Modifier
             .fillMaxSize()
             .nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -166,12 +167,11 @@ fun AppDetailsScreen(
 
             if (app.antiFeatures.isNotEmpty()) {
                 ElevatedCard(
-                    colors = CardDefaults.elevatedCardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    ),
+                    colors = CardDefaults.elevatedCardColors(containerColor = Color.Transparent),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                        .lumaLiquidGlass(backdrop, glassShape, interactive = false)
                 ) {
                     Text(
                         stringResource(R.string.anti_features),
