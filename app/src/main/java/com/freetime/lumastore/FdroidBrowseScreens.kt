@@ -610,7 +610,7 @@ private fun FdroidDetailsHost(
                 signatureConflict = repository.signatureConflict(variants),
                 verifiedMetadata = repository.verifiedMetadata(app),
                 similarApps = repository.similarApps(app),
-                onSimilarAppSelected = { selectedAppId = it.id }
+                onSimilarAppSelected = { developerSelectedAppId = it.id; selectedSource = it.sourceName }
             )
         }
     }
