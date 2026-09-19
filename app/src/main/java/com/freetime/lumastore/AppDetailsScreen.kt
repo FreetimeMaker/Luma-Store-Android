@@ -88,7 +88,8 @@ fun AppDetailsScreen(
     onAction: () -> Unit,
     onSourceSelected: (StoreApp) -> Unit,
     onScreenshotSelected: (String) -> Unit,
-    onOpenUri: (String) -> Unit
+    onOpenUri: (String) -> Unit,
+    onDeveloperSelected: (String) -> Unit = {}
 ) {
     val topAppBarState = rememberTopAppBarState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(topAppBarState)
@@ -141,6 +142,7 @@ fun AppDetailsScreen(
                 progress = progress,
                 onAction = onAction,
                 onSourceSelected = onSourceSelected,
+                onDeveloperSelected = onDeveloperSelected,
                 backdrop = backdrop,
                 actionShape = actionShape
             )
@@ -342,6 +344,7 @@ private fun AppDetailsHeader(
     progress: Int,
     onAction: () -> Unit,
     onSourceSelected: (StoreApp) -> Unit,
+    onDeveloperSelected: (String) -> Unit,
     backdrop: io.github.fletchmckee.liquid.LiquidState?,
     actionShape: androidx.compose.ui.graphics.Shape
 ) {
@@ -360,7 +363,14 @@ private fun AppDetailsHeader(
         DetailsAppIcon(app = app, size = 82)
         Column(modifier = Modifier.weight(1f)) {
             Text(app.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            app.authorName?.let { Text(stringResource(R.string.by_author, it), style = MaterialTheme.typography.bodyMedium) }
+            app.authorName?.takeIf { it.isNotBlank() }?.let { author ->
+                Text(
+                    stringResource(R.string.by_author, author),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.clickable { onDeveloperSelected(author) }
+                )
+            }
             Text(stringResource(R.string.app_version_source, app.version, app.sourceName), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             installedVersionName?.let { Text(stringResource(R.string.installed_version, it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
