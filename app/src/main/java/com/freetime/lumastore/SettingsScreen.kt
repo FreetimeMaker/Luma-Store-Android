@@ -79,6 +79,7 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
 
             sourceList.forEach { source ->
                 SourceCard(
+                    repository = repository,
                     source = source,
                     enabled = enabledStates[source.name] ?: repository.isSourceEnabled(source),
                     removable = repository.isCustomSource(source),
@@ -244,6 +245,7 @@ private fun EditSourceDialog(
 
 @Composable
 private fun SourceCard(
+    repository: AppRepository,
     source: AppSource,
     enabled: Boolean,
     removable: Boolean,
