@@ -70,7 +70,8 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
                 .mapCatching { repository.importBackup(it).getOrThrow() }
                 .onSuccess {
                     transferMessage = backupImported
-                    refreshSources()
+                    sourceList = repository.sources
+                    repository.sources.forEach { source -> enabledStates[source.name] = repository.isSourceEnabled(source) }
                     onSourcesChanged()
                 }
                 .onFailure { transferMessage = backupFailed.replace("%s", it.message ?: "") }
