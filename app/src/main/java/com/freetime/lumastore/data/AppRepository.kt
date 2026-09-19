@@ -8,6 +8,14 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.Locale
 
+data class StoreVersion(
+    val versionName: String,
+    val versionCode: Long,
+    val sourceName: String,
+    val changelog: String? = null,
+    val addedTimestamp: Long? = null
+)
+
 data class StoreApp(
     val id: String,
     val name: String,
@@ -47,7 +55,8 @@ data class StoreApp(
     val targetSdk: Int? = null,
     val nativeCode: List<String> = emptyList(),
     val signerSha256: List<String> = emptyList(),
-    val permissions: List<String> = emptyList()
+    val permissions: List<String> = emptyList(),
+    val versions: List<StoreVersion> = emptyList()
 )
 
 enum class SourceType { FDROID_V1, LUMA_API }
@@ -110,6 +119,14 @@ class AppRepository(context: Context) {
         if (sourceName == null) editor.remove("locked_" + packageName) else editor.putString("locked_" + packageName, sourceName)
         editor.apply()
     }
+
+    fun signatureConflict(variants: List<StoreApp>): Boolean {
+        val fingerprints = variants.flatMap { it.signerSha256 }.map { it.lowercase() }.toSet()
+        return fingerprints.size > 1
+    }
+
+    fun verifiedMetadata(app: StoreApp): Boolean =
+        app.expectedSha256?.isNotBlank() == true || app.signerSha256.isNotEmpty()
 
     fun rememberPreferredSource(app: StoreApp) {
         appSourcePreferences.edit()
@@ -395,6 +412,19 @@ class AppRepository(context: Context) {
                 if (code > bestCode) { best = version; bestCode = code }
             }
             val latest = best ?: continue
+            val versionHistory = versions.keys().asSequence().mapNotNull { key ->
+                val version = versions.optJSONObject(key) ?: return@mapNotNull null
+                val versionManifest = version.optJSONObject("manifest") ?: return@mapNotNull null
+                val code = versionManifest.optLong("versionCode", Long.MIN_VALUE)
+                if (code == Long.MIN_VALUE) return@mapNotNull null
+                StoreVersion(
+                    versionName = versionManifest.optString("versionName").ifBlank { code.toString() },
+                    versionCode = code,
+                    sourceName = source.name,
+                    changelog = localizedValue(version.opt("whatsNew")),
+                    addedTimestamp = version.optLong("added", 0L).takeIf { it > 0 }
+                )
+            }.sortedByDescending { it.versionCode }
             val manifest = latest.optJSONObject("manifest") ?: continue
             val file = latest.optJSONObject("file") ?: continue
             val fileName = file.optString("name").trim()
@@ -433,7 +463,8 @@ class AppRepository(context: Context) {
                 targetSdk = manifest.optInt("targetSdkVersion", 0).takeIf { sdk -> sdk > 0 },
                 nativeCode = jsonStringList(manifest.optJSONArray("nativecode")),
                 signerSha256 = jsonStringList(manifest.optJSONObject("signer")?.optJSONArray("sha256")),
-                permissions = jsonStringList(manifest.optJSONArray("usesPermission"))
+                permissions = jsonStringList(manifest.optJSONArray("usesPermission")),
+                versions = versionHistory
             )
         }
         return results
@@ -833,6 +864,9 @@ class AppRepository(context: Context) {
             app.addedTimestamp?.let { put("addedTimestamp", it) }; app.lastUpdatedTimestamp?.let { put("lastUpdatedTimestamp", it) }
             app.downloadSize?.let { put("downloadSize", it) }; app.minSdk?.let { put("minSdk", it) }; app.targetSdk?.let { put("targetSdk", it) }
             put("nativeCode", JSONArray(app.nativeCode)); put("signerSha256", JSONArray(app.signerSha256)); put("permissions", JSONArray(app.permissions))
+            put("versions", JSONArray().apply { app.versions.forEach { version -> put(JSONObject()
+                .put("versionName", version.versionName).put("versionCode", version.versionCode).put("sourceName", version.sourceName)
+                .put("changelog", version.changelog).put("addedTimestamp", version.addedTimestamp)) } })
         }) }
         cachePreferences.edit().putString(CACHE_KEY_APPS, array.toString()).putLong(CACHE_KEY_TIMESTAMP, System.currentTimeMillis()).apply()
     }
@@ -861,7 +895,21 @@ class AppRepository(context: Context) {
                     item.optLong("lastUpdatedTimestamp", 0L).takeIf { it > 0 },
                     item.optLong("downloadSize", 0L).takeIf { it > 0 }, item.optInt("minSdk", 0).takeIf { it > 0 },
                     item.optInt("targetSdk", 0).takeIf { it > 0 }, jsonStringList(item.optJSONArray("nativeCode")),
-                    jsonStringList(item.optJSONArray("signerSha256")), jsonStringList(item.optJSONArray("permissions"))
+                    jsonStringList(item.optJSONArray("signerSha256")), jsonStringList(item.optJSONArray("permissions")),
+                    item.optJSONArray("versions")?.let { versions ->
+                        buildList {
+                            for (v in 0 until versions.length()) {
+                                val version = versions.optJSONObject(v) ?: continue
+                                add(StoreVersion(
+                                    versionName = version.optString("versionName"),
+                                    versionCode = version.optLong("versionCode"),
+                                    sourceName = version.optString("sourceName"),
+                                    changelog = version.optNullableString("changelog"),
+                                    addedTimestamp = version.optLong("addedTimestamp", 0L).takeIf { it > 0 }
+                                ))
+                            }
+                        }
+                    }.orEmpty()
                 ))
             }
         }
@@ -887,7 +935,7 @@ class AppRepository(context: Context) {
         private const val SOURCE_PREFERENCES = "app_sources"
         private const val APP_SOURCE_PREFERENCES = "luma_store_source_preferences"
         private const val APP_SOURCE_KEY_PREFIX = "source_"
-        private const val CACHE_KEY_APPS = "apps_validated_download_urls_v8"
+        private const val CACHE_KEY_APPS = "apps_validated_download_urls_v9"
         private const val CACHE_KEY_TIMESTAMP = "timestamp"
         private const val CUSTOM_SOURCES_KEY = "custom_sources"
     }
