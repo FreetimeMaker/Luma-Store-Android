@@ -179,4 +179,8 @@
     <string name="developer_notification_channel">Developer notifications</string>
     <string name="developer_notification_channel_description">Status updates and review messages for submitted apps</string>
     <string name="invalid_apk_download_url">No valid download address is available for this app. Refresh the app sources and try again.</string>
+    <string name="apk_sha256_verification_failed">APK SHA-256 verification failed.</string>
+    <string name="downloaded_apk_inspection_failed">The downloaded APK could not be inspected.</string>
+    <string name="downloaded_apk_package_mismatch">The downloaded APK package name does not match the selected app.</string>
+    <string name="apk_signature_mismatch">The APK signature does not match the installed app.</string>
 </resources>
