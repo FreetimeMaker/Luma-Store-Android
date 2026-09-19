@@ -17,6 +17,8 @@ import androidx.compose.ui.unit.dp
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
+import android.content.Intent
 import java.text.DateFormat
 import java.util.Date
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,6 +34,7 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
     var sourceUrl by remember { mutableStateOf("") }
     var addSourceError by remember { mutableStateOf<String?>(null) }
     var editingSource by remember { mutableStateOf<AppSource?>(null) }
+    var repositoryImportValue by remember { mutableStateOf("") }
     val sourceAddFailed = stringResource(R.string.source_add_failed)
     val context = LocalContext.current
     var transferMessage by remember { mutableStateOf<String?>(null) }
@@ -40,6 +43,14 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
     val appListExported = stringResource(R.string.app_list_exported)
     val backupImported = stringResource(R.string.backup_imported)
     val backupFailed = stringResource(R.string.backup_failed, "%s")
+
+    val qrScanner = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            repositoryImportValue = result.data?.getStringExtra("SCAN_RESULT")
+                ?: result.data?.dataString
+                ?: repositoryImportValue
+        }
+    }
 
     val createDocument = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         val content = pendingExport
@@ -188,6 +199,45 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
             ) {
                 Text(stringResource(R.string.add_source))
             }
+            Spacer(Modifier.height(24.dp))
+            Text(stringResource(R.string.import_repository), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.import_repository_description), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(10.dp))
+            OutlinedTextField(
+                value = repositoryImportValue,
+                onValueChange = { repositoryImportValue = it; addSourceError = null },
+                label = { Text(stringResource(R.string.repository_or_qr_value)) },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = {
+                        val intent = Intent("com.google.zxing.client.android.SCAN").apply {
+                            putExtra("SCAN_MODE", "QR_CODE_MODE")
+                        }
+                        runCatching { qrScanner.launch(intent) }
+                            .onFailure { addSourceError = it.message }
+                    },
+                    modifier = Modifier.weight(1f)
+                ) { Text(stringResource(R.string.scan_qr_code)) }
+                Button(
+                    onClick = {
+                        repository.importRepository(repositoryImportValue)
+                            .onSuccess { source ->
+                                repositoryImportValue = ""
+                                addSourceError = null
+                                enabledStates[source.name] = repository.isSourceEnabled(source)
+                                refreshSources()
+                                onSourcesChanged()
+                            }
+                            .onFailure { addSourceError = it.message ?: sourceAddFailed }
+                    },
+                    enabled = repositoryImportValue.isNotBlank(),
+                    modifier = Modifier.weight(1f)
+                ) { Text(stringResource(R.string.import_repository)) }
+            }
+
             Spacer(Modifier.height(24.dp))
             Text(stringResource(R.string.backup_and_transfer), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             Text(
