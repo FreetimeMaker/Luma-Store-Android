@@ -278,11 +278,27 @@ fun AppDetailsScreen(
                     stringResource(R.string.app_information),
                     if (app.closedSource) stringResource(R.string.closed_source) else stringResource(R.string.open_source)
                 )
+                app.downloadSize?.let { DetailValueRow(stringResource(R.string.download_size), formatBytes(it)) }
+                app.minSdk?.let { DetailValueRow(stringResource(R.string.minimum_android_sdk), it.toString()) }
+                app.targetSdk?.let { DetailValueRow(stringResource(R.string.target_android_sdk), it.toString()) }
+                if (app.nativeCode.isNotEmpty()) DetailValueRow(stringResource(R.string.supported_architectures), app.nativeCode.joinToString(", "))
+                if (app.signerSha256.isNotEmpty()) DetailValueRow(stringResource(R.string.signing_certificate), app.signerSha256.joinToString("\n"))
+                if (app.expectedSha256 != null) DetailValueRow(stringResource(R.string.apk_sha256), app.expectedSha256)
+                if (app.permissions.isNotEmpty()) DetailValueRow(stringResource(R.string.permissions), app.permissions.joinToString("\n"))
             }
 
             Spacer(Modifier.height(96.dp))
         }
     }
+}
+
+private fun formatBytes(bytes: Long): String {
+    if (bytes < 1024) return "$bytes B"
+    val units = arrayOf("KB", "MB", "GB")
+    var value = bytes.toDouble()
+    var unit = -1
+    while (value >= 1024 && unit < units.lastIndex) { value /= 1024; unit++ }
+    return "%.1f %s".format(value, units[unit.coerceAtLeast(0)])
 }
 
 private fun fundingUrl(base: String, value: String): String {
