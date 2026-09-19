@@ -98,6 +98,7 @@ fun MyAppsScreen(
     }
 
     androidx.compose.material3.Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(title = { Text(stringResource(R.string.my_apps)) })
         }
