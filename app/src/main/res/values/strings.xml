@@ -206,4 +206,14 @@
     <string name="ignored_updates_count">Ignored updates (%1$d)</string>
     <string name="restore_update">Restore update</string>
     <string name="whats_new">What’s new</string>
+    <string name="backup_and_transfer">Backup &amp; transfer</string>
+    <string name="backup_and_transfer_description">Export custom repositories, favorites, source locks and your app list, or restore them from a Luma Store backup.</string>
+    <string name="export_backup">Export backup</string>
+    <string name="import_backup">Import backup</string>
+    <string name="export_app_list">Export app list</string>
+    <string name="backup_exported">Backup exported.</string>
+    <string name="backup_imported">Backup imported.</string>
+    <string name="app_list_exported">App list exported.</string>
+    <string name="backup_failed">Backup operation failed: %1$s</string>
+    <string name="invalid_backup_file">This is not a valid Luma Store backup file.</string>
 </resources>
