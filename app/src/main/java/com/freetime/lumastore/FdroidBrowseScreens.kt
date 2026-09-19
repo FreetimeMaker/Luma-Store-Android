@@ -110,7 +110,8 @@ fun FdroidDiscoverScreen(
                         Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.refresh))
                     }
                 },
-                scrollBehavior = scrollBehavior
+                scrollBehavior = scrollBehavior,
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent)
             )
         }
     ) { padding ->
@@ -252,7 +253,8 @@ fun FdroidSearchScreen(
                         onValueChange = { query = it },
                         placeholder = { Text(stringResource(R.string.search_apps)) },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent)
                     )
                 }
             )
