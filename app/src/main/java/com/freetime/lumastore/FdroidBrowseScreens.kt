@@ -473,70 +473,73 @@ private fun FdroidDetailsHost(
     val app = variants.firstOrNull { it.sourceName == selectedSource }
         ?: effectiveSelectedAppId?.let { repository.preferredVariant(it, variants, installedCodeForSelection) }
 
-    if (app != null) {
-        val installedCode = installedVersionCode(app.id)
-        val sdkCompatible = app.minSdk == null || Build.VERSION.SDK_INT >= app.minSdk
-        val abiCompatible = app.nativeCode.isEmpty() || android.os.Build.SUPPORTED_ABIS.any { abi -> app.nativeCode.any { it.equals(abi, true) } }
-        val actionLabel = when {
-            !sdkCompatible -> stringResource(R.string.incompatible_android, app.minSdk ?: 0)
-            !abiCompatible -> stringResource(R.string.incompatible_architecture)
-            installedCode == null -> stringResource(R.string.install)
-            app.versionCode > installedCode -> stringResource(R.string.update)
-            else -> stringResource(R.string.open)
-        }
-        val key = "${app.id}\u0000${app.sourceName}"
-
-        AppDetailsScreen(
-            app = app,
-            variants = variants,
-            installedVersionName = installedVersionName(app.id),
-            actionLabel = actionLabel,
-            installing = installingKey == key,
-            progress = progress,
-            onBack = {
-                if (developerSelectedAppId != null) developerSelectedAppId = null else onDismiss()
-            },
-            onAction = {
-                if (!sdkCompatible || !abiCompatible) {
-                    Unit
-                } else if (installedCode != null && app.versionCode <= installedCode) {
-                    openInstalledApp(app.id)
-                } else if (!canInstallPackages()) {
-                    requestInstallPermission()
-                } else {
-                    repository.rememberPreferredSource(app)
-                    installingKey = key
-                    progress = 0
-                    install(
-                        app,
-                        { progress = it },
-                        { progress = 100; installingKey = null },
-                        { installingKey = null }
-                    )
+    if (selectedDeveloper != null) {
+        selectedDeveloper?.let { developer ->
+            DeveloperAppsScreen(
+                developerName = developer,
+                apps = appVariants.values.flatten(),
+                onBack = { selectedDeveloper = null },
+                onAppSelected = { selected ->
+                    selectedDeveloper = null
+                    developerSelectedAppId = selected.id
+                    selectedSource = selected.sourceName
                 }
-            },
-            onSourceSelected = {
-                selectedSource = it.sourceName
-                repository.rememberPreferredSource(it)
-            },
-            onScreenshotSelected = {},
-            onOpenUri = { uri -> runCatching { uriHandler.openUri(uri) } },
-            onDeveloperSelected = { selectedDeveloper = it }
-        )
+            )
+        }
+    } else {
+        if (app != null) {
+            val installedCode = installedVersionCode(app.id)
+            val sdkCompatible = app.minSdk == null || Build.VERSION.SDK_INT >= app.minSdk
+            val abiCompatible = app.nativeCode.isEmpty() || android.os.Build.SUPPORTED_ABIS.any { abi -> app.nativeCode.any { it.equals(abi, true) } }
+            val actionLabel = when {
+                !sdkCompatible -> stringResource(R.string.incompatible_android, app.minSdk ?: 0)
+                !abiCompatible -> stringResource(R.string.incompatible_architecture)
+                installedCode == null -> stringResource(R.string.install)
+                app.versionCode > installedCode -> stringResource(R.string.update)
+                else -> stringResource(R.string.open)
+            }
+            val key = "${app.id}\u0000${app.sourceName}"
+
+            AppDetailsScreen(
+                app = app,
+                variants = variants,
+                installedVersionName = installedVersionName(app.id),
+                actionLabel = actionLabel,
+                installing = installingKey == key,
+                progress = progress,
+                onBack = {
+                    if (developerSelectedAppId != null) developerSelectedAppId = null else onDismiss()
+                },
+                onAction = {
+                    if (!sdkCompatible || !abiCompatible) {
+                        Unit
+                    } else if (installedCode != null && app.versionCode <= installedCode) {
+                        openInstalledApp(app.id)
+                    } else if (!canInstallPackages()) {
+                        requestInstallPermission()
+                    } else {
+                        repository.rememberPreferredSource(app)
+                        installingKey = key
+                        progress = 0
+                        install(
+                            app,
+                            { progress = it },
+                            { progress = 100; installingKey = null },
+                            { installingKey = null }
+                        )
+                    }
+                },
+                onSourceSelected = {
+                    selectedSource = it.sourceName
+                    repository.rememberPreferredSource(it)
+                },
+                onScreenshotSelected = {},
+                onOpenUri = { uri -> runCatching { uriHandler.openUri(uri) } },
+                onDeveloperSelected = { selectedDeveloper = it }
+            )
+        }
     }
 
-    selectedDeveloper?.let { developer ->
-        DeveloperAppsScreen(
-            developerName = developer,
-            apps = appVariants.values.flatten(),
-            onBack = { selectedDeveloper = null },
-            onAppSelected = { selected ->
-                selectedDeveloper = null
-                developerSelectedAppId = selected.id
-                selectedSource = selected.sourceName
-            }
-        )
-    }
 }
 
 
