@@ -66,7 +66,7 @@ object ApkInstaller {
                         while (input.read(buffer).also { read = it } > 0) digest.update(buffer, 0, read)
                     }
                     val actual = digest.digest().joinToString("") { "%02x".format(it) }
-                    require(actual.equals(expected, true)) { "APK SHA-256 verification failed." }
+                    require(actual.equals(expected, true)) { context.getString(R.string.apk_sha256_verification_failed) }
                 }
 
                 verifyUpdateSignature(context, packageName, target)
@@ -98,9 +98,9 @@ object ApkInstaller {
         } else {
             @Suppress("DEPRECATION")
             pm.getPackageArchiveInfo(apk.absolutePath, PackageManager.GET_SIGNATURES)
-        } ?: error("Downloaded APK could not be inspected.")
+        } ?: error(context.getString(R.string.downloaded_apk_inspection_failed))
 
-        require(archive.packageName == packageName) { "Downloaded APK package name does not match." }
+        require(archive.packageName == packageName) { context.getString(R.string.downloaded_apk_package_mismatch) }
 
         fun fingerprints(info: android.content.pm.PackageInfo): Set<String> {
             val signatures = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -119,7 +119,7 @@ object ApkInstaller {
         val archiveFingerprints = fingerprints(archive)
         require(installedFingerprints.isNotEmpty() && archiveFingerprints.isNotEmpty() &&
             installedFingerprints.intersect(archiveFingerprints).isNotEmpty()) {
-            "APK signature does not match the installed app."
+            context.getString(R.string.apk_signature_mismatch)
         }
     }
 }
