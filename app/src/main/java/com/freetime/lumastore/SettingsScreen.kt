@@ -14,6 +14,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
 import java.text.DateFormat
 import java.util.Date
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,6 +33,36 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
     var addSourceError by remember { mutableStateOf<String?>(null) }
     var editingSource by remember { mutableStateOf<AppSource?>(null) }
     val sourceAddFailed = stringResource(R.string.source_add_failed)
+    val context = LocalContext.current
+    var transferMessage by remember { mutableStateOf<String?>(null) }
+    var pendingExport by remember { mutableStateOf<String?>(null) }
+    val backupExported = stringResource(R.string.backup_exported)
+    val appListExported = stringResource(R.string.app_list_exported)
+    val backupImported = stringResource(R.string.backup_imported)
+    val backupFailed = stringResource(R.string.backup_failed, "%s")
+
+    val createDocument = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        val content = pendingExport
+        if (uri != null && content != null) {
+            runCatching { context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(content) } }
+                .onSuccess { transferMessage = if (content.contains("luma-store-app-list")) appListExported else backupExported }
+                .onFailure { transferMessage = backupFailed.replace("%s", it.message ?: "") }
+        }
+        pendingExport = null
+    }
+    val openBackup = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            runCatching { context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }.orEmpty() }
+                .mapCatching { repository.importBackup(it).getOrThrow() }
+                .onSuccess {
+                    transferMessage = backupImported
+                    refreshSources()
+                    onSourcesChanged()
+                }
+                .onFailure { transferMessage = backupFailed.replace("%s", it.message ?: "") }
+        }
+    }
+
     val enabledStates = remember {
         mutableStateMapOf<String, Boolean>().apply {
             repository.sources.forEach { this[it.name] = repository.isSourceEnabled(it) }
@@ -155,6 +188,39 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
             ) {
                 Text(stringResource(R.string.add_source))
             }
+            Spacer(Modifier.height(24.dp))
+            Text(stringResource(R.string.backup_and_transfer), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Text(
+                stringResource(R.string.backup_and_transfer_description),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(12.dp))
+            Button(
+                onClick = {
+                    pendingExport = repository.exportBackup()
+                    createDocument.launch("luma-store-backup.json")
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text(stringResource(R.string.export_backup)) }
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = { openBackup.launch(arrayOf("application/json", "text/json", "text/plain")) },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text(stringResource(R.string.import_backup)) }
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = {
+                    pendingExport = repository.exportAppList()
+                    createDocument.launch("luma-store-app-list.json")
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text(stringResource(R.string.export_app_list)) }
+            transferMessage?.let {
+                Spacer(Modifier.height(8.dp))
+                Text(it, style = MaterialTheme.typography.bodySmall)
+            }
+
             Spacer(Modifier.height(96.dp))
         }
     }
