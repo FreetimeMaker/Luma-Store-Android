@@ -1,2 +1,21 @@
-• Use the same Liquid Glass as GeoWeather
-• Fixed some things with the App Details
+• Refined Material You and Liquid Glass throughout the store, including the floating bottom navigation, app details, source management and dialogs
+• Added automatic light and dark theme switching based on local device time
+• Added F-Droid index-v2 support with index-v1 fallback
+• Improved F-Droid app icon loading with multiple fallback paths
+• Added source health information and last sync status
+• Added New Apps and Recently Updated sections to Discover
+• Added an available-updates badge to My Apps and separated updates from already up-to-date apps
+• Added APK SHA-256 verification and installed-app signature verification before updates
+• Added package-name verification for downloaded APKs
+• Added app compatibility information including minimum/target Android SDK, supported architectures and download size
+• Incompatible Android or CPU architecture builds are now prevented from being installed
+• Added signing certificate fingerprints, APK hashes and permissions to app details when provided by the repository
+• Added support for favorites, ignored update versions and per-app source locks in the store data model
+• Added Anti-Feature explanations so repositories can show why an app has a specific Anti-Feature
+• Added a developer apps screen: tap a developer in App Details to see their other apps
+• Added Luma Store app deep-link support
+• Improved My Apps icon fallback handling
+• Improved source selection and preferred-source handling
+• Improved caching for the new F-Droid and app metadata
+• Extracted new user-visible installer and security messages into translatable string resources
+• Fixed several Compose compilation issues introduced during the store UI and source improvements
