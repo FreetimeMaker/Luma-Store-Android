@@ -6,6 +6,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,6 +37,7 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
     var addSourceError by remember { mutableStateOf<String?>(null) }
     var editingSource by remember { mutableStateOf<AppSource?>(null) }
     var repositoryImportValue by remember { mutableStateOf("") }
+    var priorityRevision by remember { mutableIntStateOf(0) }
     val sourceAddFailed = stringResource(R.string.source_add_failed)
     val context = LocalContext.current
     var transferMessage by remember { mutableStateOf<String?>(null) }
@@ -145,6 +148,24 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
                 Spacer(Modifier.height(12.dp))
             }
 
+            Spacer(Modifier.height(20.dp))
+            Text(stringResource(R.string.source_priority), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.source_priority_description), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(8.dp))
+            key(priorityRevision) {
+                repository.sourcePriority().forEachIndexed { index, name ->
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(name, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                        IconButton(onClick = { repository.moveSource(name, -1); priorityRevision++ }, enabled = index > 0) {
+                            Icon(Icons.Filled.KeyboardArrowUp, contentDescription = stringResource(R.string.move_up))
+                        }
+                        IconButton(onClick = { repository.moveSource(name, 1); priorityRevision++ }, enabled = index < repository.sourcePriority().lastIndex) {
+                            Icon(Icons.Filled.KeyboardArrowDown, contentDescription = stringResource(R.string.move_down))
+                        }
+                    }
+                }
+            }
+
             Spacer(Modifier.height(10.dp))
             Text(
                 stringResource(R.string.add_another_source),
@@ -237,6 +258,19 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
                     modifier = Modifier.weight(1f)
                 ) { Text(stringResource(R.string.import_repository)) }
             }
+
+            Spacer(Modifier.height(24.dp))
+            Text(stringResource(R.string.cache), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.cache_description, repository.cachedAppCount()), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = {
+                    repository.clearAppCache()
+                    transferMessage = context.getString(R.string.cache_cleared)
+                    onSourcesChanged()
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text(stringResource(R.string.clear_cache)) }
 
             Spacer(Modifier.height(24.dp))
             Text(stringResource(R.string.backup_and_transfer), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
