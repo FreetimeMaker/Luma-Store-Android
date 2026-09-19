@@ -54,7 +54,7 @@ fun Modifier.lumaLiquidGlass(
     interactive: Boolean = true,
 ): Modifier {
     val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    val fallback = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.46f)
+    val fallback = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = if (isDarkTheme) 0.82f else 0.76f)
     val outline = MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (isDarkTheme) 0.46f else 0.58f)
 
     if (backdrop == null) {
@@ -69,17 +69,17 @@ fun Modifier.lumaLiquidGlass(
         .clip(shape)
         .background(
             MaterialTheme.colorScheme.surfaceContainerHighest.copy(
-                alpha = if (isDarkTheme) 0.065f else 0.075f
+                alpha = if (isDarkTheme) 0.24f else 0.30f
             )
         )
         .liquid(backdrop) {
             this.shape = shape
-            this.frost = if (isDarkTheme) 14.dp else 16.dp
+            this.frost = if (isDarkTheme) 18.dp else 20.dp
             this.curve = if (isDarkTheme) 0.62f else 0.58f
             this.refraction = if (isDarkTheme) 0.24f else 0.22f
             this.dispersion = if (isDarkTheme) 0.42f else 0.38f
-            this.saturation = if (isDarkTheme) 0.72f else 0.68f
-            this.contrast = if (isDarkTheme) 1.62f else 1.72f
+            this.saturation = if (isDarkTheme) 0.58f else 0.54f
+            this.contrast = if (isDarkTheme) 1.28f else 1.34f
         }
         .border(0.75.dp, outline, shape)
         .graphicsLayer {
