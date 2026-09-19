@@ -219,6 +219,23 @@ class AppRepository(context: Context) {
         return variants.maxByOrNull { it.versionCode }
     }
 
+    fun importRepository(value: String, fallbackName: String = appContext.getString(R.string.imported_repository)): Result<AppSource> = runCatching {
+        val raw = value.trim()
+        require(raw.isNotBlank()) { appContext.getString(R.string.repository_url_required) }
+        val candidate = when {
+            raw.startsWith("fdroidrepos://", true) -> "https://" + raw.substringAfter("fdroidrepos://").substringBefore("?")
+            raw.startsWith("fdroidrepo://", true) -> "https://" + raw.substringAfter("fdroidrepo://").substringBefore("?")
+            raw.startsWith("https://", true) || raw.startsWith("http://", true) -> raw.substringBefore("#")
+            else -> throw IllegalArgumentException(appContext.getString(R.string.repository_import_invalid))
+        }
+        val host = runCatching { URL(candidate).host }.getOrNull().orEmpty()
+        val name = fallbackName.takeIf { it.isNotBlank() } ?: host.ifBlank { appContext.getString(R.string.imported_repository) }
+        addCustomSource(name, candidate).getOrElse { error ->
+            val normalized = normalizeFdroidUrl(candidate)
+            sources.firstOrNull { it.indexUrl.equals(normalized, true) } ?: throw error
+        }
+    }
+
     fun addCustomSource(name: String, repositoryUrl: String): Result<AppSource> = runCatching {
         val cleanName = name.trim()
         require(cleanName.isNotBlank()) { appContext.getString(R.string.source_name_required) }
