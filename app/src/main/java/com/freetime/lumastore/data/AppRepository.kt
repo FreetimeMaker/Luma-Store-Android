@@ -40,7 +40,13 @@ data class StoreApp(
     val versionChangelog: String? = null,
     val expectedSha256: String? = null,
     val addedTimestamp: Long? = null,
-    val lastUpdatedTimestamp: Long? = null
+    val lastUpdatedTimestamp: Long? = null,
+    val downloadSize: Long? = null,
+    val minSdk: Int? = null,
+    val targetSdk: Int? = null,
+    val nativeCode: List<String> = emptyList(),
+    val signerSha256: List<String> = emptyList(),
+    val permissions: List<String> = emptyList()
 )
 
 enum class SourceType { FDROID_V1, LUMA_API }
@@ -91,6 +97,19 @@ class AppRepository(context: Context) {
     fun preferredSourceName(packageName: String): String? =
         appSourcePreferences.getString(APP_SOURCE_KEY_PREFIX + packageName, null)
 
+    fun isFavorite(packageName: String): Boolean = appSourcePreferences.getBoolean("favorite_" + packageName, false)
+    fun setFavorite(packageName: String, favorite: Boolean) { appSourcePreferences.edit().putBoolean("favorite_" + packageName, favorite).apply() }
+    fun ignoredVersion(packageName: String): Long = appSourcePreferences.getLong("ignored_" + packageName, Long.MIN_VALUE)
+    fun ignoreVersion(app: StoreApp) { appSourcePreferences.edit().putLong("ignored_" + app.id, app.versionCode).apply() }
+    fun clearIgnoredVersion(packageName: String) { appSourcePreferences.edit().remove("ignored_" + packageName).apply() }
+    fun isUpdateIgnored(app: StoreApp): Boolean = ignoredVersion(app.id) == app.versionCode
+    fun lockedSourceName(packageName: String): String? = appSourcePreferences.getString("locked_" + packageName, null)
+    fun setSourceLock(packageName: String, sourceName: String?) {
+        val editor = appSourcePreferences.edit()
+        if (sourceName == null) editor.remove("locked_" + packageName) else editor.putString("locked_" + packageName, sourceName)
+        editor.apply()
+    }
+
     fun rememberPreferredSource(app: StoreApp) {
         appSourcePreferences.edit()
             .putString(APP_SOURCE_KEY_PREFIX + app.id, app.sourceName)
@@ -98,6 +117,8 @@ class AppRepository(context: Context) {
     }
 
     fun preferredVariant(packageName: String, variants: List<StoreApp>, installedVersionCode: Long? = null): StoreApp? {
+        val lockedSource = lockedSourceName(packageName)
+        variants.firstOrNull { it.sourceName == lockedSource }?.let { return it }
         val preferredSource = preferredSourceName(packageName)
         variants.firstOrNull { it.sourceName == preferredSource }?.let { return it }
 
@@ -406,7 +427,13 @@ class AppRepository(context: Context) {
                 antiFeatures = parseAntiFeatures(latest.opt("antiFeatures")).ifEmpty { parseAntiFeatures(meta.opt("antiFeatures")) },
                 expectedSha256 = file.optString("sha256").takeIf { hash -> hash.matches(Regex("^[0-9a-fA-F]{64}$")) },
                 addedTimestamp = meta.optLong("added", 0L).takeIf { timestamp -> timestamp > 0 },
-                lastUpdatedTimestamp = meta.optLong("lastUpdated", 0L).takeIf { timestamp -> timestamp > 0 }
+                lastUpdatedTimestamp = meta.optLong("lastUpdated", 0L).takeIf { timestamp -> timestamp > 0 },
+                downloadSize = file.optLong("size", 0L).takeIf { size -> size > 0 },
+                minSdk = manifest.optInt("usesSdk", 0).takeIf { sdk -> sdk > 0 },
+                targetSdk = manifest.optInt("targetSdkVersion", 0).takeIf { sdk -> sdk > 0 },
+                nativeCode = jsonStringList(manifest.optJSONArray("nativecode")),
+                signerSha256 = jsonStringList(manifest.optJSONObject("signer")?.optJSONArray("sha256")),
+                permissions = jsonStringList(manifest.optJSONArray("usesPermission"))
             )
         }
         return results
@@ -717,6 +744,8 @@ class AppRepository(context: Context) {
             put("license", app.license); put("antiFeatures", JSONArray(app.antiFeatures)); put("closedSource", app.closedSource)
             put("versionChangelog", app.versionChangelog); put("expectedSha256", app.expectedSha256)
             app.addedTimestamp?.let { put("addedTimestamp", it) }; app.lastUpdatedTimestamp?.let { put("lastUpdatedTimestamp", it) }
+            app.downloadSize?.let { put("downloadSize", it) }; app.minSdk?.let { put("minSdk", it) }; app.targetSdk?.let { put("targetSdk", it) }
+            put("nativeCode", JSONArray(app.nativeCode)); put("signerSha256", JSONArray(app.signerSha256)); put("permissions", JSONArray(app.permissions))
         }) }
         cachePreferences.edit().putString(CACHE_KEY_APPS, array.toString()).putLong(CACHE_KEY_TIMESTAMP, System.currentTimeMillis()).apply()
     }
@@ -742,7 +771,10 @@ class AppRepository(context: Context) {
                     item.optNullableString("litecoin"), item.optNullableString("license"), jsonStringList(item.optJSONArray("antiFeatures")),
                     item.optBoolean("closedSource", false), item.optNullableString("versionChangelog"),
                     item.optNullableString("expectedSha256"), item.optLong("addedTimestamp", 0L).takeIf { it > 0 },
-                    item.optLong("lastUpdatedTimestamp", 0L).takeIf { it > 0 }
+                    item.optLong("lastUpdatedTimestamp", 0L).takeIf { it > 0 },
+                    item.optLong("downloadSize", 0L).takeIf { it > 0 }, item.optInt("minSdk", 0).takeIf { it > 0 },
+                    item.optInt("targetSdk", 0).takeIf { it > 0 }, jsonStringList(item.optJSONArray("nativeCode")),
+                    jsonStringList(item.optJSONArray("signerSha256")), jsonStringList(item.optJSONArray("permissions"))
                 ))
             }
         }
@@ -768,7 +800,7 @@ class AppRepository(context: Context) {
         private const val SOURCE_PREFERENCES = "app_sources"
         private const val APP_SOURCE_PREFERENCES = "luma_store_source_preferences"
         private const val APP_SOURCE_KEY_PREFIX = "source_"
-        private const val CACHE_KEY_APPS = "apps_validated_download_urls_v5"
+        private const val CACHE_KEY_APPS = "apps_validated_download_urls_v6"
         private const val CACHE_KEY_TIMESTAMP = "timestamp"
         private const val CUSTOM_SOURCES_KEY = "custom_sources"
     }
