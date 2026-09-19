@@ -265,6 +265,13 @@ class AppRepository(context: Context) {
             .map { it.first }
     }
 
+    fun discoverSectionEnabled(key: String, defaultValue: Boolean = true): Boolean =
+        sourcePreferences.getBoolean("discover_" + key, defaultValue)
+
+    fun setDiscoverSectionEnabled(key: String, enabled: Boolean) {
+        sourcePreferences.edit().putBoolean("discover_" + key, enabled).apply()
+    }
+
     fun clearAppCache() {
         cachePreferences.edit().remove(CACHE_KEY_APPS).remove(CACHE_KEY_TIMESTAMP).apply()
         memoryApps = null
