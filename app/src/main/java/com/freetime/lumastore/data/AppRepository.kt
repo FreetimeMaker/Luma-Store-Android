@@ -37,7 +37,10 @@ data class StoreApp(
     val license: String? = null,
     val antiFeatures: List<String> = emptyList(),
     val closedSource: Boolean = false,
-    val versionChangelog: String? = null
+    val versionChangelog: String? = null,
+    val expectedSha256: String? = null,
+    val addedTimestamp: Long? = null,
+    val lastUpdatedTimestamp: Long? = null
 )
 
 enum class SourceType { FDROID_V1, LUMA_API }
@@ -333,7 +336,13 @@ class AppRepository(context: Context) {
                 bitcoin = stringValue(meta?.opt("bitcoin")),
                 litecoin = stringValue(meta?.opt("litecoin")),
                 license = stringValue(meta?.opt("license")),
-                antiFeatures = parseAntiFeatures(meta?.opt("antiFeatures"))
+                antiFeatures = parseAntiFeatures(meta?.opt("antiFeatures")),
+                expectedSha256 = latest.optString("hash").takeIf {
+                    it.matches(Regex("^[0-9a-fA-F]{64}$")) &&
+                        latest.optString("hashType", "sha256").equals("sha256", true)
+                },
+                addedTimestamp = meta?.optLong("added", 0L)?.takeIf { it > 0 },
+                lastUpdatedTimestamp = meta?.optLong("lastUpdated", 0L)?.takeIf { it > 0 }
             )
         }
         return results
@@ -630,7 +639,8 @@ class AppRepository(context: Context) {
             put("changelogUrl", app.changelogUrl); put("donationUrls", JSONArray(app.donationUrls)); put("liberapay", app.liberapay)
             put("openCollective", app.openCollective); put("bitcoin", app.bitcoin); put("litecoin", app.litecoin)
             put("license", app.license); put("antiFeatures", JSONArray(app.antiFeatures)); put("closedSource", app.closedSource)
-            put("versionChangelog", app.versionChangelog)
+            put("versionChangelog", app.versionChangelog); put("expectedSha256", app.expectedSha256)
+            app.addedTimestamp?.let { put("addedTimestamp", it) }; app.lastUpdatedTimestamp?.let { put("lastUpdatedTimestamp", it) }
         }) }
         cachePreferences.edit().putString(CACHE_KEY_APPS, array.toString()).putLong(CACHE_KEY_TIMESTAMP, System.currentTimeMillis()).apply()
     }
@@ -654,7 +664,9 @@ class AppRepository(context: Context) {
                     item.optNullableString("translationUrl"), item.optNullableString("changelogUrl"), jsonStringList(item.optJSONArray("donationUrls")),
                     item.optNullableString("liberapay"), item.optNullableString("openCollective"), item.optNullableString("bitcoin"),
                     item.optNullableString("litecoin"), item.optNullableString("license"), jsonStringList(item.optJSONArray("antiFeatures")),
-                    item.optBoolean("closedSource", false), item.optNullableString("versionChangelog")
+                    item.optBoolean("closedSource", false), item.optNullableString("versionChangelog"),
+                    item.optNullableString("expectedSha256"), item.optLong("addedTimestamp", 0L).takeIf { it > 0 },
+                    item.optLong("lastUpdatedTimestamp", 0L).takeIf { it > 0 }
                 ))
             }
         }
@@ -680,7 +692,7 @@ class AppRepository(context: Context) {
         private const val SOURCE_PREFERENCES = "app_sources"
         private const val APP_SOURCE_PREFERENCES = "luma_store_source_preferences"
         private const val APP_SOURCE_KEY_PREFIX = "source_"
-        private const val CACHE_KEY_APPS = "apps_validated_download_urls_v4"
+        private const val CACHE_KEY_APPS = "apps_validated_download_urls_v5"
         private const val CACHE_KEY_TIMESTAMP = "timestamp"
         private const val CUSTOM_SOURCES_KEY = "custom_sources"
     }
