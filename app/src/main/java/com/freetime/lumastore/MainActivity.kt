@@ -136,90 +136,8 @@ class MainActivity : ComponentActivity() {
                         .background(MaterialTheme.colorScheme.background)
                         .lumaBackdropSource(backdrop)
                 ) {
-                Scaffold(
-                    containerColor = Color.Transparent,
-                    bottomBar = {
-                        NavigationBar(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 18.dp)
-                                .navigationBarsPadding()
-                                .padding(bottom = 14.dp)
-                                .heightIn(min = 68.dp)
-                                .lumaLiquidGlass(
-                                    backdrop = backdrop,
-                                    shape = navigationShape,
-                                    interactive = true
-                                ),
-                            containerColor = Color.Transparent,
-                            contentColor = MaterialTheme.colorScheme.onSurface,
-                            tonalElevation = 0.dp,
-                            windowInsets = WindowInsets(0, 0, 0, 0)
-                        ) {
-                            FdroidNavigationItem(
-                                selected = screen == MainScreen.DISCOVER,
-                                onClick = { screen = MainScreen.DISCOVER },
-                                label = stringResource(R.string.discover),
-                                icon = {
-                                    Icon(
-                                        Icons.Filled.Explore,
-                                        contentDescription = stringResource(R.string.discover)
-                                    )
-                                }
-                            )
-                            FdroidNavigationItem(
-                                selected = screen == MainScreen.SEARCH,
-                                onClick = { screen = MainScreen.SEARCH },
-                                label = stringResource(R.string.search),
-                                icon = {
-                                    Icon(
-                                        Icons.Filled.Search,
-                                        contentDescription = stringResource(R.string.search)
-                                    )
-                                }
-                            )
-                            FdroidNavigationItem(
-                                selected = screen == MainScreen.MY_APPS,
-                                onClick = { screen = MainScreen.MY_APPS },
-                                label = stringResource(R.string.my_apps),
-                                badgeCount = availableUpdateCount,
-                                icon = {
-                                    Icon(
-                                        Icons.Filled.Apps,
-                                        contentDescription = stringResource(R.string.my_apps)
-                                    )
-                                }
-                            )
-                            FdroidNavigationItem(
-                                selected = screen == MainScreen.SOURCES,
-                                onClick = { screen = MainScreen.SOURCES },
-                                label = stringResource(R.string.sources),
-                                icon = {
-                                    Icon(
-                                        Icons.Filled.Storage,
-                                        contentDescription = stringResource(R.string.sources)
-                                    )
-                                }
-                            )
-                            FdroidNavigationItem(
-                                selected = screen == MainScreen.DEVELOPER,
-                                onClick = { screen = MainScreen.DEVELOPER },
-                                label = stringResource(R.string.developer),
-                                icon = {
-                                    Icon(
-                                        Icons.Filled.Code,
-                                        contentDescription = stringResource(R.string.developer)
-                                    )
-                                }
-                            )
-                        }
-                    }
-                ) { innerPadding ->
-                    Box(
-                        Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding)
-                    ) {
+                Box(Modifier.fillMaxSize()) {
+                    Box(Modifier.fillMaxSize()) {
                         PersistentScreen(visible = screen == MainScreen.DISCOVER) {
                             key(currentSourcesRevision) {
                                 FdroidDiscoverScreen(
@@ -286,6 +204,27 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
+                    }
+
+                    NavigationBar(
+                        modifier = Modifier
+                            .align(androidx.compose.ui.Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .padding(horizontal = 18.dp)
+                            .navigationBarsPadding()
+                            .padding(bottom = 14.dp)
+                            .heightIn(min = 68.dp)
+                            .lumaLiquidGlass(backdrop = backdrop, shape = navigationShape, interactive = true),
+                        containerColor = Color.Transparent,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        tonalElevation = 0.dp,
+                        windowInsets = WindowInsets(0, 0, 0, 0)
+                    ) {
+                        FdroidNavigationItem(screen == MainScreen.DISCOVER, { screen = MainScreen.DISCOVER }, stringResource(R.string.discover)) { Icon(Icons.Filled.Explore, contentDescription = stringResource(R.string.discover)) }
+                        FdroidNavigationItem(screen == MainScreen.SEARCH, { screen = MainScreen.SEARCH }, stringResource(R.string.search)) { Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.search)) }
+                        FdroidNavigationItem(screen == MainScreen.MY_APPS, { screen = MainScreen.MY_APPS }, stringResource(R.string.my_apps), availableUpdateCount) { Icon(Icons.Filled.Apps, contentDescription = stringResource(R.string.my_apps)) }
+                        FdroidNavigationItem(screen == MainScreen.SOURCES, { screen = MainScreen.SOURCES }, stringResource(R.string.sources)) { Icon(Icons.Filled.Storage, contentDescription = stringResource(R.string.sources)) }
+                        FdroidNavigationItem(screen == MainScreen.DEVELOPER, { screen = MainScreen.DEVELOPER }, stringResource(R.string.developer)) { Icon(Icons.Filled.Code, contentDescription = stringResource(R.string.developer)) }
                     }
                 }
                 }
