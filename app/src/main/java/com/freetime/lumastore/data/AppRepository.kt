@@ -128,6 +128,73 @@ class AppRepository(context: Context) {
     fun verifiedMetadata(app: StoreApp): Boolean =
         app.expectedSha256?.isNotBlank() == true || app.signerSha256.isNotEmpty()
 
+    fun exportBackup(): String {
+        val customSources = JSONArray()
+        loadCustomSources().forEach { source ->
+            customSources.put(JSONObject()
+                .put("name", source.name)
+                .put("url", source.indexUrl)
+                .put("enabled", isSourceEnabled(source)))
+        }
+
+        val apps = JSONArray()
+        currentApps().groupBy { it.id }.forEach { (packageName, variants) ->
+            val favorite = isFavorite(packageName)
+            val locked = lockedSourceName(packageName)
+            val preferred = preferredSourceName(packageName)
+            if (favorite || locked != null || preferred != null) {
+                apps.put(JSONObject()
+                    .put("packageName", packageName)
+                    .put("favorite", favorite)
+                    .put("lockedSource", locked)
+                    .put("preferredSource", preferred)
+                    .put("knownSources", JSONArray(variants.map { it.sourceName }.distinct())))
+            }
+        }
+
+        return JSONObject()
+            .put("format", "luma-store-backup")
+            .put("version", 1)
+            .put("sources", customSources)
+            .put("apps", apps)
+            .toString(2)
+    }
+
+    fun importBackup(raw: String): Result<Unit> = runCatching {
+        val root = JSONObject(raw)
+        require(root.optString("format") == "luma-store-backup") { appContext.getString(R.string.invalid_backup_file) }
+
+        val importedSources = root.optJSONArray("sources") ?: JSONArray()
+        for (i in 0 until importedSources.length()) {
+            val item = importedSources.optJSONObject(i) ?: continue
+            val name = item.optString("name").trim()
+            val url = item.optString("url").trim()
+            if (name.isBlank() || url.isBlank()) continue
+            val existing = sources.firstOrNull { it.indexUrl.equals(normalizeFdroidUrl(url), true) }
+            val source = existing ?: addCustomSource(name, url).getOrNull()
+            if (source != null) setSourceEnabled(source, item.optBoolean("enabled", true))
+        }
+
+        val apps = root.optJSONArray("apps") ?: JSONArray()
+        for (i in 0 until apps.length()) {
+            val item = apps.optJSONObject(i) ?: continue
+            val packageName = item.optString("packageName").trim()
+            if (packageName.isBlank()) continue
+            setFavorite(packageName, item.optBoolean("favorite", false))
+            item.optNullableString("lockedSource")?.let { setSourceLock(packageName, it) }
+            item.optNullableString("preferredSource")?.let {
+                appSourcePreferences.edit().putString(APP_SOURCE_KEY_PREFIX + packageName, it).apply()
+            }
+        }
+        memoryApps = null
+    }
+
+    fun exportAppList(): String = JSONObject()
+        .put("format", "luma-store-app-list")
+        .put("version", 1)
+        .put("packages", JSONArray(currentApps().map { it.id }.distinct().sorted()))
+        .toString(2)
+
     fun rememberPreferredSource(app: StoreApp) {
         appSourcePreferences.edit()
             .putString(APP_SOURCE_KEY_PREFIX + app.id, app.sourceName)
