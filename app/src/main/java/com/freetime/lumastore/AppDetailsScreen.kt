@@ -93,6 +93,7 @@ fun AppDetailsScreen(
     val scrollState = rememberScrollState()
     val backdrop = rememberLumaBackdrop()
     val glassShape = RoundedCornerShape(20.dp)
+    val actionShape = RoundedCornerShape(50)
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -137,7 +138,9 @@ fun AppDetailsScreen(
                 installing = installing,
                 progress = progress,
                 onAction = onAction,
-                onSourceSelected = onSourceSelected
+                onSourceSelected = onSourceSelected,
+                backdrop = backdrop,
+                actionShape = actionShape
             )
 
             app.versionChangelog?.takeIf { it.isNotBlank() }?.let { changelog ->
@@ -304,14 +307,23 @@ private fun AppDetailsHeader(
     installing: Boolean,
     progress: Int,
     onAction: () -> Unit,
-    onSourceSelected: (StoreApp) -> Unit
+    onSourceSelected: (StoreApp) -> Unit,
+    backdrop: io.github.fletchmckee.liquid.LiquidState?,
+    actionShape: androidx.compose.ui.graphics.Shape
 ) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .lumaLiquidGlass(backdrop, RoundedCornerShape(28.dp), interactive = false)
+            .padding(16.dp)
+    ) {
     Row(
-        modifier = Modifier.padding(horizontal = 16.dp),
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        DetailsAppIcon(app = app, size = 64)
+        DetailsAppIcon(app = app, size = 82)
         Column(modifier = Modifier.weight(1f)) {
             Text(app.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
             app.authorName?.let { Text(stringResource(R.string.by_author, it), style = MaterialTheme.typography.bodyMedium) }
@@ -320,6 +332,7 @@ private fun AppDetailsHeader(
         }
     }
     if (app.summary.isNotBlank()) Text(app.summary, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+    }
     if (app.categories.isNotEmpty()) {
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 16.dp)) {
             items(app.categories, key = { it }) { category -> AssistChip(onClick = {}, label = { Text(category) }) }
@@ -343,9 +356,16 @@ private fun AppDetailsHeader(
             if (progress > 0) LinearProgressIndicator(progress = { progress / 100f }, modifier = Modifier.fillMaxWidth()) else LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         }
     } else {
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.Center) {
-            if (actionLabel == stringResource(R.string.open)) OutlinedButton(onClick = onAction, modifier = Modifier.fillMaxWidth()) { Text(actionLabel) }
-            else Button(onClick = onAction, modifier = Modifier.fillMaxWidth()) { Text(actionLabel) }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .lumaLiquidGlass(backdrop, actionShape, interactive = true)
+                .clickable(onClick = onAction)
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(actionLabel, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
         }
     }
 }
@@ -376,7 +396,14 @@ private fun ExpandableDescription(app: StoreApp) {
 private fun DetailsExpandableSection(title: String, content: @Composable ColumnScope.() -> Unit) {
     var expanded by rememberSaveable(title) { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        ElevatedCard(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.elevatedCardColors()) {
+        val backdrop = rememberLumaBackdrop()
+        val shape = RoundedCornerShape(20.dp)
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth().lumaLiquidGlass(backdrop, shape, interactive = false),
+            shape = shape,
+            colors = CardDefaults.elevatedCardColors(containerColor = Color.Transparent),
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
+        ) {
             Row(modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 Text(if (expanded) stringResource(R.string.symbol_collapse) else stringResource(R.string.symbol_expand))
