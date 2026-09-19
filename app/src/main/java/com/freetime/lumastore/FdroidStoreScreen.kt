@@ -64,6 +64,7 @@ import coil3.compose.SubcomposeAsyncImage
 import coil3.compose.SubcomposeAsyncImageContent
 import com.freetime.lumastore.data.AppRepository
 import com.freetime.lumastore.data.StoreApp
+import com.freetime.lumastore.install.ApkInstaller
 import com.freetime.lumastore.ui.glass.lumaLiquidGlass
 import com.freetime.lumastore.ui.glass.rememberLumaBackdrop
 import kotlinx.coroutines.Dispatchers
@@ -84,7 +85,7 @@ fun FdroidStoreScreen(
     openInstalledApp: (String) -> Boolean,
     canInstallPackages: () -> Boolean,
     requestInstallPermission: () -> Unit,
-    install: (StoreApp, (Int) -> Unit, () -> Unit, (Throwable) -> Unit) -> Unit
+    install: (StoreApp, (Int) -> Unit, () -> Unit, (Throwable) -> Unit) -> ApkInstaller.DownloadHandle
 ) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
