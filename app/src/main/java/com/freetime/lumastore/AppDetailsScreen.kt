@@ -97,7 +97,9 @@ fun AppDetailsScreen(
     lockedSourceName: String? = null,
     onSourceLockToggle: () -> Unit = {},
     signatureConflict: Boolean = false,
-    verifiedMetadata: Boolean = false
+    verifiedMetadata: Boolean = false,
+    similarApps: List<StoreApp> = emptyList(),
+    onSimilarAppSelected: (StoreApp) -> Unit = {}
 ) {
     val topAppBarState = rememberTopAppBarState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(topAppBarState)
@@ -229,6 +231,35 @@ fun AppDetailsScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 14.dp)
                     )
+                }
+            }
+
+            if (similarApps.isNotEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(vertical = 8.dp)) {
+                    Text(
+                        stringResource(R.string.similar_apps),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(similarApps, key = { it.id }) { similar ->
+                            ElevatedCard(
+                                onClick = { onSimilarAppSelected(similar) },
+                                modifier = Modifier.width(180.dp).lumaLiquidGlass(backdrop, glassShape, interactive = true),
+                                colors = CardDefaults.elevatedCardColors(containerColor = Color.Transparent),
+                                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
+                            ) {
+                                Column(Modifier.padding(12.dp)) {
+                                    Text(similar.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text(similar.summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
