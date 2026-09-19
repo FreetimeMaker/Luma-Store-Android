@@ -30,6 +30,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -68,6 +69,7 @@ fun MyAppsScreen(
         }.sortedBy { it.app.name.lowercase() }
     }
     val updates = remember(installed) { installed.filter { it.app.versionCode > it.installedCode && !repository.isUpdateIgnored(it.app) } }
+    val ignoredUpdates = remember(installed) { installed.filter { it.app.versionCode > it.installedCode && repository.isUpdateIgnored(it.app) } }
     val installedWithoutUpdates = remember(installed, updates) {
         val updateIds = updates.mapTo(mutableSetOf()) { it.app.id }
         installed.filter { it.app.id !in updateIds }
@@ -78,6 +80,9 @@ fun MyAppsScreen(
     var installingId by remember { mutableStateOf<String?>(null) }
     var installProgress by remember { mutableIntStateOf(0) }
     var error by remember { mutableStateOf<String?>(null) }
+    var updateQueue by remember { mutableStateOf<List<InstalledStoreApp>>(emptyList()) }
+    var queueIndex by remember { mutableIntStateOf(0) }
+    var queueRunning by remember { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
 
     fun runAction(item: InstalledStoreApp) {
@@ -106,6 +111,44 @@ fun MyAppsScreen(
         )
     }
 
+    fun startUpdateQueue() {
+        if (updates.isEmpty() || queueRunning) return
+        if (!canInstallPackages()) {
+            requestInstallPermission()
+            return
+        }
+        updateQueue = updates
+        queueIndex = 0
+        queueRunning = true
+    }
+
+    LaunchedEffect(queueRunning, queueIndex, updateQueue) {
+        if (!queueRunning) return@LaunchedEffect
+        val item = updateQueue.getOrNull(queueIndex)
+        if (item == null) {
+            queueRunning = false
+            installingId = null
+            return@LaunchedEffect
+        }
+        repository.rememberPreferredSource(item.app)
+        installingId = item.app.id
+        installProgress = 0
+        install(
+            item.app,
+            { installProgress = it },
+            {
+                installProgress = 100
+                installingId = null
+                queueIndex += 1
+            },
+            {
+                installingId = null
+                error = it.message
+                queueRunning = false
+            }
+        )
+    }
+
     androidx.compose.material3.Scaffold(
         containerColor = Color.Transparent,
         topBar = {
@@ -129,6 +172,21 @@ fun MyAppsScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        Spacer(Modifier.height(8.dp))
+                        TextButton(onClick = { startUpdateQueue() }, enabled = !queueRunning) {
+                            Text(stringResource(R.string.update_all))
+                        }
+                        Text(
+                            stringResource(R.string.update_all_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (queueRunning) {
+                            Text(
+                                stringResource(R.string.update_queue_progress, queueIndex + 1, updateQueue.size),
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
                         error?.let {
                             Spacer(Modifier.height(8.dp))
                             Text(it, color = MaterialTheme.colorScheme.error)
@@ -143,9 +201,31 @@ fun MyAppsScreen(
                         progress = installProgress,
                         actionLabel = stringResource(R.string.update),
                         onClick = { selectedAppId = item.app.id },
-                        onAction = { runAction(item) }
+                        onAction = { runAction(item) },
+                        changelog = item.app.versionChangelog
                     )
                     HorizontalDivider(modifier = Modifier.padding(start = 92.dp))
+                }
+                if (ignoredUpdates.isNotEmpty()) {
+                    item {
+                        Text(
+                            stringResource(R.string.ignored_updates_count, ignoredUpdates.size),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                        )
+                    }
+                    items(ignoredUpdates, key = { "ignored:" + it.app.id }) { item ->
+                        MyAppRow(
+                            item = item,
+                            installing = false,
+                            progress = 0,
+                            actionLabel = stringResource(R.string.restore_update),
+                            onClick = { selectedAppId = item.app.id },
+                            onAction = { repository.clearIgnoredVersion(item.app.id) },
+                            changelog = item.app.versionChangelog
+                        )
+                    }
                 }
                 item {
                     Text(
@@ -272,7 +352,8 @@ private fun MyAppRow(
     progress: Int,
     actionLabel: String,
     onClick: () -> Unit,
-    onAction: () -> Unit
+    onAction: () -> Unit,
+    changelog: String? = null
 ) {
     Surface(
         modifier = Modifier
@@ -310,6 +391,11 @@ private fun MyAppRow(
                 ) {
                     Text(if (installing) stringResource(R.string.install_progress, progress) else actionLabel)
                 }
+            }
+            changelog?.takeIf { it.isNotBlank() }?.let {
+                Spacer(Modifier.height(6.dp))
+                Text(stringResource(R.string.whats_new), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 3, overflow = TextOverflow.Ellipsis)
             }
             if (installing) {
                 Spacer(Modifier.height(6.dp))
