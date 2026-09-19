@@ -189,8 +189,15 @@ private fun EditSourceDialog(
     var error by remember(source) { mutableStateOf<String?>(null) }
     val editFailed = stringResource(R.string.source_edit_failed)
 
+    val backdrop = rememberLumaBackdrop()
+    val dialogShape = RoundedCornerShape(28.dp)
+
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.lumaLiquidGlass(backdrop, dialogShape, interactive = false),
+        shape = dialogShape,
+        containerColor = Color.Transparent,
+        tonalElevation = 0.dp,
         title = { Text(stringResource(R.string.edit_source)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
