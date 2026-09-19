@@ -260,6 +260,29 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
             }
 
             Spacer(Modifier.height(24.dp))
+            Text(stringResource(R.string.discover_settings), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            listOf(
+                "new" to R.string.show_new_apps,
+                "recent" to R.string.show_recently_updated,
+                "favorites" to R.string.show_favorites,
+                "privacy" to R.string.show_privacy_collection,
+                "games" to R.string.show_games_collection
+            ).forEach { (key, label) ->
+                var enabled by remember(key) { mutableStateOf(repository.discoverSectionEnabled(key)) }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(label), modifier = Modifier.weight(1f))
+                    Switch(
+                        checked = enabled,
+                        onCheckedChange = {
+                            enabled = it
+                            repository.setDiscoverSectionEnabled(key, it)
+                            onSourcesChanged()
+                        }
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
             Text(stringResource(R.string.cache), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             Text(stringResource(R.string.cache_description, repository.cachedAppCount()), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(8.dp))
