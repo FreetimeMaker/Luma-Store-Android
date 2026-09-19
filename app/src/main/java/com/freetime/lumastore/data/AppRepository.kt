@@ -42,6 +42,13 @@ data class StoreApp(
 
 enum class SourceType { FDROID_V1, LUMA_API }
 
+data class SourceHealth(
+    val successful: Boolean,
+    val appCount: Int,
+    val checkedAt: Long,
+    val message: String? = null
+)
+
 data class AppSource(
     val name: String,
     val indexUrl: String,
@@ -160,6 +167,29 @@ class AppRepository(context: Context) {
 
     fun cacheTimestamp(): Long = cachePreferences.getLong(CACHE_KEY_TIMESTAMP, 0L)
 
+    fun sourceHealth(source: AppSource): SourceHealth? {
+        val raw = sourcePreferences.getString("health_" + sourcePreferenceKey(source), null) ?: return null
+        return runCatching {
+            val obj = JSONObject(raw)
+            SourceHealth(
+                successful = obj.optBoolean("successful"),
+                appCount = obj.optInt("appCount"),
+                checkedAt = obj.optLong("checkedAt"),
+                message = obj.optNullableString("message")
+            )
+        }.getOrNull()
+    }
+
+    private fun saveSourceHealth(source: AppSource, health: SourceHealth) {
+        val raw = JSONObject()
+            .put("successful", health.successful)
+            .put("appCount", health.appCount)
+            .put("checkedAt", health.checkedAt)
+            .put("message", health.message)
+            .toString()
+        sourcePreferences.edit().putString("health_" + sourcePreferenceKey(source), raw).apply()
+    }
+
     fun loadApps(forceRefresh: Boolean = false): Result<List<StoreApp>> = runCatching {
         if (!forceRefresh) {
             memoryApps?.let { return@runCatching it }
@@ -173,10 +203,15 @@ class AppRepository(context: Context) {
         val variants = mutableListOf<StoreApp>()
         var successfulSources = 0
         activeSources.forEach { source ->
-            runCatching { loadSource(source) }.onSuccess {
-                successfulSources++
-                variants += it
-            }
+            runCatching { loadSource(source) }
+                .onSuccess { loaded ->
+                    successfulSources++
+                    variants += loaded
+                    saveSourceHealth(source, SourceHealth(true, loaded.size, System.currentTimeMillis()))
+                }
+                .onFailure { error ->
+                    saveSourceHealth(source, SourceHealth(false, 0, System.currentTimeMillis(), error.message))
+                }
         }
 
         if (successfulSources == 0) {
