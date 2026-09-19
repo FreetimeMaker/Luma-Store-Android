@@ -399,10 +399,7 @@ class AppRepository(context: Context) {
             val file = latest.optJSONObject("file") ?: continue
             val fileName = file.optString("name").trim()
             if (fileName.isBlank()) continue
-            val iconFile = fdroidV2FileName(meta.opt("icon"))
-            val iconUrls = buildList {
-                iconFile?.let { icon -> add(if (icon.startsWith("http")) icon else "$base/" + icon.trimStart('/')) }
-            }
+            val iconUrls = resolveFdroidV2IconUrls(source, packageName, meta)
             results += StoreApp(
                 id = packageName,
                 name = localizedValue(meta.opt("name")) ?: packageName,
@@ -449,6 +446,67 @@ class AppRepository(context: Context) {
             }.firstOrNull()
         is String -> value.takeIf { it.isNotBlank() }
         else -> null
+    }
+
+    private fun resolveFdroidV2IconUrls(source: AppSource, packageName: String, meta: JSONObject): List<String> {
+        val base = source.indexUrl.substringBeforeLast('/')
+        val candidates = linkedSetOf<String>()
+        val locale = Locale.getDefault()
+        val preferredLocales = listOf(locale.toLanguageTag(), locale.language, "en-US", "en")
+            .filter { it.isNotBlank() }.distinct()
+
+        fun addPath(path: String?) {
+            val raw = path?.trim()?.takeIf { it.isNotBlank() } ?: return
+            if (raw.startsWith("https://", true) || raw.startsWith("http://", true)) {
+                candidates += raw
+                return
+            }
+            val clean = raw.trimStart('/')
+            candidates += "$base/$clean"
+            if (!clean.contains('/')) {
+                preferredLocales.forEach { language ->
+                    candidates += "$base/$packageName/$language/$clean"
+                    candidates += "$base/$packageName/$language/icon/$clean"
+                }
+                candidates += "$base/icons-160/$clean"
+                candidates += "$base/icons/$clean"
+            }
+        }
+
+        fun collect(value: Any?) {
+            when (value) {
+                is String -> addPath(value)
+                is JSONObject -> {
+                    addPath(value.optString("name").takeIf { it.isNotBlank() })
+                    preferredLocales.forEach { language ->
+                        val localized = value.opt(language)
+                        when (localized) {
+                            is String -> addPath(localized)
+                            is JSONObject -> addPath(localized.optString("name").takeIf { it.isNotBlank() })
+                        }
+                    }
+                    val keys = value.keys()
+                    while (keys.hasNext()) {
+                        when (val nested = value.opt(keys.next())) {
+                            is String -> addPath(nested)
+                            is JSONObject -> addPath(nested.optString("name").takeIf { it.isNotBlank() })
+                        }
+                    }
+                }
+            }
+        }
+
+        collect(meta.opt("icon"))
+        val localized = meta.optJSONObject("localized")
+        preferredLocales.forEach { language -> collect(localized?.optJSONObject(language)?.opt("icon")) }
+        localized?.keys()?.asSequence()?.forEach { language -> collect(localized.optJSONObject(language)?.opt("icon")) }
+
+        // fdroidserver publishes localized graphics below <package>/<locale>/ and
+        // older repositories also expose generated icons-N directories.
+        preferredLocales.forEach { language ->
+            candidates += "$base/$packageName/$language/icon.png"
+        }
+        return candidates.toList()
     }
 
     private fun preferredLocalizedMetadata(meta: JSONObject?): Pair<String, JSONObject>? {
@@ -829,7 +887,7 @@ class AppRepository(context: Context) {
         private const val SOURCE_PREFERENCES = "app_sources"
         private const val APP_SOURCE_PREFERENCES = "luma_store_source_preferences"
         private const val APP_SOURCE_KEY_PREFIX = "source_"
-        private const val CACHE_KEY_APPS = "apps_validated_download_urls_v7"
+        private const val CACHE_KEY_APPS = "apps_validated_download_urls_v8"
         private const val CACHE_KEY_TIMESTAMP = "timestamp"
         private const val CUSTOM_SOURCES_KEY = "custom_sources"
     }
