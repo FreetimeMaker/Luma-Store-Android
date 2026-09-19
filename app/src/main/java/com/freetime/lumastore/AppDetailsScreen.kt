@@ -111,7 +111,8 @@ fun AppDetailsScreen(
                         Text(stringResource(R.string.symbol_back_chevron), style = MaterialTheme.typography.headlineSmall)
                     }
                 },
-                scrollBehavior = scrollBehavior
+                scrollBehavior = scrollBehavior,
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent)
             )
         }
     ) { innerPadding ->
