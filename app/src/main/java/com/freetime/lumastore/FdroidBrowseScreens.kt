@@ -1,5 +1,7 @@
 package com.freetime.lumastore
 
+import android.os.Build
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -470,7 +472,11 @@ private fun FdroidDetailsHost(
 
     if (app != null) {
         val installedCode = installedVersionCode(app.id)
+        val sdkCompatible = app.minSdk == null || Build.VERSION.SDK_INT >= app.minSdk
+        val abiCompatible = app.nativeCode.isEmpty() || android.os.Build.SUPPORTED_ABIS.any { abi -> app.nativeCode.any { it.equals(abi, true) } }
         val actionLabel = when {
+            !sdkCompatible -> stringResource(R.string.incompatible_android, app.minSdk ?: 0)
+            !abiCompatible -> stringResource(R.string.incompatible_architecture)
             installedCode == null -> stringResource(R.string.install)
             app.versionCode > installedCode -> stringResource(R.string.update)
             else -> stringResource(R.string.open)
@@ -486,7 +492,9 @@ private fun FdroidDetailsHost(
             progress = progress,
             onBack = onDismiss,
             onAction = {
-                if (installedCode != null && app.versionCode <= installedCode) {
+                if (!sdkCompatible || !abiCompatible) {
+                    Unit
+                } else if (installedCode != null && app.versionCode <= installedCode) {
                     openInstalledApp(app.id)
                 } else if (!canInstallPackages()) {
                     requestInstallPermission()
