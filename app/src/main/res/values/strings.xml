@@ -159,6 +159,19 @@
     <string name="new_apps">New apps</string>
     <string name="share">Share</string>
     <string name="offline">Offline</string>
+    <string name="download_size">Download size</string>
+    <string name="minimum_android_sdk">Minimum Android SDK</string>
+    <string name="target_android_sdk">Target Android SDK</string>
+    <string name="supported_architectures">Architectures</string>
+    <string name="signing_certificate">Signing certificate SHA-256</string>
+    <string name="apk_sha256">APK SHA-256</string>
+    <string name="permissions">Permissions</string>
+    <string name="favorite">Favorite</string>
+    <string name="ignore_this_update">Ignore this update</string>
+    <string name="lock_source">Lock source</string>
+    <string name="source_locked">Source locked</string>
+    <string name="incompatible_android">This version requires Android SDK %1$d or newer.</string>
+    <string name="incompatible_architecture">This build does not support this device architecture.</string>
 
     <string name="developer_notification_fallback">New developer notification</string>
     <string name="developer_notification_channel">Developer notifications</string>
