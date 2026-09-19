@@ -92,6 +92,12 @@ fun FdroidDiscoverScreen(
             repository.preferredVariant(packageName, variants)
         }.sortedBy { it.name.lowercase() }
     }
+    val newestApps = remember(selectedApps) {
+        selectedApps.filter { it.addedTimestamp != null }.sortedByDescending { it.addedTimestamp }.take(12)
+    }
+    val recentlyUpdatedApps = remember(selectedApps) {
+        selectedApps.filter { it.lastUpdatedTimestamp != null }.sortedByDescending { it.lastUpdatedTimestamp }.take(12)
+    }
     val categories = remember(selectedApps) {
         selectedApps.flatMap { it.categories }.distinct().sortedBy { it.lowercase() }
     }
@@ -134,6 +140,26 @@ fun FdroidDiscoverScreen(
                         DiscoverCarousel(
                             title = stringResource(R.string.discover_apps),
                             apps = shownApps.take(12),
+                            onAppTap = { selectedAppId = it.id }
+                        )
+                    }
+                }
+
+                if (newestApps.isNotEmpty()) {
+                    item("new_apps") {
+                        DiscoverCarousel(
+                            title = stringResource(R.string.new_apps),
+                            apps = newestApps,
+                            onAppTap = { selectedAppId = it.id }
+                        )
+                    }
+                }
+
+                if (recentlyUpdatedApps.isNotEmpty()) {
+                    item("recently_updated") {
+                        DiscoverCarousel(
+                            title = stringResource(R.string.recently_updated),
+                            apps = recentlyUpdatedApps,
                             onAppTap = { selectedAppId = it.id }
                         )
                     }
