@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
@@ -115,7 +116,7 @@ class MainActivity : ComponentActivity() {
 
             LumaStoreTheme(darkTheme = darkTheme) {
                 val backdrop = rememberLumaBackdrop()
-                val navigationShape = RoundedCornerShape(32.dp)
+                val navigationShape = RoundedCornerShape(50)
 
                 Box(
                     modifier = Modifier
@@ -128,8 +129,10 @@ class MainActivity : ComponentActivity() {
                         NavigationBar(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 10.dp)
-                                .heightIn(min = 72.dp)
+                                .padding(horizontal = 18.dp)
+                                .navigationBarsPadding()
+                                .padding(bottom = 14.dp)
+                                .heightIn(min = 68.dp)
                                 .lumaLiquidGlass(
                                     backdrop = backdrop,
                                     shape = navigationShape,
