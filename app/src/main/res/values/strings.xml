@@ -199,4 +199,11 @@
     <string name="current_version">Current version</string>
     <string name="older_version">Older version</string>
     <string name="source_lock_value">Locked to %1$s</string>
+    <string name="update_queue">Update queue</string>
+    <string name="update_queue_progress">Updating %1$d of %2$d</string>
+    <string name="update_all_description">Updates are installed one after another. Android may still ask you to confirm each installation.</string>
+    <string name="ignored_updates">Ignored updates</string>
+    <string name="ignored_updates_count">Ignored updates (%1$d)</string>
+    <string name="restore_update">Restore update</string>
+    <string name="whats_new">What’s new</string>
 </resources>
