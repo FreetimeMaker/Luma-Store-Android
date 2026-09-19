@@ -64,6 +64,9 @@ fun MyAppsScreen(
         }.sortedBy { it.app.name.lowercase() }
     }
     val updates = remember(installed) { installed.filter { it.app.versionCode > it.installedCode } }
+    val installedWithoutUpdates = remember(installed) {
+        installed.filter { it.app.versionCode <= it.installedCode }
+    }
 
     var selectedAppId by remember { mutableStateOf<String?>(null) }
     var selectedSource by remember(selectedAppId) { mutableStateOf<String?>(null) }
@@ -108,27 +111,26 @@ fun MyAppsScreen(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(bottom = 88.dp)
         ) {
-            item {
-                Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
-                    Text(
-                        stringResource(R.string.updates_count, updates.size),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        if (updates.isEmpty()) stringResource(R.string.apps_up_to_date)
-                        else stringResource(R.string.updates_available_description),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    error?.let {
-                        Spacer(Modifier.height(8.dp))
-                        Text(it, color = MaterialTheme.colorScheme.error)
+            if (updates.isNotEmpty()) {
+                item {
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+                        Text(
+                            stringResource(R.string.updates_count, updates.size),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            stringResource(R.string.updates_available_description),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        error?.let {
+                            Spacer(Modifier.height(8.dp))
+                            Text(it, color = MaterialTheme.colorScheme.error)
+                        }
                     }
                 }
-            }
 
-            if (updates.isNotEmpty()) {
                 items(updates, key = { "update:${it.app.id}" }) { item ->
                     MyAppRow(
                         item = item,
@@ -159,12 +161,12 @@ fun MyAppsScreen(
                     )
                 }
             } else {
-                items(installed, key = { "installed:${it.app.id}" }) { item ->
+                items(installedWithoutUpdates, key = { "installed:${it.app.id}" }) { item ->
                     MyAppRow(
                         item = item,
                         installing = installingId == item.app.id,
                         progress = installProgress,
-                        actionLabel = if (item.app.versionCode > item.installedCode) stringResource(R.string.update) else stringResource(R.string.open),
+                        actionLabel = stringResource(R.string.open),
                         onClick = { selectedAppId = item.app.id },
                         onAction = { runAction(item) }
                     )
@@ -241,7 +243,8 @@ private fun MyAppRow(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(onClick = onClick),
+        color = Color.Transparent
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
