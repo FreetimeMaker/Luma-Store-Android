@@ -227,4 +227,14 @@
     <string name="privacy_collection">Privacy friendly</string>
     <string name="games_collection">Games</string>
     <string name="recent_collection">Recently added</string>
+    <string name="similar_apps">Similar apps</string>
+    <string name="source_priority">Source priority</string>
+    <string name="source_priority_description">Higher sources are preferred when multiple repositories provide the same app version.</string>
+    <string name="move_up">Move up</string>
+    <string name="move_down">Move down</string>
+    <string name="cache">Cache</string>
+    <string name="cache_description">%1$d cached app entries</string>
+    <string name="clear_cache">Clear app cache</string>
+    <string name="cache_cleared">App cache cleared.</string>
+    <string name="cached_data">Cached data</string>
 </resources>
