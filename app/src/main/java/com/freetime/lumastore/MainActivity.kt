@@ -139,7 +139,9 @@ class MainActivity : ComponentActivity() {
                                     interactive = true
                                 ),
                             containerColor = Color.Transparent,
-                            tonalElevation = 0.dp
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                            tonalElevation = 0.dp,
+                            windowInsets = WindowInsets(0, 0, 0, 0)
                         ) {
                             FdroidNavigationItem(
                                 selected = screen == MainScreen.DISCOVER,
@@ -297,9 +299,13 @@ class MainActivity : ComponentActivity() {
             },
             alwaysShowLabel = false,
             colors = NavigationBarItemDefaults.colors(
-                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
+                indicatorColor = Color.Transparent,
                 selectedTextColor = MaterialTheme.colorScheme.primary,
-                selectedIconColor = MaterialTheme.colorScheme.primary
+                selectedIconColor = MaterialTheme.colorScheme.primary,
+                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                disabledIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+                disabledTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
             )
         )
     }
