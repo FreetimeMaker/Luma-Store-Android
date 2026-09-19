@@ -54,7 +54,8 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent)
             )
         },
         modifier = Modifier.fillMaxSize()
@@ -120,7 +121,8 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
                 label = { Text(stringResource(R.string.name)) },
                 placeholder = { Text(stringResource(R.string.source_name_placeholder)) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent)
             )
             Spacer(Modifier.height(10.dp))
             OutlinedTextField(
@@ -129,7 +131,8 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
                 label = { Text(stringResource(R.string.repository_url)) },
                 placeholder = { Text(stringResource(R.string.repository_url_placeholder)) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent)
             )
             addSourceError?.let {
                 Spacer(Modifier.height(8.dp))
@@ -196,14 +199,16 @@ private fun EditSourceDialog(
                     onValueChange = { name = it; error = null },
                     label = { Text(stringResource(R.string.name)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent)
                 )
                 OutlinedTextField(
                     value = url,
                     onValueChange = { url = it; error = null },
                     label = { Text(stringResource(R.string.repository_url)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent)
                 )
                 error?.let {
                     Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
