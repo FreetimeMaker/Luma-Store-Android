@@ -224,7 +224,8 @@ fun FdroidStoreScreen(
                         Text(stringResource(R.string.refresh))
                     }
                 },
-                scrollBehavior = scrollBehavior
+                scrollBehavior = scrollBehavior,
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent)
             )
         }
     ) { padding ->
@@ -240,7 +241,8 @@ fun FdroidStoreScreen(
                         onValueChange = { query = it },
                         label = { Text(if (storeView == FdroidStoreView.UPDATES) stringResource(R.string.search_updates) else stringResource(R.string.search_apps)) },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent)
                     )
                     if (refreshing) {
                         Spacer(Modifier.height(8.dp))
