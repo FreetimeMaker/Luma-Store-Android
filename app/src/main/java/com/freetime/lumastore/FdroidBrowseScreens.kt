@@ -100,6 +100,16 @@ fun FdroidDiscoverScreen(
     val recentlyUpdatedApps = remember(selectedApps) {
         selectedApps.filter { it.lastUpdatedTimestamp != null }.sortedByDescending { it.lastUpdatedTimestamp }.take(12)
     }
+    val favoriteApps = remember(selectedApps) { selectedApps.filter { repository.isFavorite(it.id) } }
+    val privacyApps = remember(selectedApps) {
+        selectedApps.filter { app ->
+            app.antiFeatures.isEmpty() && !app.closedSource &&
+                app.categories.none { it.contains("tracking", true) }
+        }.take(12)
+    }
+    val gameApps = remember(selectedApps) {
+        selectedApps.filter { app -> app.categories.any { it.contains("game", true) } }.take(12)
+    }
     val categories = remember(selectedApps) {
         selectedApps.flatMap { it.categories }.distinct().sortedBy { it.lowercase() }
     }
@@ -162,6 +172,36 @@ fun FdroidDiscoverScreen(
                         DiscoverCarousel(
                             title = stringResource(R.string.recently_updated),
                             apps = recentlyUpdatedApps,
+                            onAppTap = { selectedAppId = it.id }
+                        )
+                    }
+                }
+
+                if (favoriteApps.isNotEmpty()) {
+                    item("favorites") {
+                        DiscoverCarousel(
+                            title = stringResource(R.string.favorites),
+                            apps = favoriteApps,
+                            onAppTap = { selectedAppId = it.id }
+                        )
+                    }
+                }
+
+                if (privacyApps.isNotEmpty()) {
+                    item("privacy_collection") {
+                        DiscoverCarousel(
+                            title = stringResource(R.string.privacy_collection),
+                            apps = privacyApps,
+                            onAppTap = { selectedAppId = it.id }
+                        )
+                    }
+                }
+
+                if (gameApps.isNotEmpty()) {
+                    item("games_collection") {
+                        DiscoverCarousel(
+                            title = stringResource(R.string.games_collection),
+                            apps = gameApps,
                             onAppTap = { selectedAppId = it.id }
                         )
                     }
