@@ -78,13 +78,19 @@ fun FdroidDiscoverScreen(
     var refreshKey by remember { mutableIntStateOf(0) }
     var selectedAppId by remember { mutableStateOf<String?>(null) }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
+    var usingCachedData by remember { mutableStateOf(false) }
 
     LaunchedEffect(refreshKey) {
         if (apps.isEmpty()) loading = true
         val result = withContext(Dispatchers.IO) {
             repository.loadApps(forceRefresh = refreshKey > 0)
         }
-        result.onSuccess { apps = it }
+        result.onSuccess {
+            apps = it
+            usingCachedData = refreshKey > 0 && repository.enabledSources().none { repository.sourceHealth(it)?.successful == true }
+        }.onFailure {
+            usingCachedData = repository.currentApps().isNotEmpty()
+        }
         loading = false
     }
 
@@ -147,6 +153,19 @@ fun FdroidDiscoverScreen(
                 verticalArrangement = Arrangement.spacedBy(18.dp),
                 contentPadding = PaddingValues(bottom = 88.dp)
             ) {
+                if (usingCachedData) {
+                    item("offline_status") {
+                        Surface(color = Color.Transparent, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                            Text(
+                                stringResource(R.string.offline_cached_data),
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.labelLarge,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+                        }
+                    }
+                }
+
                 if (shownApps.isNotEmpty()) {
                     item("discover_carousel") {
                         DiscoverCarousel(
@@ -157,7 +176,7 @@ fun FdroidDiscoverScreen(
                     }
                 }
 
-                if (newestApps.isNotEmpty()) {
+                if (repository.discoverSectionEnabled("new") && newestApps.isNotEmpty()) {
                     item("new_apps") {
                         DiscoverCarousel(
                             title = stringResource(R.string.new_apps),
@@ -167,7 +186,7 @@ fun FdroidDiscoverScreen(
                     }
                 }
 
-                if (recentlyUpdatedApps.isNotEmpty()) {
+                if (repository.discoverSectionEnabled("recent") && recentlyUpdatedApps.isNotEmpty()) {
                     item("recently_updated") {
                         DiscoverCarousel(
                             title = stringResource(R.string.recently_updated),
@@ -177,7 +196,7 @@ fun FdroidDiscoverScreen(
                     }
                 }
 
-                if (favoriteApps.isNotEmpty()) {
+                if (repository.discoverSectionEnabled("favorites") && favoriteApps.isNotEmpty()) {
                     item("favorites") {
                         DiscoverCarousel(
                             title = stringResource(R.string.favorites),
@@ -187,7 +206,7 @@ fun FdroidDiscoverScreen(
                     }
                 }
 
-                if (privacyApps.isNotEmpty()) {
+                if (repository.discoverSectionEnabled("privacy") && privacyApps.isNotEmpty()) {
                     item("privacy_collection") {
                         DiscoverCarousel(
                             title = stringResource(R.string.privacy_collection),
@@ -197,7 +216,7 @@ fun FdroidDiscoverScreen(
                     }
                 }
 
-                if (gameApps.isNotEmpty()) {
+                if (repository.discoverSectionEnabled("games") && gameApps.isNotEmpty()) {
                     item("games_collection") {
                         DiscoverCarousel(
                             title = stringResource(R.string.games_collection),
