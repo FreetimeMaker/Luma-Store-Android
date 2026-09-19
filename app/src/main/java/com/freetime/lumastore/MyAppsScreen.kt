@@ -68,8 +68,9 @@ fun MyAppsScreen(
         }.sortedBy { it.app.name.lowercase() }
     }
     val updates = remember(installed) { installed.filter { it.app.versionCode > it.installedCode && !repository.isUpdateIgnored(it.app) } }
-    val installedWithoutUpdates = remember(installed) {
-        installed.filter { it.app.versionCode <= it.installedCode }
+    val installedWithoutUpdates = remember(installed, updates) {
+        val updateIds = updates.mapTo(mutableSetOf()) { it.app.id }
+        installed.filter { it.app.id !in updateIds }
     }
 
     var selectedAppId by remember { mutableStateOf<String?>(null) }
@@ -246,7 +247,20 @@ fun MyAppsScreen(
                 repository.rememberPreferredSource(it)
             },
             onScreenshotSelected = {},
-            onOpenUri = { uri -> runCatching { uriHandler.openUri(uri) } }
+            onOpenUri = { uri -> runCatching { uriHandler.openUri(uri) } },
+            isFavorite = repository.isFavorite(selectedApp.id),
+            onFavoriteToggle = { repository.setFavorite(selectedApp.id, !repository.isFavorite(selectedApp.id)) },
+            isUpdateIgnored = repository.isUpdateIgnored(selectedApp),
+            onIgnoreUpdateToggle = {
+                if (repository.isUpdateIgnored(selectedApp)) repository.clearIgnoredVersion(selectedApp.id) else repository.ignoreVersion(selectedApp)
+            },
+            lockedSourceName = repository.lockedSourceName(selectedApp.id),
+            onSourceLockToggle = {
+                if (repository.lockedSourceName(selectedApp.id) == selectedApp.sourceName) repository.setSourceLock(selectedApp.id, null)
+                else repository.setSourceLock(selectedApp.id, selectedApp.sourceName)
+            },
+            signatureConflict = repository.signatureConflict(variants),
+            verifiedMetadata = repository.verifiedMetadata(selectedApp)
         )
     }
 }
