@@ -187,11 +187,27 @@ fun AppDetailsScreen(
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
-                    Text(
-                        app.antiFeatures.joinToString(", "),
+                    Column(
                         modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 14.dp),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        app.antiFeatures.forEach { antiFeature ->
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(
+                                    antiFeature,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                app.antiFeatureReasons[antiFeature]?.takeIf { it.isNotBlank() }?.let { reason ->
+                                    Text(
+                                        reason,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
