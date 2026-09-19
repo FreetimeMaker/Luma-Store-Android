@@ -464,6 +464,7 @@ private fun FdroidDetailsHost(
     var selectedSource by remember(selectedAppId) { mutableStateOf<String?>(null) }
     var installingKey by remember { mutableStateOf<String?>(null) }
     var progress by remember { mutableIntStateOf(0) }
+    var selectedDeveloper by remember(selectedAppId) { mutableStateOf<String?>(null) }
 
     val variants = selectedAppId?.let { appVariants[it] }.orEmpty().sortedBy { it.sourceName }
     val installedCodeForSelection = selectedAppId?.let(installedVersionCode)
@@ -515,7 +516,20 @@ private fun FdroidDetailsHost(
                 repository.rememberPreferredSource(it)
             },
             onScreenshotSelected = {},
-            onOpenUri = { uri -> runCatching { uriHandler.openUri(uri) } }
+            onOpenUri = { uri -> runCatching { uriHandler.openUri(uri) } },
+            onDeveloperSelected = { selectedDeveloper = it }
+        )
+    }
+
+    selectedDeveloper?.let { developer ->
+        DeveloperAppsScreen(
+            developerName = developer,
+            apps = appVariants.values.flatten(),
+            onBack = { selectedDeveloper = null },
+            onAppSelected = { selected ->
+                selectedDeveloper = null
+                onDismiss()
+            }
         )
     }
 }
