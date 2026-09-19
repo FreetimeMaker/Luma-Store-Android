@@ -571,7 +571,7 @@ class AppRepository(context: Context) {
                     changelog = localizedValue(version.opt("whatsNew")),
                     addedTimestamp = version.optLong("added", 0L).takeIf { it > 0 }
                 )
-            }.sortedByDescending { it.versionCode }
+            }.sortedByDescending { it.versionCode }.toList()
             val manifest = latest.optJSONObject("manifest") ?: continue
             val file = latest.optJSONObject("file") ?: continue
             val fileName = file.optString("name").trim()
