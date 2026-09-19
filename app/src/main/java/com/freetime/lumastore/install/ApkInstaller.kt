@@ -13,6 +13,11 @@ import java.net.URL
 import java.security.MessageDigest
 
 object ApkInstaller {
+    class DownloadHandle internal constructor() {
+        @Volatile internal var cancelled: Boolean = false
+        fun cancel() { cancelled = true }
+    }
+
     fun downloadAndInstall(
         context: Context,
         packageName: String,
@@ -21,7 +26,8 @@ object ApkInstaller {
         onProgress: (Int) -> Unit,
         onReady: () -> Unit,
         onError: (Throwable) -> Unit
-    ) {
+    ): DownloadHandle {
+        val handle = DownloadHandle()
         Thread {
             runCatching {
                 val downloadUrl = runCatching { URL(apkUrl.trim()) }.getOrNull()
@@ -45,6 +51,7 @@ object ApkInstaller {
                         var downloaded = 0L
                         var lastProgress = -1
                         while (input.read(buffer).also { read = it } >= 0) {
+                            if (handle.cancelled) throw InterruptedException(context.getString(R.string.download_cancelled))
                             output.write(buffer, 0, read)
                             downloaded += read
                             if (total > 0) {
@@ -82,8 +89,16 @@ object ApkInstaller {
                 }
                 onReady()
                 context.startActivity(intent)
-            }.onFailure(onError)
+            }.onFailure {
+                if (handle.cancelled) targetFileCleanup(context, packageName)
+                onError(it)
+            }
         }.start()
+        return handle
+    }
+
+    private fun targetFileCleanup(context: Context, packageName: String) {
+        runCatching { File(File(context.cacheDir, "apks"), packageName.replace('.', '_') + ".apk").delete() }
     }
 
     private fun verifyUpdateSignature(context: Context, packageName: String, apk: File) {
