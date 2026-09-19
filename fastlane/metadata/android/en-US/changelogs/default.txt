@@ -1,21 +1,25 @@
-• Refined Material You and Liquid Glass throughout the store, including the floating bottom navigation, app details, source management and dialogs
-• Added automatic light and dark theme switching based on local device time
-• Added F-Droid index-v2 support with index-v1 fallback
-• Improved F-Droid app icon loading with multiple fallback paths
-• Added source health information and last sync status
-• Added New Apps and Recently Updated sections to Discover
-• Added an available-updates badge to My Apps and separated updates from already up-to-date apps
-• Added APK SHA-256 verification and installed-app signature verification before updates
-• Added package-name verification for downloaded APKs
-• Added app compatibility information including minimum/target Android SDK, supported architectures and download size
-• Incompatible Android or CPU architecture builds are now prevented from being installed
-• Added signing certificate fingerprints, APK hashes and permissions to app details when provided by the repository
-• Added support for favorites, ignored update versions and per-app source locks in the store data model
-• Added Anti-Feature explanations so repositories can show why an app has a specific Anti-Feature
-• Added a developer apps screen: tap a developer in App Details to see their other apps
+Luma Store 4.0.0
+
+• Redesigned the store with Material You and Liquid Glass, including a truly floating glass bottom navigation with content scrolling behind it
+• Added automatic light/dark mode based on local device time
+• Added F-Droid index-v2 support with index-v1 fallback and improved F-Droid icon loading
+• Added repository health information, source priorities, custom repository import and QR-based repository import
+• Added source locks and preferred-source handling for individual apps
+• Added Favorites, New Apps, Recently Updated, Privacy Friendly and Games collections to Discover
+• Discover sections can now be enabled or disabled from Settings
+• Added Similar Apps and developer app browsing to App Details
+• Added read-only version history and per-version changelog information
+• Added ignored updates, Update All and a sequential update queue to My Apps
+• Added cancellable APK downloads and retry support for failed downloads
+• Added an available-updates badge to My Apps
+• Added APK SHA-256, package-name and installed-app signature verification before installation or updates
+• Added compatibility checks for Android SDK versions and CPU architectures
+• Added technical app information including permissions, download size, APK hashes and signing certificate fingerprints
+• Added repository metadata verification and warnings for conflicting signatures between sources
+• Added Anti-Feature explanations
+• Added backup/import for Luma Store settings and export support for app data
+• Added offline cache fallback, cache management and a visible cached-data status
+• Improved layouts for tablets, foldables and other wide windows
 • Added Luma Store app deep-link support
-• Improved My Apps icon fallback handling
-• Improved source selection and preferred-source handling
-• Improved caching for the new F-Droid and app metadata
-• Extracted new user-visible installer and security messages into translatable string resources
-• Fixed several Compose compilation issues introduced during the store UI and source improvements
+• Improved app icons, source selection, caching and repository metadata handling
+• Fixed multiple UI, navigation, readability and Kotlin compilation issues
