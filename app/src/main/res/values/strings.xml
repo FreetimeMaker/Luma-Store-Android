@@ -151,6 +151,14 @@
     <string name="save">Save</string>
     <string name="cancel">Cancel</string>
     <string name="remove">Remove</string>
+    <string name="source_health_ok">%1$d apps • last sync %2$s</string>
+    <string name="source_health_error">Sync failed • %1$s</string>
+    <string name="update_all">Update all</string>
+    <string name="favorites">Favorites</string>
+    <string name="recently_updated">Recently updated</string>
+    <string name="new_apps">New apps</string>
+    <string name="share">Share</string>
+    <string name="offline">Offline</string>
 
     <string name="developer_notification_fallback">New developer notification</string>
     <string name="developer_notification_channel">Developer notifications</string>
