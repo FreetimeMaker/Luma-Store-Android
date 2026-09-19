@@ -46,6 +46,7 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.sources)) },
