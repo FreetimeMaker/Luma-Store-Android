@@ -16,6 +16,7 @@ data class StoreApp(
     val version: String,
     val versionCode: Long,
     val iconUrl: String?,
+    val iconUrls: List<String> = emptyList(),
     val screenshotUrls: List<String>,
     val categories: List<String>,
     val apkUrl: String,
@@ -251,7 +252,14 @@ class AppRepository(context: Context) {
                 description = description,
                 version = versionName,
                 versionCode = versionCode,
-                iconUrl = resolveFdroidIconUrl(
+                iconUrl = resolveFdroidIconUrls(
+                    source = source,
+                    packageName = packageName,
+                    locale = localizedLocale,
+                    localizedIcon = firstText(localized?.opt("icon")),
+                    legacyIcon = firstText(latest.opt("icon"), meta?.opt("icon"))
+                ).firstOrNull(),
+                iconUrls = resolveFdroidIconUrls(
                     source = source,
                     packageName = packageName,
                     locale = localizedLocale,
@@ -418,40 +426,46 @@ class AppRepository(context: Context) {
         }
     }
 
-    private fun resolveFdroidIconUrl(
+    private fun resolveFdroidIconUrls(
         source: AppSource,
         packageName: String,
         locale: String?,
         localizedIcon: String?,
         legacyIcon: String?
-    ): String? {
+    ): List<String> {
         val base = source.indexUrl.substringBeforeLast('/')
+        val candidates = linkedSetOf<String>()
 
-        fun absoluteOrRepoPath(value: String): String {
-            val icon = value.trim()
-            if (icon.startsWith("http://", true) || icon.startsWith("https://", true)) return icon
-            return "$base/${icon.trimStart('/')}"
-        }
-
-        localizedIcon?.takeIf { it.isNotBlank() }?.let { icon ->
-            if (icon.startsWith("http://", true) || icon.startsWith("https://", true)) return icon
+        fun add(value: String?) {
+            val icon = value?.trim()?.takeIf { it.isNotBlank() } ?: return
+            if (icon.startsWith("http://", true) || icon.startsWith("https://", true)) {
+                candidates += icon
+                return
+            }
             val clean = icon.trimStart('/')
-            if (clean.contains('/')) return absoluteOrRepoPath(clean)
-
-            // F-Droid localized graphics live below <package>/<locale>/icon/.
-            // Some third-party repositories still expose the older flat layout,
-            // which is handled below through the legacy icon metadata.
-            if (!locale.isNullOrBlank()) return "$base/$packageName/$locale/icon/$clean"
+            if (clean.contains('/')) candidates += "$base/$clean"
         }
 
-        legacyIcon?.takeIf { it.isNotBlank() }?.let { icon ->
-            if (icon.startsWith("http://", true) || icon.startsWith("https://", true)) return icon
-            val clean = icon.trimStart('/')
-            if (clean.contains('/')) return absoluteOrRepoPath(clean)
-            return "$base/icons-160/$clean"
+        add(localizedIcon)
+        localizedIcon?.trim()?.trimStart('/')?.takeIf { it.isNotBlank() && !it.contains('/') }?.let { clean ->
+            if (!locale.isNullOrBlank()) {
+                candidates += "$base/$packageName/$locale/icon/$clean"
+                candidates += "$base/$packageName/$locale/$clean"
+            }
+            candidates += "$base/icons-160/$clean"
+            candidates += "$base/icons/$clean"
+            candidates += "$base/$clean"
         }
 
-        return null
+        add(legacyIcon)
+        legacyIcon?.trim()?.trimStart('/')?.takeIf { it.isNotBlank() && !it.contains('/') }?.let { clean ->
+            candidates += "$base/icons-160/$clean"
+            candidates += "$base/icons/$clean"
+            candidates += "$base/$clean"
+            if (!locale.isNullOrBlank()) candidates += "$base/$packageName/$locale/icon/$clean"
+        }
+
+        return candidates.toList()
     }
 
     private fun parseAntiFeatures(value: Any?): List<String> = when (value) {
@@ -500,6 +514,7 @@ class AppRepository(context: Context) {
                     version = item.optString("version_name").ifBlank { item.optString("version") },
                     versionCode = item.optLong("version_code"),
                     iconUrl = item.optNullableString("icon_url"),
+                    iconUrls = listOfNotNull(item.optNullableString("icon_url")),
                     screenshotUrls = jsonStringList(item.optJSONArray("screenshots")).ifEmpty { jsonStringList(item.optJSONArray("screenshot_urls")) },
                     categories = jsonStringList(item.optJSONArray("categories")),
                     apkUrl = apkUrl,
@@ -572,7 +587,7 @@ class AppRepository(context: Context) {
         val array = JSONArray()
         apps.forEach { app -> array.put(JSONObject().apply {
             put("id", app.id); put("name", app.name); put("summary", app.summary); put("description", app.description)
-            put("version", app.version); put("versionCode", app.versionCode); put("iconUrl", app.iconUrl)
+            put("version", app.version); put("versionCode", app.versionCode); put("iconUrl", app.iconUrl); put("iconUrls", JSONArray(app.iconUrls))
             put("screenshotUrls", JSONArray(app.screenshotUrls)); put("categories", JSONArray(app.categories))
             put("apkUrl", app.apkUrl); put("sourceName", app.sourceName); put("authorName", app.authorName)
             put("authorEmail", app.authorEmail); put("authorWebsite", app.authorWebsite); put("websiteUrl", app.websiteUrl)
@@ -595,7 +610,9 @@ class AppRepository(context: Context) {
                 if (id.isBlank() || name.isBlank()) continue
                 add(StoreApp(
                     id, name, item.optString("summary"), item.optString("description"), item.optString("version"),
-                    item.optLong("versionCode"), item.optNullableString("iconUrl"), jsonStringList(item.optJSONArray("screenshotUrls")),
+                    item.optLong("versionCode"), item.optNullableString("iconUrl"),
+                    jsonStringList(item.optJSONArray("iconUrls")).ifEmpty { listOfNotNull(item.optNullableString("iconUrl")) },
+                    jsonStringList(item.optJSONArray("screenshotUrls")),
                     jsonStringList(item.optJSONArray("categories")), item.optString("apkUrl"), item.optString("sourceName"),
                     item.optNullableString("authorName"), item.optNullableString("authorEmail"), item.optNullableString("authorWebsite"),
                     item.optNullableString("websiteUrl"), item.optNullableString("sourceCodeUrl"), item.optNullableString("issueTrackerUrl"),
@@ -628,7 +645,7 @@ class AppRepository(context: Context) {
         private const val SOURCE_PREFERENCES = "app_sources"
         private const val APP_SOURCE_PREFERENCES = "luma_store_source_preferences"
         private const val APP_SOURCE_KEY_PREFIX = "source_"
-        private const val CACHE_KEY_APPS = "apps_validated_download_urls_v3"
+        private const val CACHE_KEY_APPS = "apps_validated_download_urls_v4"
         private const val CACHE_KEY_TIMESTAMP = "timestamp"
         private const val CUSTOM_SOURCES_KEY = "custom_sources"
     }
