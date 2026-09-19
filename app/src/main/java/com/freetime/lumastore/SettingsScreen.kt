@@ -14,6 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import java.text.DateFormat
+import java.util.Date
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.freetime.lumastore.data.AppRepository
 import com.freetime.lumastore.data.AppSource
@@ -280,6 +282,15 @@ private fun SourceCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    repository.sourceHealth(source)?.let { health ->
+                        val checked = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(health.checkedAt))
+                        Text(
+                            if (health.successful) stringResource(R.string.source_health_ok, health.appCount, checked)
+                            else stringResource(R.string.source_health_error, checked),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (health.successful) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
                 Switch(enabled, onEnabledChange)
             }
