@@ -588,7 +588,9 @@ private fun FdroidDetailsHost(
                     else repository.setSourceLock(app.id, app.sourceName)
                 },
                 signatureConflict = repository.signatureConflict(variants),
-                verifiedMetadata = repository.verifiedMetadata(app)
+                verifiedMetadata = repository.verifiedMetadata(app),
+                similarApps = repository.similarApps(app),
+                onSimilarAppSelected = { selectedAppId = it.id }
             )
         }
     }
