@@ -36,6 +36,7 @@ data class StoreApp(
     val litecoin: String? = null,
     val license: String? = null,
     val antiFeatures: List<String> = emptyList(),
+    val antiFeatureReasons: Map<String, String> = emptyMap(),
     val closedSource: Boolean = false,
     val versionChangelog: String? = null,
     val expectedSha256: String? = null,
@@ -364,6 +365,7 @@ class AppRepository(context: Context) {
                 litecoin = stringValue(meta?.opt("litecoin")),
                 license = stringValue(meta?.opt("license")),
                 antiFeatures = parseAntiFeatures(meta?.opt("antiFeatures")),
+                antiFeatureReasons = parseAntiFeatureReasons(meta?.opt("antiFeatures")),
                 expectedSha256 = latest.optString("hash").takeIf {
                     it.matches(Regex("^[0-9a-fA-F]{64}$")) &&
                         latest.optString("hashType", "sha256").equals("sha256", true)
@@ -425,6 +427,7 @@ class AppRepository(context: Context) {
                 versionChangelog = localizedValue(latest.opt("whatsNew")),
                 license = stringValue(meta.opt("license")),
                 antiFeatures = parseAntiFeatures(latest.opt("antiFeatures")).ifEmpty { parseAntiFeatures(meta.opt("antiFeatures")) },
+                antiFeatureReasons = parseAntiFeatureReasons(latest.opt("antiFeatures")) + parseAntiFeatureReasons(meta.opt("antiFeatures")),
                 expectedSha256 = file.optString("sha256").takeIf { hash -> hash.matches(Regex("^[0-9a-fA-F]{64}$")) },
                 addedTimestamp = meta.optLong("added", 0L).takeIf { timestamp -> timestamp > 0 },
                 lastUpdatedTimestamp = meta.optLong("lastUpdated", 0L).takeIf { timestamp -> timestamp > 0 },
@@ -618,6 +621,32 @@ class AppRepository(context: Context) {
         else -> emptyList()
     }
 
+    private fun parseAntiFeatureReasons(value: Any?): Map<String, String> {
+        if (value !is JSONObject) return emptyMap()
+        return buildMap {
+            val keys = value.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                val raw = value.opt(key)
+                val reason = when (raw) {
+                    is String -> raw.takeIf { it.isNotBlank() }
+                    is JSONObject -> firstText(
+                        raw.opt("reason"),
+                        raw.opt("description"),
+                        raw.opt("note"),
+                        raw.opt("en-US"),
+                        raw.opt("en")
+                    )
+                    is JSONArray -> (0 until raw.length()).asSequence()
+                        .mapNotNull { index -> stringValue(raw.opt(index)) }
+                        .firstOrNull()
+                    else -> null
+                }
+                if (!reason.isNullOrBlank()) put(key, reason)
+            }
+        }
+    }
+
     private fun loadLumaApiSource(source: AppSource): List<StoreApp> {
         val raw = httpGet(source.indexUrl).trim()
         val apps = when {
@@ -741,7 +770,7 @@ class AppRepository(context: Context) {
             put("sourceCodeUrl", app.sourceCodeUrl); put("issueTrackerUrl", app.issueTrackerUrl); put("translationUrl", app.translationUrl)
             put("changelogUrl", app.changelogUrl); put("donationUrls", JSONArray(app.donationUrls)); put("liberapay", app.liberapay)
             put("openCollective", app.openCollective); put("bitcoin", app.bitcoin); put("litecoin", app.litecoin)
-            put("license", app.license); put("antiFeatures", JSONArray(app.antiFeatures)); put("closedSource", app.closedSource)
+            put("license", app.license); put("antiFeatures", JSONArray(app.antiFeatures)); put("antiFeatureReasons", JSONObject(app.antiFeatureReasons)); put("closedSource", app.closedSource)
             put("versionChangelog", app.versionChangelog); put("expectedSha256", app.expectedSha256)
             app.addedTimestamp?.let { put("addedTimestamp", it) }; app.lastUpdatedTimestamp?.let { put("lastUpdatedTimestamp", it) }
             app.downloadSize?.let { put("downloadSize", it) }; app.minSdk?.let { put("minSdk", it) }; app.targetSdk?.let { put("targetSdk", it) }
@@ -769,7 +798,7 @@ class AppRepository(context: Context) {
                     item.optNullableString("translationUrl"), item.optNullableString("changelogUrl"), jsonStringList(item.optJSONArray("donationUrls")),
                     item.optNullableString("liberapay"), item.optNullableString("openCollective"), item.optNullableString("bitcoin"),
                     item.optNullableString("litecoin"), item.optNullableString("license"), jsonStringList(item.optJSONArray("antiFeatures")),
-                    item.optBoolean("closedSource", false), item.optNullableString("versionChangelog"),
+                    jsonStringMap(item.optJSONObject("antiFeatureReasons")), item.optBoolean("closedSource", false), item.optNullableString("versionChangelog"),
                     item.optNullableString("expectedSha256"), item.optLong("addedTimestamp", 0L).takeIf { it > 0 },
                     item.optLong("lastUpdatedTimestamp", 0L).takeIf { it > 0 },
                     item.optLong("downloadSize", 0L).takeIf { it > 0 }, item.optInt("minSdk", 0).takeIf { it > 0 },
@@ -800,9 +829,20 @@ class AppRepository(context: Context) {
         private const val SOURCE_PREFERENCES = "app_sources"
         private const val APP_SOURCE_PREFERENCES = "luma_store_source_preferences"
         private const val APP_SOURCE_KEY_PREFIX = "source_"
-        private const val CACHE_KEY_APPS = "apps_validated_download_urls_v6"
+        private const val CACHE_KEY_APPS = "apps_validated_download_urls_v7"
         private const val CACHE_KEY_TIMESTAMP = "timestamp"
         private const val CUSTOM_SOURCES_KEY = "custom_sources"
+    }
+}
+
+private fun jsonStringMap(obj: JSONObject?): Map<String, String> {
+    if (obj == null) return emptyMap()
+    return buildMap {
+        val keys = obj.keys()
+        while (keys.hasNext()) {
+            val key = keys.next()
+            obj.optString(key).takeIf { it.isNotBlank() && it != "null" }?.let { put(key, it) }
+        }
     }
 }
 
