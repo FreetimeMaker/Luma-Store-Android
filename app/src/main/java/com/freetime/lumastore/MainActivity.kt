@@ -332,6 +332,7 @@ class MainActivity : ComponentActivity() {
                 this@MainActivity,
                 app.id,
                 app.apkUrl,
+                app.expectedSha256,
                 { runOnUiThread { onProgress(it) } },
                 { runOnUiThread(onReady) },
                 { error -> runOnUiThread { onError(error) } }
