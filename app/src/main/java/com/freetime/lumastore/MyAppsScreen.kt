@@ -152,6 +152,12 @@ fun MyAppsScreen(
                 }
             }
 
+            if (updates.isEmpty() && error != null) {
+                item {
+                    Text(error.orEmpty(), color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                }
+            }
+
             if (installed.isEmpty()) {
                 item {
                     Text(
@@ -161,6 +167,16 @@ fun MyAppsScreen(
                     )
                 }
             } else {
+                if (updates.isEmpty() && installedWithoutUpdates.isNotEmpty()) {
+                    item {
+                        Text(
+                            stringResource(R.string.installed_apps),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)
+                        )
+                    }
+                }
                 items(installedWithoutUpdates, key = { "installed:${it.app.id}" }) { item ->
                     MyAppRow(
                         item = item,
