@@ -84,6 +84,8 @@ fun MyAppsScreen(
     var updateQueue by remember { mutableStateOf<List<InstalledStoreApp>>(emptyList()) }
     var queueIndex by remember { mutableIntStateOf(0) }
     var queueRunning by remember { mutableStateOf(false) }
+    var activeDownload by remember { mutableStateOf<ApkInstaller.DownloadHandle?>(null) }
+    var lastFailedItem by remember { mutableStateOf<InstalledStoreApp?>(null) }
     val uriHandler = LocalUriHandler.current
 
     fun runAction(item: InstalledStoreApp) {
@@ -107,6 +109,7 @@ fun MyAppsScreen(
             },
             {
                 installingId = null
+                lastFailedItem = item
                 error = it.message
             }
         )
@@ -144,6 +147,7 @@ fun MyAppsScreen(
             },
             {
                 installingId = null
+                lastFailedItem = item
                 error = it.message
                 queueRunning = false
             }
@@ -187,6 +191,20 @@ fun MyAppsScreen(
                                 stringResource(R.string.update_queue_progress, queueIndex + 1, updateQueue.size),
                                 style = MaterialTheme.typography.labelMedium
                             )
+                        }
+                        if (installingId != null) {
+                            TextButton(onClick = {
+                                queueRunning = false
+                                activeDownload?.cancel()
+                                activeDownload = null
+                            }) { Text(stringResource(R.string.cancel_download)) }
+                        }
+                        lastFailedItem?.let { failed ->
+                            TextButton(onClick = {
+                                error = null
+                                lastFailedItem = null
+                                runAction(failed)
+                            }) { Text(stringResource(R.string.retry_download)) }
                         }
                         error?.let {
                             Spacer(Modifier.height(8.dp))
