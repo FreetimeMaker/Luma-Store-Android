@@ -39,6 +39,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import coil3.compose.SubcomposeAsyncImage
+import coil3.compose.SubcomposeAsyncImageContent
 import com.freetime.lumastore.data.AppRepository
 import com.freetime.lumastore.data.StoreApp
 
@@ -331,3 +333,27 @@ private data class InstalledStoreApp(
     val installedCode: Long,
     val installedName: String?
 )
+
+
+@Composable
+private fun FallbackAppIcon(app: StoreApp, size: Int, index: Int = 0) {
+    val candidates = app.iconUrls.ifEmpty { listOfNotNull(app.iconUrl) }
+    if (index >= candidates.size) {
+        Box(
+            modifier = Modifier.size(size.dp).clip(MaterialTheme.shapes.large).background(MaterialTheme.colorScheme.secondaryContainer),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(app.name.take(1).uppercase(), fontWeight = FontWeight.Bold)
+        }
+        return
+    }
+    SubcomposeAsyncImage(
+        model = candidates[index],
+        contentDescription = stringResource(R.string.icon_of, app.name),
+        contentScale = ContentScale.Crop,
+        modifier = Modifier.size(size.dp).clip(MaterialTheme.shapes.large),
+        loading = { SubcomposeAsyncImageContent() },
+        success = { SubcomposeAsyncImageContent() },
+        error = { FallbackAppIcon(app, size, index + 1) }
+    )
+}
