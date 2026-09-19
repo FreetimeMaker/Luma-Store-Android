@@ -465,11 +465,13 @@ private fun FdroidDetailsHost(
     var installingKey by remember { mutableStateOf<String?>(null) }
     var progress by remember { mutableIntStateOf(0) }
     var selectedDeveloper by remember(selectedAppId) { mutableStateOf<String?>(null) }
+    var developerSelectedAppId by remember(selectedAppId) { mutableStateOf<String?>(null) }
 
-    val variants = selectedAppId?.let { appVariants[it] }.orEmpty().sortedBy { it.sourceName }
-    val installedCodeForSelection = selectedAppId?.let(installedVersionCode)
+    val effectiveSelectedAppId = developerSelectedAppId ?: selectedAppId
+    val variants = effectiveSelectedAppId?.let { appVariants[it] }.orEmpty().sortedBy { it.sourceName }
+    val installedCodeForSelection = effectiveSelectedAppId?.let(installedVersionCode)
     val app = variants.firstOrNull { it.sourceName == selectedSource }
-        ?: selectedAppId?.let { repository.preferredVariant(it, variants, installedCodeForSelection) }
+        ?: effectiveSelectedAppId?.let { repository.preferredVariant(it, variants, installedCodeForSelection) }
 
     if (app != null) {
         val installedCode = installedVersionCode(app.id)
@@ -491,7 +493,9 @@ private fun FdroidDetailsHost(
             actionLabel = actionLabel,
             installing = installingKey == key,
             progress = progress,
-            onBack = onDismiss,
+            onBack = {
+                if (developerSelectedAppId != null) developerSelectedAppId = null else onDismiss()
+            },
             onAction = {
                 if (!sdkCompatible || !abiCompatible) {
                     Unit
@@ -528,7 +532,8 @@ private fun FdroidDetailsHost(
             onBack = { selectedDeveloper = null },
             onAppSelected = { selected ->
                 selectedDeveloper = null
-                onDismiss()
+                developerSelectedAppId = selected.id
+                selectedSource = selected.sourceName
             }
         )
     }
