@@ -60,6 +60,7 @@ import coil3.compose.SubcomposeAsyncImage
 import coil3.compose.SubcomposeAsyncImageContent
 import com.freetime.lumastore.data.AppRepository
 import com.freetime.lumastore.data.StoreApp
+import com.freetime.lumastore.install.ApkInstaller
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -71,7 +72,7 @@ fun FdroidDiscoverScreen(
     openInstalledApp: (String) -> Boolean,
     canInstallPackages: () -> Boolean,
     requestInstallPermission: () -> Unit,
-    install: (StoreApp, (Int) -> Unit, () -> Unit, (Throwable) -> Unit) -> Unit
+    install: (StoreApp, (Int) -> Unit, () -> Unit, (Throwable) -> Unit) -> ApkInstaller.DownloadHandle
 ) {
     var apps by remember(repository) { mutableStateOf(repository.currentApps()) }
     var loading by remember { mutableStateOf(apps.isEmpty()) }
@@ -301,7 +302,7 @@ fun FdroidSearchScreen(
     openInstalledApp: (String) -> Boolean,
     canInstallPackages: () -> Boolean,
     requestInstallPermission: () -> Unit,
-    install: (StoreApp, (Int) -> Unit, () -> Unit, (Throwable) -> Unit) -> Unit
+    install: (StoreApp, (Int) -> Unit, () -> Unit, (Throwable) -> Unit) -> ApkInstaller.DownloadHandle
 ) {
     var apps by remember(repository) { mutableStateOf(repository.currentApps()) }
     var query by remember { mutableStateOf("") }
@@ -516,7 +517,7 @@ private fun FdroidDetailsHost(
     openInstalledApp: (String) -> Boolean,
     canInstallPackages: () -> Boolean,
     requestInstallPermission: () -> Unit,
-    install: (StoreApp, (Int) -> Unit, () -> Unit, (Throwable) -> Unit) -> Unit,
+    install: (StoreApp, (Int) -> Unit, () -> Unit, (Throwable) -> Unit) -> ApkInstaller.DownloadHandle,
     onDismiss: () -> Unit
 ) {
     val uriHandler = LocalUriHandler.current
