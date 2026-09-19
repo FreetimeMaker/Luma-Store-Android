@@ -89,7 +89,15 @@ fun AppDetailsScreen(
     onSourceSelected: (StoreApp) -> Unit,
     onScreenshotSelected: (String) -> Unit,
     onOpenUri: (String) -> Unit,
-    onDeveloperSelected: (String) -> Unit = {}
+    onDeveloperSelected: (String) -> Unit = {},
+    isFavorite: Boolean = false,
+    onFavoriteToggle: () -> Unit = {},
+    isUpdateIgnored: Boolean = false,
+    onIgnoreUpdateToggle: () -> Unit = {},
+    lockedSourceName: String? = null,
+    onSourceLockToggle: () -> Unit = {},
+    signatureConflict: Boolean = false,
+    verifiedMetadata: Boolean = false
 ) {
     val topAppBarState = rememberTopAppBarState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(topAppBarState)
@@ -147,6 +155,59 @@ fun AppDetailsScreen(
                 actionShape = actionShape
             )
 
+            if (signatureConflict) {
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).lumaLiquidGlass(backdrop, glassShape, interactive = false),
+                    shape = glassShape,
+                    colors = CardDefaults.elevatedCardColors(containerColor = Color.Transparent),
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
+                ) {
+                    Text(stringResource(R.string.signature_conflict), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 4.dp))
+                    Text(stringResource(R.string.signature_conflict_description), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 14.dp))
+                }
+            } else if (verifiedMetadata) {
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).lumaLiquidGlass(backdrop, glassShape, interactive = false),
+                    shape = glassShape,
+                    colors = CardDefaults.elevatedCardColors(containerColor = Color.Transparent),
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
+                ) {
+                    Text(stringResource(R.string.verified_metadata), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 4.dp))
+                    Text(stringResource(R.string.verified_metadata_description), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 14.dp))
+                }
+            }
+
+            DetailsExpandableSection(stringResource(R.string.app_information)) {
+                TextButton(onClick = onFavoriteToggle, modifier = Modifier.fillMaxWidth()) {
+                    Text(if (isFavorite) stringResource(R.string.remove_favorite) else stringResource(R.string.add_favorite))
+                }
+                if (installedVersionName != null && actionLabel == stringResource(R.string.update)) {
+                    TextButton(onClick = onIgnoreUpdateToggle, modifier = Modifier.fillMaxWidth()) {
+                        Text(if (isUpdateIgnored) stringResource(R.string.stop_ignoring_update) else stringResource(R.string.ignore_update))
+                    }
+                }
+                TextButton(onClick = onSourceLockToggle, modifier = Modifier.fillMaxWidth()) {
+                    Text(if (lockedSourceName == app.sourceName) stringResource(R.string.unlock_source) else stringResource(R.string.lock_to_source))
+                }
+                lockedSourceName?.let { DetailValueRow(stringResource(R.string.source_lock_value, it), it) }
+            }
+
+            DetailsExpandableSection(stringResource(R.string.version_history)) {
+                Text(stringResource(R.string.version_history_read_only), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.92f), modifier = Modifier.padding(bottom = 8.dp))
+                if (app.versions.isEmpty()) {
+                    Text(stringResource(R.string.no_version_history), style = MaterialTheme.typography.bodyMedium)
+                } else {
+                    app.versions.forEachIndexed { index, version ->
+                        DetailValueRow(
+                            if (index == 0) stringResource(R.string.current_version) else stringResource(R.string.older_version),
+                            version.versionName + " (" + version.versionCode + ") • " + version.sourceName
+                        )
+                        version.changelog?.takeIf { it.isNotBlank() }?.let { changelogText ->
+                            Text(changelogText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.92f), modifier = Modifier.padding(bottom = 6.dp))
+                        }
+                    }
+                }
+            }
             app.versionChangelog?.takeIf { it.isNotBlank() }?.let { changelog ->
                 ElevatedCard(
                     modifier = Modifier
