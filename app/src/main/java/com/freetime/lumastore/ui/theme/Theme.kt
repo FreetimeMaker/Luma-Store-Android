@@ -50,10 +50,20 @@ fun LumaStoreTheme(
     content: @Composable () -> Unit
 ) {
     // Match GeoWeather: Material You is always enabled on Android 12+.
-    val colorScheme = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+    val baseColorScheme = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         val context = LocalContext.current
         if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
     } else if (darkTheme) DarkColorScheme else LightColorScheme
+
+    // Keep all standard foreground roles readable regardless of the dynamic Material You palette.
+    val foreground = if (darkTheme) Color.White else Color.Black
+    val secondaryForeground = foreground.copy(alpha = 0.78f)
+    val colorScheme = baseColorScheme.copy(
+        onBackground = foreground,
+        onSurface = foreground,
+        onSurfaceVariant = secondaryForeground,
+        inverseOnSurface = if (darkTheme) Color.Black else Color.White
+    )
 
     MaterialTheme(
         colorScheme = colorScheme,
