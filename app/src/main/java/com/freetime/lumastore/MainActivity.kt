@@ -28,6 +28,8 @@ import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
@@ -113,6 +115,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
             val darkTheme = currentHour < 7 || currentHour >= 19
+            val availableUpdateCount = remember(revision, currentSourcesRevision) {
+                repository.currentApps().groupBy { it.id }.count { (packageName, variants) ->
+                    val installed = installedVersionCode(packageName)
+                    installed != null && (repository.preferredVariant(packageName, variants, installed)?.versionCode ?: installed) > installed
+                }
+            }
 
             LumaStoreTheme(darkTheme = darkTheme) {
                 val backdrop = rememberLumaBackdrop()
@@ -169,6 +177,7 @@ class MainActivity : ComponentActivity() {
                                 selected = screen == MainScreen.MY_APPS,
                                 onClick = { screen = MainScreen.MY_APPS },
                                 label = stringResource(R.string.my_apps),
+                                badgeCount = availableUpdateCount,
                                 icon = {
                                     Icon(
                                         Icons.Filled.Apps,
@@ -284,12 +293,17 @@ class MainActivity : ComponentActivity() {
         selected: Boolean,
         onClick: () -> Unit,
         label: String,
+        badgeCount: Int = 0,
         icon: @Composable () -> Unit
     ) {
         NavigationBarItem(
             selected = selected,
             onClick = onClick,
-            icon = icon,
+            icon = {
+                if (badgeCount > 0) {
+                    BadgedBox(badge = { Badge { Text(badgeCount.toString()) } }) { icon() }
+                } else icon()
+            },
             label = {
                 Text(
                     label,
