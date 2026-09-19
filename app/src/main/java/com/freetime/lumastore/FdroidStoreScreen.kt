@@ -60,6 +60,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import coil3.compose.SubcomposeAsyncImage
+import coil3.compose.SubcomposeAsyncImageContent
 import com.freetime.lumastore.data.AppRepository
 import com.freetime.lumastore.data.StoreApp
 import com.freetime.lumastore.ui.glass.lumaLiquidGlass
@@ -628,12 +630,7 @@ private fun FdroidAppListRow(
 @Composable
 private fun FdroidStoreIcon(app: StoreApp, size: Int) {
     if (app.iconUrl != null) {
-        AsyncImage(
-            model = app.iconUrl,
-            contentDescription = stringResource(R.string.icon_of, app.name),
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.size(size.dp).clip(MaterialTheme.shapes.large)
-        )
+        FallbackAppIcon(app = app, size = size)
     } else {
         Box(
             modifier = Modifier
@@ -655,3 +652,27 @@ private fun fdroidVariantKey(app: StoreApp): String = "${app.id}\u0000${app.sour
 
 private fun fdroidSourcePreferenceKey(packageName: String): String =
     FDROID_SOURCE_KEY_PREFIX + packageName
+
+
+@Composable
+private fun FallbackAppIcon(app: StoreApp, size: Int, index: Int = 0) {
+    val candidates = app.iconUrls.ifEmpty { listOfNotNull(app.iconUrl) }
+    if (index >= candidates.size) {
+        Box(
+            modifier = Modifier.size(size.dp).clip(MaterialTheme.shapes.large).background(MaterialTheme.colorScheme.secondaryContainer),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(app.name.take(1).uppercase(), fontWeight = FontWeight.Bold)
+        }
+        return
+    }
+    SubcomposeAsyncImage(
+        model = candidates[index],
+        contentDescription = stringResource(R.string.icon_of, app.name),
+        contentScale = ContentScale.Crop,
+        modifier = Modifier.size(size.dp).clip(MaterialTheme.shapes.large),
+        loading = { SubcomposeAsyncImageContent() },
+        success = { SubcomposeAsyncImageContent() },
+        error = { FallbackAppIcon(app, size, index + 1) }
+    )
+}
