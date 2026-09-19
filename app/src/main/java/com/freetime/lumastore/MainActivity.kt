@@ -13,6 +13,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -130,12 +131,14 @@ class MainActivity : ComponentActivity() {
                 val backdrop = rememberLumaBackdrop()
                 val navigationShape = RoundedCornerShape(50)
 
-                Box(
+                BoxWithConstraints(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.background)
                         .lumaBackdropSource(backdrop)
                 ) {
+                val wideWindow = maxWidth >= 840.dp
+                val navigationHorizontalPadding = if (wideWindow) maxWidth * 0.18f else 18.dp
                 Box(Modifier.fillMaxSize()) {
                     Box(Modifier.fillMaxSize()) {
                         PersistentScreen(visible = screen == MainScreen.DISCOVER) {
@@ -210,7 +213,7 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier
                             .align(androidx.compose.ui.Alignment.BottomCenter)
                             .fillMaxWidth()
-                            .padding(horizontal = 18.dp)
+                            .padding(horizontal = navigationHorizontalPadding)
                             .navigationBarsPadding()
                             .padding(bottom = 14.dp)
                             .heightIn(min = 68.dp)
