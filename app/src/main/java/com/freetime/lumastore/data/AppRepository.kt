@@ -69,9 +69,9 @@ class AppRepository(context: Context) {
     @Volatile private var memoryApps: List<StoreApp>? = null
 
     private val defaultSources = listOf(
-        AppSource(appContext.getString(R.string.source_freetime_fdroid), "https://fdroid.free-time.me/repo/index-v1.json", enabledByDefault = false),
-        AppSource(appContext.getString(R.string.source_fdroid), "https://f-droid.org/repo/index-v1.json", enabledByDefault = false),
-        AppSource(appContext.getString(R.string.source_izzyondroid), "https://apt.izzysoft.de/fdroid/repo/index-v1.json", enabledByDefault = false),
+        AppSource(appContext.getString(R.string.source_freetime_fdroid), "https://fdroid.free-time.me/repo/index-v2.json", enabledByDefault = false),
+        AppSource(appContext.getString(R.string.source_fdroid), "https://f-droid.org/repo/index-v2.json", enabledByDefault = false),
+        AppSource(appContext.getString(R.string.source_izzyondroid), "https://apt.izzysoft.de/fdroid/repo/index-v2.json", enabledByDefault = false),
         AppSource(appContext.getString(R.string.source_luma_store), "https://api.free-time.me/v2/lumastore/apps?platform=android", SourceType.LUMA_API)
     )
 
@@ -239,8 +239,14 @@ class AppRepository(context: Context) {
     }
 
     private fun loadFdroidSource(source: AppSource): List<StoreApp> {
-        val root = JSONObject(httpGet(source.indexUrl).trimStart('\uFEFF', ' ', '\n', '\r', '\t'))
+        val raw = runCatching { httpGet(source.indexUrl) }.getOrElse { firstError ->
+            if (source.indexUrl.endsWith("index-v2.json", true)) httpGet(source.indexUrl.substringBeforeLast('/') + "/index-v1.json")
+            else throw firstError
+        }
+        val root = JSONObject(raw.trimStart('\uFEFF', ' ', '\n', '\r', '\t'))
         val packages = root.optJSONObject("packages") ?: return emptyList()
+        val firstPackage = packages.keys().asSequence().firstOrNull()?.let(packages::optJSONObject)
+        if (firstPackage?.optJSONObject("versions") != null) return parseFdroidV2(source, packages)
         val metadataByPackage = parseFdroidMetadata(root.opt("apps"))
         val results = ArrayList<StoreApp>(packages.length())
 
@@ -346,6 +352,73 @@ class AppRepository(context: Context) {
             )
         }
         return results
+    }
+
+    private fun parseFdroidV2(source: AppSource, packages: JSONObject): List<StoreApp> {
+        val base = source.indexUrl.substringBeforeLast('/')
+        val results = mutableListOf<StoreApp>()
+        val packageNames = packages.keys()
+        while (packageNames.hasNext()) {
+            val packageName = packageNames.next()
+            val pkg = packages.optJSONObject(packageName) ?: continue
+            val meta = pkg.optJSONObject("metadata") ?: JSONObject()
+            val versions = pkg.optJSONObject("versions") ?: continue
+            var best: JSONObject? = null
+            var bestCode = Long.MIN_VALUE
+            val versionKeys = versions.keys()
+            while (versionKeys.hasNext()) {
+                val version = versions.optJSONObject(versionKeys.next()) ?: continue
+                val code = version.optJSONObject("manifest")?.optLong("versionCode", Long.MIN_VALUE) ?: Long.MIN_VALUE
+                if (code > bestCode) { best = version; bestCode = code }
+            }
+            val latest = best ?: continue
+            val manifest = latest.optJSONObject("manifest") ?: continue
+            val file = latest.optJSONObject("file") ?: continue
+            val fileName = file.optString("name").trim()
+            if (fileName.isBlank()) continue
+            val iconFile = fdroidV2FileName(meta.opt("icon"))
+            val iconUrls = buildList {
+                iconFile?.let { icon -> add(if (icon.startsWith("http")) icon else "$base/" + icon.trimStart('/')) }
+            }
+            results += StoreApp(
+                id = packageName,
+                name = localizedValue(meta.opt("name")) ?: packageName,
+                summary = localizedValue(meta.opt("summary")).orEmpty(),
+                description = localizedValue(meta.opt("description")).orEmpty(),
+                version = manifest.optString("versionName").ifBlank { bestCode.toString() },
+                versionCode = bestCode,
+                iconUrl = iconUrls.firstOrNull(),
+                iconUrls = iconUrls,
+                screenshotUrls = emptyList(),
+                categories = jsonStringList(meta.optJSONArray("categories")),
+                apkUrl = "$base/" + fileName.trimStart('/'),
+                sourceName = source.name,
+                authorName = localizedValue(meta.opt("authorName")),
+                authorEmail = stringValue(meta.opt("authorEmail")),
+                authorWebsite = stringValue(meta.opt("authorWebSite")),
+                websiteUrl = stringValue(meta.opt("webSite")),
+                sourceCodeUrl = stringValue(meta.opt("sourceCode")),
+                issueTrackerUrl = stringValue(meta.opt("issueTracker")),
+                translationUrl = stringValue(meta.opt("translation")),
+                changelogUrl = stringValue(meta.opt("changelog")),
+                versionChangelog = localizedValue(latest.opt("whatsNew")),
+                license = stringValue(meta.opt("license")),
+                antiFeatures = parseAntiFeatures(latest.opt("antiFeatures")).ifEmpty { parseAntiFeatures(meta.opt("antiFeatures")) },
+                expectedSha256 = file.optString("sha256").takeIf { hash -> hash.matches(Regex("^[0-9a-fA-F]{64}$")) },
+                addedTimestamp = meta.optLong("added", 0L).takeIf { timestamp -> timestamp > 0 },
+                lastUpdatedTimestamp = meta.optLong("lastUpdated", 0L).takeIf { timestamp -> timestamp > 0 }
+            )
+        }
+        return results
+    }
+
+    private fun fdroidV2FileName(value: Any?): String? = when (value) {
+        is JSONObject -> value.optString("name").takeIf { it.isNotBlank() }
+            ?: value.keys().asSequence().mapNotNull { key ->
+                value.optJSONObject(key)?.optString("name")?.takeIf { it.isNotBlank() }
+            }.firstOrNull()
+        is String -> value.takeIf { it.isNotBlank() }
+        else -> null
     }
 
     private fun preferredLocalizedMetadata(meta: JSONObject?): Pair<String, JSONObject>? {
@@ -621,7 +694,10 @@ class AppRepository(context: Context) {
     private fun normalizeFdroidUrl(rawUrl: String): String {
         val clean = rawUrl.trim()
         require(clean.isNotBlank()) { appContext.getString(R.string.repository_url_required) }
-        return if (clean.endsWith("index-v1.json", true)) clean else clean.trimEnd('/') + "/index-v1.json"
+        return when {
+            clean.endsWith("index-v2.json", true) || clean.endsWith("index-v1.json", true) -> clean
+            else -> clean.trimEnd('/') + "/index-v2.json"
+        }
     }
 
     private fun sourcePreferenceKey(source: AppSource): String =
