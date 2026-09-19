@@ -128,7 +128,7 @@
     <string name="manage_sources_description">Enable only the repositories you want to load apps from.</string>
     <string name="no_source_enabled">No source is enabled. The store will not show any apps until you enable at least one source again.</string>
     <string name="add_another_source">Add another source</string>
-    <string name="fdroid_source_description">F-Droid repositories with index-v1.json are supported. You can enter either the repository URL or the direct index-v1.json URL.</string>
+    <string name="fdroid_source_description">F-Droid repositories with index-v2.json and index-v1.json are supported. Repository URLs prefer v2 automatically and fall back to v1 when needed.</string>
     <string name="name">Name</string>
     <string name="source_name_placeholder">My F-Droid Repository</string>
     <string name="repository_url">Repository URL</string>
