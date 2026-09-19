@@ -266,28 +266,7 @@ private fun MyAppRow(
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (item.app.iconUrl != null) {
-                    AsyncImage(
-                        model = item.app.iconUrl,
-                        contentDescription = stringResource(R.string.icon_of, item.app.name),
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.size(60.dp).clip(RoundedCornerShape(16.dp))
-                    )
-                } else {
-                    Surface(
-                        modifier = Modifier.size(60.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer
-                    ) {
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(item.app.name.take(1).uppercase(), fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
+                FallbackAppIcon(item.app, 60)
                 Spacer(Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                     Text(
