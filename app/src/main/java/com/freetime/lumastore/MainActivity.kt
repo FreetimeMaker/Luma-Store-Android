@@ -314,7 +314,7 @@ class MainActivity : ComponentActivity() {
                 .fillMaxSize()
                 .zIndex(if (visible) 1f else 0f)
                 .graphicsLayer { alpha = if (visible) 1f else 0f },
-            color = MaterialTheme.colorScheme.background
+            color = Color.Transparent
         ) {
             content()
         }
