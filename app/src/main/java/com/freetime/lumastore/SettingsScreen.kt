@@ -52,11 +52,6 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.sources)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-                    }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent)
             )
         },
