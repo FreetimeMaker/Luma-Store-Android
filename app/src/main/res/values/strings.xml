@@ -216,4 +216,15 @@
     <string name="app_list_exported">App list exported.</string>
     <string name="backup_failed">Backup operation failed: %1$s</string>
     <string name="invalid_backup_file">This is not a valid Luma Store backup file.</string>
+    <string name="import_repository">Import repository</string>
+    <string name="import_repository_description">Paste an F-Droid repository URL or scan a repository QR code.</string>
+    <string name="repository_or_qr_value">Repository URL / QR content</string>
+    <string name="imported_repository">Imported repository</string>
+    <string name="repository_imported">Repository imported.</string>
+    <string name="repository_import_invalid">The scanned or pasted value is not a supported F-Droid repository address.</string>
+    <string name="scan_qr_code">Scan QR code</string>
+    <string name="favorites_description">Apps you marked as favorites.</string>
+    <string name="privacy_collection">Privacy friendly</string>
+    <string name="games_collection">Games</string>
+    <string name="recent_collection">Recently added</string>
 </resources>
