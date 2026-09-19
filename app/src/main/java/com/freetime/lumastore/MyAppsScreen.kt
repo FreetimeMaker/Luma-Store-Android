@@ -65,7 +65,7 @@ fun MyAppsScreen(
             InstalledStoreApp(app, code, installedVersionName(packageName))
         }.sortedBy { it.app.name.lowercase() }
     }
-    val updates = remember(installed) { installed.filter { it.app.versionCode > it.installedCode } }
+    val updates = remember(installed) { installed.filter { it.app.versionCode > it.installedCode && !repository.isUpdateIgnored(it.app) } }
     val installedWithoutUpdates = remember(installed) {
         installed.filter { it.app.versionCode <= it.installedCode }
     }
