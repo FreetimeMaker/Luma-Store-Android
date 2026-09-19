@@ -101,7 +101,33 @@ class AppRepository(context: Context) {
         memoryApps = null
     }
 
-    fun enabledSources(): List<AppSource> = sources.filter(::isSourceEnabled)
+    fun sourcePriority(): List<String> {
+        val saved = sourcePreferences.getString("source_priority", null)
+            ?.split("\n")?.filter { it.isNotBlank() }.orEmpty()
+        val names = sources.map { it.name }
+        return (saved.filter { it in names } + names.filterNot { it in saved }).distinct()
+    }
+
+    fun setSourcePriority(names: List<String>) {
+        sourcePreferences.edit().putString("source_priority", names.distinct().joinToString("\n")).apply()
+        memoryApps = null
+    }
+
+    fun moveSource(sourceName: String, direction: Int) {
+        val list = sourcePriority().toMutableList()
+        val index = list.indexOf(sourceName)
+        if (index < 0) return
+        val target = (index + direction).coerceIn(0, list.lastIndex)
+        if (target == index) return
+        val item = list.removeAt(index)
+        list.add(target, item)
+        setSourcePriority(list)
+    }
+
+    fun enabledSources(): List<AppSource> {
+        val order = sourcePriority().withIndex().associate { it.value to it.index }
+        return sources.filter(::isSourceEnabled).sortedBy { order[it.name] ?: Int.MAX_VALUE }
+    }
     fun isCustomSource(source: AppSource): Boolean = source.custom
 
     fun preferredSourceName(packageName: String): String? =
@@ -216,8 +242,38 @@ class AppRepository(context: Context) {
             }
         }
 
-        return variants.maxByOrNull { it.versionCode }
+        val priority = sourcePriority().withIndex().associate { it.value to it.index }
+        return variants.maxWithOrNull(
+            compareBy<StoreApp> { it.versionCode }
+                .thenBy { -(priority[it.sourceName] ?: Int.MAX_VALUE) }
+        )
     }
+
+    fun similarApps(app: StoreApp, limit: Int = 8): List<StoreApp> {
+        val categories = app.categories.map { it.lowercase() }.toSet()
+        return currentApps()
+            .filter { it.id != app.id }
+            .groupBy { it.id }
+            .mapNotNull { (id, variants) -> preferredVariant(id, variants) }
+            .map { candidate ->
+                val overlap = candidate.categories.count { it.lowercase() in categories }
+                candidate to overlap
+            }
+            .filter { it.second > 0 }
+            .sortedWith(compareByDescending<Pair<StoreApp, Int>> { it.second }.thenBy { it.first.name.lowercase() })
+            .take(limit)
+            .map { it.first }
+    }
+
+    fun clearAppCache() {
+        cachePreferences.edit().remove(CACHE_KEY_APPS).remove(CACHE_KEY_TIMESTAMP).apply()
+        memoryApps = null
+    }
+
+    fun cachedAppCount(): Int = loadCachedApps().size
+
+    fun cacheAgeMillis(): Long? = cacheTimestamp().takeIf { it > 0 }?.let { System.currentTimeMillis() - it }
+
 
     fun importRepository(value: String, fallbackName: String = appContext.getString(R.string.imported_repository)): Result<AppSource> = runCatching {
         val raw = value.trim()
