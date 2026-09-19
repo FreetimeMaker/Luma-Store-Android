@@ -46,6 +46,7 @@ import coil3.compose.SubcomposeAsyncImage
 import coil3.compose.SubcomposeAsyncImageContent
 import com.freetime.lumastore.data.AppRepository
 import com.freetime.lumastore.data.StoreApp
+import com.freetime.lumastore.install.ApkInstaller
 
 @Composable
 fun MyAppsScreen(
@@ -56,7 +57,7 @@ fun MyAppsScreen(
     openInstalledApp: (String) -> Boolean,
     canInstallPackages: () -> Boolean,
     requestInstallPermission: () -> Unit,
-    install: (StoreApp, (Int) -> Unit, () -> Unit, (Throwable) -> Unit) -> Unit
+    install: (StoreApp, (Int) -> Unit, () -> Unit, (Throwable) -> Unit) -> ApkInstaller.DownloadHandle
 ) {
     val allVariants = remember(repository, installedAppsRevision) {
         repository.loadCachedApps().groupBy { it.id }
