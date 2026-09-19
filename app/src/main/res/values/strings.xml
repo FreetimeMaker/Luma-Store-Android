@@ -183,4 +183,20 @@
     <string name="downloaded_apk_inspection_failed">The downloaded APK could not be inspected.</string>
     <string name="downloaded_apk_package_mismatch">The downloaded APK package name does not match the selected app.</string>
     <string name="apk_signature_mismatch">The APK signature does not match the installed app.</string>
+    <string name="version_history">Version history</string>
+    <string name="version_history_read_only">Older versions are shown for reference only and cannot be installed from Luma Store.</string>
+    <string name="no_version_history">No older version metadata is available from this source.</string>
+    <string name="add_favorite">Add to favorites</string>
+    <string name="remove_favorite">Remove from favorites</string>
+    <string name="ignore_update">Ignore this update</string>
+    <string name="stop_ignoring_update">Stop ignoring this update</string>
+    <string name="lock_to_source">Always use this source</string>
+    <string name="unlock_source">Remove source lock</string>
+    <string name="verified_metadata">Verified metadata available</string>
+    <string name="verified_metadata_description">This source provides an APK hash or signing-certificate fingerprint.</string>
+    <string name="signature_conflict">Signature conflict between sources</string>
+    <string name="signature_conflict_description">Different sources report different signing certificates for this package. Review the selected source before updating.</string>
+    <string name="current_version">Current version</string>
+    <string name="older_version">Older version</string>
+    <string name="source_lock_value">Locked to %1$s</string>
 </resources>
