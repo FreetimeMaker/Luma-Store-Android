@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -153,7 +154,8 @@ fun FdroidDiscoverScreen(
                                 item {
                                     AssistChip(
                                         onClick = { selectedCategory = null },
-                                        label = { Text(stringResource(R.string.all_categories)) }
+                                        label = { Text(stringResource(R.string.all_categories)) },
+                                    colors = AssistChipDefaults.assistChipColors(containerColor = Color.Transparent)
                                     )
                                 }
                                 items(categories, key = { it }) { category ->
@@ -161,7 +163,8 @@ fun FdroidDiscoverScreen(
                                         onClick = {
                                             selectedCategory = if (selectedCategory == category) null else category
                                         },
-                                        label = { Text(category) }
+                                        label = { Text(category) },
+                                    colors = AssistChipDefaults.assistChipColors(containerColor = Color.Transparent)
                                     )
                                 }
                             }
