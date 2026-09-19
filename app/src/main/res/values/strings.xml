@@ -172,6 +172,8 @@
     <string name="source_locked">Source locked</string>
     <string name="incompatible_android">This version requires Android SDK %1$d or newer.</string>
     <string name="incompatible_architecture">This build does not support this device architecture.</string>
+    <string name="apps_by_developer">Apps by %1$s</string>
+    <string name="no_developer_apps">No other apps from this developer were found in the enabled sources.</string>
 
     <string name="developer_notification_fallback">New developer notification</string>
     <string name="developer_notification_channel">Developer notifications</string>
