@@ -47,6 +47,12 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
     val backupImported = stringResource(R.string.backup_imported)
     val backupFailed = stringResource(R.string.backup_failed, "%s")
 
+    val enabledStates = remember {
+        mutableStateMapOf<String, Boolean>().apply {
+            repository.sources.forEach { this[it.name] = repository.isSourceEnabled(it) }
+        }
+    }
+
     val qrScanner = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             repositoryImportValue = result.data?.getStringExtra("SCAN_RESULT")
@@ -75,12 +81,6 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
                     onSourcesChanged()
                 }
                 .onFailure { transferMessage = backupFailed.replace("%s", it.message ?: "") }
-        }
-    }
-
-    val enabledStates = remember {
-        mutableStateMapOf<String, Boolean>().apply {
-            repository.sources.forEach { this[it.name] = repository.isSourceEnabled(it) }
         }
     }
 
