@@ -340,7 +340,9 @@ fun MyAppsScreen(
                 else repository.setSourceLock(selectedApp.id, selectedApp.sourceName)
             },
             signatureConflict = repository.signatureConflict(variants),
-            verifiedMetadata = repository.verifiedMetadata(selectedApp)
+            verifiedMetadata = repository.verifiedMetadata(selectedApp),
+            similarApps = repository.similarApps(selectedApp),
+            onSimilarAppSelected = { selectedAppId = it.id }
         )
     }
 }
