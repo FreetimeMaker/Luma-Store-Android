@@ -1,10 +1,6 @@
-• Migrated Liquid Glass UI to the shared Freetime Design implementation used by GeoWeather
-• Added Freetime Core and Freetime Design through the Gradle version catalog
-• Added support for opening fdroidrepo:// and fdroidrepos:// links directly in Luma Store
-• F-Droid repository links can now automatically add and enable their source
-• Added direct navigation to Sources when importing a repository link
-• Removed the unnecessary Open action for already installed apps from the Luma Store source
-• Fixed detail screens showing underlying browse content through transparent backgrounds
-• Improved Liquid Glass consistency across app details, developer pages, settings and store screens
-• Fixed Freetime Glass root integration and related Kotlin compilation errors
-• Fixed app-detail action visibility parameter handling
+• Improved Liquid Glass transparency so the shared Freetime Design backdrop is properly visible
+• Made app and developer detail surfaces transparent to match GeoWeather's Liquid Glass behavior
+• The Open button is now hidden only for the Luma Store app itself and remains available for other installed apps
+• Added distinct icons for the different donation methods
+• Removed Favorites, Always use this source and Version history controls from app details
+• Fixed navigation from an author page to an app and back so the author page is restored correctly
