@@ -533,14 +533,13 @@ private fun FdroidDetailsHost(
     val app = variants.firstOrNull { it.sourceName == selectedSource }
         ?: effectiveSelectedAppId?.let { repository.preferredVariant(it, variants, installedCodeForSelection) }
 
-    if (selectedDeveloper != null) {
+    if (selectedDeveloper != null && developerSelectedAppId == null) {
         selectedDeveloper?.let { developer ->
             DeveloperAppsScreen(
                 developerName = developer,
                 apps = appVariants.values.flatten(),
                 onBack = { selectedDeveloper = null },
                 onAppSelected = { selected ->
-                    selectedDeveloper = null
                     developerSelectedAppId = selected.id
                     selectedSource = selected.sourceName
                 }
@@ -568,7 +567,12 @@ private fun FdroidDetailsHost(
                 installing = installingKey == key,
                 progress = progress,
                 onBack = {
-                    if (developerSelectedAppId != null) developerSelectedAppId = null else onDismiss()
+                    if (developerSelectedAppId != null) {
+                        developerSelectedAppId = null
+                        selectedSource = null
+                    } else {
+                        onDismiss()
+                    }
                 },
                 onAction = {
                     if (!sdkCompatible || !abiCompatible) {
