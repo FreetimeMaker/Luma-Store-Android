@@ -17,12 +17,14 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
@@ -136,9 +138,13 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize()
                 ) {
                 val wideWindow = maxWidth >= 840.dp
-                val navigationHorizontalPadding = if (wideWindow) maxWidth * 0.18f else 18.dp
+                val navigationHorizontalPadding = 18.dp
                 Box(Modifier.fillMaxSize()) {
-                    Box(Modifier.fillMaxSize()) {
+                    Box(
+                        Modifier.fillMaxSize().then(
+                            if (wideWindow) Modifier.padding(start = 104.dp) else Modifier
+                        )
+                    ) {
                         PersistentScreen(visible = screen == MainScreen.DISCOVER) {
                             key(currentSourcesRevision) {
                                 FdroidDiscoverScreen(
@@ -211,8 +217,9 @@ class MainActivity : ComponentActivity() {
 
                     NavigationBar(
                         modifier = Modifier
-                            .align(androidx.compose.ui.Alignment.BottomCenter)
-                            .fillMaxWidth()
+                            .align(if (wideWindow) androidx.compose.ui.Alignment.CenterStart else androidx.compose.ui.Alignment.BottomCenter)
+                            .then(if (wideWindow) Modifier.width(88.dp).padding(start = 12.dp) else Modifier.fillMaxWidth())
+
                             .padding(horizontal = navigationHorizontalPadding)
                             .navigationBarsPadding()
                             .padding(bottom = 14.dp)
