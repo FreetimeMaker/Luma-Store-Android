@@ -1,5 +1,8 @@
 package com.freetime.lumastore
 
+import me.free_time.design.freetimeGlass
+import me.free_time.design.FreetimeGlassRoot
+
 import android.app.job.JobInfo
 import android.app.job.JobScheduler
 import android.content.ComponentName
@@ -61,10 +64,6 @@ import com.freetime.lumastore.data.supabase
 import com.freetime.lumastore.install.ApkInstaller
 import com.freetime.lumastore.notifications.NotificationSyncJobService
 import com.freetime.lumastore.notifications.SystemNotificationManager
-import com.freetime.lumastore.ui.glass.LumaGlassRoot
-import com.freetime.lumastore.ui.glass.lumaBackdropSource
-import com.freetime.lumastore.ui.glass.lumaLiquidGlass
-import com.freetime.lumastore.ui.glass.rememberLumaBackdrop
 import com.freetime.lumastore.ui.theme.LumaStoreTheme
 import io.github.jan.supabase.auth.handleDeeplinks
 
@@ -129,15 +128,13 @@ class MainActivity : ComponentActivity() {
             }
 
             LumaStoreTheme(darkTheme = darkTheme) {
-                LumaGlassRoot {
-                val backdrop = rememberLumaBackdrop()
+                FreetimeGlassRoot {
                 val navigationShape = RoundedCornerShape(50)
 
                 BoxWithConstraints(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.background)
-                        .lumaBackdropSource(backdrop)
                 ) {
                 val wideWindow = maxWidth >= 840.dp
                 val navigationHorizontalPadding = if (wideWindow) maxWidth * 0.18f else 18.dp
@@ -219,7 +216,7 @@ class MainActivity : ComponentActivity() {
                             .navigationBarsPadding()
                             .padding(bottom = 14.dp)
                             .heightIn(min = 68.dp)
-                            .lumaLiquidGlass(backdrop = backdrop, shape = navigationShape, interactive = true),
+                            .freetimeGlass(shape = navigationShape, interactive = true),
                         containerColor = Color.Transparent,
                         contentColor = MaterialTheme.colorScheme.onSurface,
                         tonalElevation = 0.dp,
