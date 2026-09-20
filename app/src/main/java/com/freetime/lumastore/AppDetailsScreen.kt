@@ -1,5 +1,7 @@
 package com.freetime.lumastore
 
+import me.free_time.design.freetimeGlass
+
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -72,8 +74,6 @@ import coil3.compose.AsyncImage
 import coil3.compose.SubcomposeAsyncImage
 import coil3.compose.SubcomposeAsyncImageContent
 import com.freetime.lumastore.data.StoreApp
-import com.freetime.lumastore.ui.glass.lumaLiquidGlass
-import com.freetime.lumastore.ui.glass.rememberLumaBackdrop
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -105,7 +105,6 @@ fun AppDetailsScreen(
     val topAppBarState = rememberTopAppBarState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(topAppBarState)
     val scrollState = rememberScrollState()
-    val backdrop = rememberLumaBackdrop()
     val glassShape = RoundedCornerShape(20.dp)
     val actionShape = RoundedCornerShape(50)
 
@@ -156,13 +155,12 @@ fun AppDetailsScreen(
                 onAction = onAction,
                 onSourceSelected = onSourceSelected,
                 onDeveloperSelected = onDeveloperSelected,
-                backdrop = backdrop,
                 actionShape = actionShape
             )
 
             if (signatureConflict) {
                 ElevatedCard(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).lumaLiquidGlass(backdrop, glassShape, interactive = false),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).freetimeGlass(glassShape, interactive = false),
                     shape = glassShape,
                     colors = CardDefaults.elevatedCardColors(containerColor = Color.Transparent),
                     elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
@@ -172,7 +170,7 @@ fun AppDetailsScreen(
                 }
             } else if (verifiedMetadata) {
                 ElevatedCard(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).lumaLiquidGlass(backdrop, glassShape, interactive = false),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).freetimeGlass(glassShape, interactive = false),
                     shape = glassShape,
                     colors = CardDefaults.elevatedCardColors(containerColor = Color.Transparent),
                     elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
@@ -218,7 +216,7 @@ fun AppDetailsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp, vertical = 6.dp)
-                        .lumaLiquidGlass(backdrop, glassShape, interactive = false),
+                        .freetimeGlass(glassShape, interactive = false),
                     shape = glassShape,
                     colors = CardDefaults.elevatedCardColors(containerColor = Color.Transparent),
                     elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
@@ -252,7 +250,7 @@ fun AppDetailsScreen(
                         items(similarApps, key = { it.id }) { similar ->
                             ElevatedCard(
                                 onClick = { onSimilarAppSelected(similar) },
-                                modifier = Modifier.width(180.dp).lumaLiquidGlass(backdrop, glassShape, interactive = true),
+                                modifier = Modifier.width(180.dp).freetimeGlass(glassShape, interactive = true),
                                 colors = CardDefaults.elevatedCardColors(containerColor = Color.Transparent),
                                 elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
                             ) {
@@ -276,7 +274,7 @@ fun AppDetailsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp, vertical = 6.dp)
-                        .lumaLiquidGlass(backdrop, glassShape, interactive = false)
+                        .freetimeGlass(glassShape, interactive = false)
                 ) {
                     Text(
                         stringResource(R.string.anti_features),
@@ -321,7 +319,7 @@ fun AppDetailsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp, vertical = 6.dp)
-                        .lumaLiquidGlass(backdrop, glassShape, interactive = false),
+                        .freetimeGlass(glassShape, interactive = false),
                     shape = glassShape,
                     colors = CardDefaults.elevatedCardColors(containerColor = Color.Transparent),
                     elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
@@ -440,14 +438,13 @@ private fun AppDetailsHeader(
     onAction: () -> Unit,
     onSourceSelected: (StoreApp) -> Unit,
     onDeveloperSelected: (String) -> Unit,
-    backdrop: Unit,
     actionShape: androidx.compose.ui.graphics.Shape
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 8.dp)
-            .lumaLiquidGlass(backdrop, RoundedCornerShape(28.dp), interactive = false)
+            .freetimeGlass(RoundedCornerShape(28.dp), interactive = false)
             .padding(16.dp)
     ) {
     Row(
@@ -500,7 +497,7 @@ private fun AppDetailsHeader(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 10.dp)
-                .lumaLiquidGlass(backdrop, actionShape, interactive = true)
+                .freetimeGlass(actionShape, interactive = true)
                 .clickable(onClick = onAction)
                 .padding(horizontal = 20.dp, vertical = 14.dp),
             contentAlignment = Alignment.Center
@@ -536,10 +533,9 @@ private fun ExpandableDescription(app: StoreApp) {
 private fun DetailsExpandableSection(title: String, content: @Composable ColumnScope.() -> Unit) {
     var expanded by rememberSaveable(title) { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        val backdrop = rememberLumaBackdrop()
         val shape = RoundedCornerShape(20.dp)
         ElevatedCard(
-            modifier = Modifier.fillMaxWidth().lumaLiquidGlass(backdrop, shape, interactive = false),
+            modifier = Modifier.fillMaxWidth().freetimeGlass(shape, interactive = false),
             shape = shape,
             colors = CardDefaults.elevatedCardColors(containerColor = Color.Transparent),
             elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
