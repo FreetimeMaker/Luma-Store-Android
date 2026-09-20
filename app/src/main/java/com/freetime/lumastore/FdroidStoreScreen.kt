@@ -1,5 +1,7 @@
 package com.freetime.lumastore
 
+import android.content.Intent
+
 import me.free_time.design.freetimeGlass
 
 import android.content.Context
@@ -89,6 +91,7 @@ fun FdroidStoreScreen(
 ) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
     val sourcePreferences = remember(context) {
         context.applicationContext.getSharedPreferences(FDROID_SOURCE_PREFERENCES, Context.MODE_PRIVATE)
     }
@@ -479,6 +482,14 @@ fun FdroidStoreScreen(
                 onSourceSelected = { variant -> selectSource(appId, variant.sourceName) },
                 onScreenshotSelected = { selectedScreenshotUrl = it },
                 onOpenUri = { uriHandler.openUri(it) },
+                onShare = { shared ->
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_SUBJECT, shared.name)
+                        putExtra(Intent.EXTRA_TEXT, shared.websiteUrl ?: shared.sourceCodeUrl ?: shared.apkUrl)
+                    }
+                    context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share)))
+                },
                 isUpdateIgnored = repository.isUpdateIgnored(app),
                 onIgnoreUpdateToggle = {
                     if (repository.isUpdateIgnored(app)) repository.clearIgnoredVersion(app.id) else repository.ignoreVersion(app)
