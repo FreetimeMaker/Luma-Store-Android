@@ -20,9 +20,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import androidx.compose.ui.platform.LocalContext
-import android.app.Activity
-import android.content.Intent
 import java.text.DateFormat
 import java.util.Date
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -53,11 +53,10 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
         }
     }
 
-    val qrScanner = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            repositoryImportValue = result.data?.getStringExtra("SCAN_RESULT")
-                ?: result.data?.dataString
-                ?: repositoryImportValue
+    val qrScanner = rememberLauncherForActivityResult(ScanContract()) { result ->
+        result.contents?.takeIf { it.isNotBlank() }?.let {
+            repositoryImportValue = it
+            addSourceError = null
         }
     }
 
@@ -235,11 +234,13 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(
                     onClick = {
-                        val intent = Intent("com.google.zxing.client.android.SCAN").apply {
-                            putExtra("SCAN_MODE", "QR_CODE_MODE")
-                        }
-                        runCatching { qrScanner.launch(intent) }
-                            .onFailure { addSourceError = it.message }
+                        qrScanner.launch(
+                            ScanOptions()
+                                .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                                .setPrompt(context.getString(R.string.scan_qr_code))
+                                .setBeepEnabled(false)
+                                .setOrientationLocked(false)
+                        )
                     },
                     modifier = Modifier.weight(1f)
                 ) { Text(stringResource(R.string.scan_qr_code)) }
