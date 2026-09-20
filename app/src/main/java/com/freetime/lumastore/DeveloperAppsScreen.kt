@@ -30,11 +30,11 @@ import com.freetime.lumastore.data.StoreApp
 fun DeveloperAppsScreen(developerName: String, apps: List<StoreApp>, onBack: () -> Unit, onAppSelected: (StoreApp) -> Unit) {
     val developerApps = apps.filter { it.authorName?.trim()?.equals(developerName.trim(), true) == true }
         .groupBy { it.id }.mapNotNull { (_, variants) -> variants.maxByOrNull { it.versionCode } }.sortedBy { it.name.lowercase() }
-    Scaffold(containerColor = MaterialTheme.colorScheme.background, topBar = {
+    Scaffold(containerColor = Color.Transparent, topBar = {
         TopAppBar(
             title = { Text(stringResource(R.string.apps_by_developer, developerName), maxLines = 1, overflow = TextOverflow.Ellipsis) },
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background, scrolledContainerColor = Color.Transparent)
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent)
         )
     }) { padding ->
         if (developerApps.isEmpty()) Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { Text(stringResource(R.string.no_developer_apps)) }
