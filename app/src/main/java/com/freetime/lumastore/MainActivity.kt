@@ -135,9 +135,7 @@ class MainActivity : ComponentActivity() {
                 val navigationShape = RoundedCornerShape(50)
 
                 BoxWithConstraints(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background)
+                    modifier = Modifier.fillMaxSize()
                 ) {
                 val wideWindow = maxWidth >= 840.dp
                 val navigationHorizontalPadding = if (wideWindow) maxWidth * 0.18f else 18.dp
