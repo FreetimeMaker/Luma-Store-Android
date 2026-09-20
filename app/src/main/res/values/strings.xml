@@ -49,6 +49,7 @@
     <string name="no_description_available">No description available.</string>
     <string name="categories">Categories: %1$s</string>
     <string name="screenshots">Screenshots</string>
+    <string name="screenshots_hidden_data_saver">Screenshots are hidden while Data Saver is enabled.</string>
     <string name="screenshot">Screenshot</string>
     <string name="tap_to_enlarge">Tap to enlarge</string>
     <string name="screenshot_of">Screenshot of %1$s</string>
