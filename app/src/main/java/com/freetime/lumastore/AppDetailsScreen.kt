@@ -108,7 +108,7 @@ fun AppDetailsScreen(
     val actionShape = RoundedCornerShape(50)
 
     Scaffold(
-        containerColor = Color.Transparent,
+        containerColor = MaterialTheme.colorScheme.background,
         contentColor = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier
             .fillMaxSize()
