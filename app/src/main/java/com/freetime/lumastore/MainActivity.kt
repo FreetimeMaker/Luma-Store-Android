@@ -17,12 +17,14 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
@@ -122,6 +124,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
             val darkTheme = currentHour < 7 || currentHour >= 19
+            val oledMode = remember(currentSourcesRevision) { repository.oledModeEnabled() }
             val availableUpdateCount = remember(revision, currentSourcesRevision) {
                 repository.currentApps().groupBy { it.id }.count { (packageName, variants) ->
                     val installed = installedVersionCode(packageName)
@@ -129,15 +132,19 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            LumaStoreTheme(darkTheme = darkTheme) {
+            LumaStoreTheme(darkTheme = darkTheme, oledMode = oledMode) {
                 FreetimeGlassRoot {
                 BoxWithConstraints(
                     modifier = Modifier.fillMaxSize()
                 ) {
                 val wideWindow = maxWidth >= 840.dp
-                val navigationHorizontalPadding = if (wideWindow) maxWidth * 0.18f else 18.dp
+                val navigationHorizontalPadding = 18.dp
                 Box(Modifier.fillMaxSize()) {
-                    Box(Modifier.fillMaxSize()) {
+                    Box(
+                        Modifier.fillMaxSize().then(
+                            if (wideWindow) Modifier.padding(start = 104.dp) else Modifier
+                        )
+                    ) {
                         PersistentScreen(visible = screen == MainScreen.DISCOVER) {
                             key(currentSourcesRevision) {
                                 FdroidDiscoverScreen(
@@ -174,6 +181,7 @@ class MainActivity : ComponentActivity() {
                                     MyAppsScreen(
                                         repository = repository,
                                         installedAppsRevision = revision,
+                                        installedPackageNames = { installedPackageNames() },
                                         installedVersionCode = { installedVersionCode(it) },
                                         installedVersionName = { installedVersionName(it) },
                                         openInstalledApp = { openInstalledApp(it) },
@@ -208,8 +216,9 @@ class MainActivity : ComponentActivity() {
 
                     NavigationBar(
                         modifier = Modifier
-                            .align(androidx.compose.ui.Alignment.BottomCenter)
-                            .fillMaxWidth()
+                            .align(if (wideWindow) androidx.compose.ui.Alignment.CenterStart else androidx.compose.ui.Alignment.BottomCenter)
+                            .then(if (wideWindow) Modifier.width(88.dp).padding(start = 12.dp) else Modifier.fillMaxWidth())
+
                             .padding(horizontal = navigationHorizontalPadding)
                             .navigationBarsPadding()
                             .padding(bottom = 14.dp)
@@ -253,6 +262,7 @@ class MainActivity : ComponentActivity() {
                 Text(
                     label,
                     style = MaterialTheme.typography.labelSmall,
+                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                     fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
                 )
             },
@@ -261,8 +271,8 @@ class MainActivity : ComponentActivity() {
                 indicatorColor = Color.Transparent,
                 selectedTextColor = MaterialTheme.colorScheme.primary,
                 selectedIconColor = MaterialTheme.colorScheme.primary,
-                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                unselectedTextColor = MaterialTheme.colorScheme.onSurface,
+                unselectedIconColor = MaterialTheme.colorScheme.onSurface,
                 disabledIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
                 disabledTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
             )
@@ -344,6 +354,9 @@ class MainActivity : ComponentActivity() {
             )
         }
     }
+
+    private fun installedPackageNames(): Set<String> =
+        packageManager.getInstalledPackages(0).mapTo(mutableSetOf()) { it.packageName }
 
     private fun installedVersionCode(packageName: String): Long? = runCatching {
         val info = packageManager.getPackageInfo(packageName, 0)

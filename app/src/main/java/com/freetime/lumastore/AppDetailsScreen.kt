@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -93,6 +94,7 @@ fun AppDetailsScreen(
     onAction: () -> Unit,
     onSourceSelected: (StoreApp) -> Unit,
     onScreenshotSelected: (String) -> Unit,
+    dataSaver: Boolean = false,
     onOpenUri: (String) -> Unit,
     onShare: (StoreApp) -> Unit = {},
     onDeveloperSelected: (String) -> Unit = {},
@@ -109,11 +111,14 @@ fun AppDetailsScreen(
     val glassShape = RoundedCornerShape(20.dp)
     val actionShape = RoundedCornerShape(50)
 
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+    val wideDetails = maxWidth >= 840.dp
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         contentColor = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier
             .fillMaxSize()
+            .then(if (wideDetails) Modifier.padding(start = maxWidth * 0.42f) else Modifier)
             .nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
@@ -182,6 +187,15 @@ fun AppDetailsScreen(
             }
 
             DetailsExpandableSection(stringResource(R.string.app_information)) {
+                DetailValueRow(stringResource(R.string.version), app.version)
+                DetailValueRow(stringResource(R.string.package_name), app.id)
+                DetailValueRow(stringResource(R.string.source), app.sourceName)
+                app.license?.takeIf { it.isNotBlank() }?.let { DetailValueRow(stringResource(R.string.license), it) }
+                app.minSdk?.let { DetailValueRow(stringResource(R.string.minimum_android_sdk), it.toString()) }
+                app.targetSdk?.let { DetailValueRow(stringResource(R.string.target_android_sdk), it.toString()) }
+                app.downloadSize?.let { DetailValueRow(stringResource(R.string.download_size), formatFileSize(it)) }
+                if (app.nativeCode.isNotEmpty()) DetailValueRow(stringResource(R.string.architectures), app.nativeCode.joinToString())
+                app.lastUpdatedTimestamp?.let { DetailValueRow(stringResource(R.string.last_updated), formatRelativeAge(it)) }
                 if (installedVersionName != null && actionLabel == stringResource(R.string.update)) {
                     TextButton(onClick = onIgnoreUpdateToggle, modifier = Modifier.fillMaxWidth()) {
                         Text(if (isUpdateIgnored) stringResource(R.string.stop_ignoring_update) else stringResource(R.string.ignore_update))
@@ -243,7 +257,16 @@ fun AppDetailsScreen(
             }
 
             if (app.screenshotUrls.isNotEmpty()) {
-                DetailsScreenshots(app, onScreenshotSelected)
+                if (dataSaver) {
+                    Text(
+                        stringResource(R.string.screenshots_hidden_data_saver),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                } else {
+                    DetailsScreenshots(app, onScreenshotSelected)
+                }
             }
 
             if (app.antiFeatures.isNotEmpty()) {
@@ -373,14 +396,32 @@ fun AppDetailsScreen(
                 app.minSdk?.let { DetailValueRow(stringResource(R.string.minimum_android_sdk), it.toString()) }
                 app.targetSdk?.let { DetailValueRow(stringResource(R.string.target_android_sdk), it.toString()) }
                 if (app.nativeCode.isNotEmpty()) DetailValueRow(stringResource(R.string.supported_architectures), app.nativeCode.joinToString(", "))
+                DetailValueRow(
+                    stringResource(R.string.security_status),
+                    when {
+                        app.signerSha256.isNotEmpty() && !app.expectedSha256.isNullOrBlank() ->
+                            stringResource(R.string.signature_available) + " • " + stringResource(R.string.hash_available)
+                        app.signerSha256.isNotEmpty() -> stringResource(R.string.signature_available)
+                        !app.expectedSha256.isNullOrBlank() -> stringResource(R.string.hash_available)
+                        else -> stringResource(R.string.no_verification_metadata)
+                    }
+                )
                 if (app.signerSha256.isNotEmpty()) DetailValueRow(stringResource(R.string.signing_certificate), app.signerSha256.joinToString("\n"))
                 if (app.expectedSha256 != null) DetailValueRow(stringResource(R.string.apk_sha256), app.expectedSha256)
-                if (app.permissions.isNotEmpty()) DetailValueRow(stringResource(R.string.permissions), app.permissions.joinToString("\n"))
+                if (app.permissions.isNotEmpty()) DetailValueRow(stringResource(R.string.permissions), app.permissions.sorted().joinToString("\n"))
             }
 
             Spacer(Modifier.height(96.dp))
         }
     }
+    }
+}
+
+private fun formatFileSize(bytes: Long): String = when {
+    bytes >= 1_073_741_824L -> String.format("%.1f GB", bytes / 1_073_741_824.0)
+    bytes >= 1_048_576L -> String.format("%.1f MB", bytes / 1_048_576.0)
+    bytes >= 1024L -> String.format("%.1f KB", bytes / 1024.0)
+    else -> "$bytes B"
 }
 
 private fun formatRelativeAge(timestamp: Long): String {

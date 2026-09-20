@@ -37,7 +37,10 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
     var addSourceError by remember { mutableStateOf<String?>(null) }
     var editingSource by remember { mutableStateOf<AppSource?>(null) }
     var repositoryImportValue by remember { mutableStateOf("") }
+    var repositoryImportPreview by remember { mutableStateOf<String?>(null) }
     var priorityRevision by remember { mutableIntStateOf(0) }
+    var dataSaver by remember { mutableStateOf(repository.dataSaverEnabled()) }
+    var oledMode by remember { mutableStateOf(repository.oledModeEnabled()) }
     val sourceAddFailed = stringResource(R.string.source_add_failed)
     val context = LocalContext.current
     var transferMessage by remember { mutableStateOf<String?>(null) }
@@ -56,6 +59,7 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
     val qrScanner = rememberLauncherForActivityResult(ScanContract()) { result ->
         result.contents?.takeIf { it.isNotBlank() }?.let {
             repositoryImportValue = it
+            repositoryImportPreview = it
             addSourceError = null
         }
     }
@@ -226,10 +230,20 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
             Spacer(Modifier.height(10.dp))
             OutlinedTextField(
                 value = repositoryImportValue,
-                onValueChange = { repositoryImportValue = it; addSourceError = null },
+                onValueChange = { repositoryImportValue = it; repositoryImportPreview = null; addSourceError = null },
                 label = { Text(stringResource(R.string.repository_or_qr_value)) },
                 modifier = Modifier.fillMaxWidth()
             )
+            repositoryImportPreview?.let { preview ->
+                Spacer(Modifier.height(8.dp))
+                Column(
+                    Modifier.fillMaxWidth().freetimeGlass(interactive = false).padding(14.dp)
+                ) {
+                    Text(stringResource(R.string.repository_preview), style = MaterialTheme.typography.titleMedium)
+                    Text(preview, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.repository_preview_description), style = MaterialTheme.typography.bodySmall)
+                }
+            }
             Spacer(Modifier.height(8.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(
@@ -249,6 +263,7 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
                         repository.importRepository(repositoryImportValue)
                             .onSuccess { source ->
                                 repositoryImportValue = ""
+                                repositoryImportPreview = null
                                 addSourceError = null
                                 enabledStates[source.name] = repository.isSourceEnabled(source)
                                 refreshSources()
@@ -259,6 +274,23 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
                     enabled = repositoryImportValue.isNotBlank(),
                     modifier = Modifier.weight(1f)
                 ) { Text(stringResource(R.string.import_repository)) }
+            }
+
+            Spacer(Modifier.height(24.dp))
+            Text(stringResource(R.string.appearance_and_data), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.oled_mode))
+                    Text(stringResource(R.string.oled_mode_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(checked = oledMode, onCheckedChange = { oledMode = it; repository.setOledModeEnabled(it); onSourcesChanged() })
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.data_saver))
+                    Text(stringResource(R.string.data_saver_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(checked = dataSaver, onCheckedChange = { dataSaver = it; repository.setDataSaverEnabled(it); onSourcesChanged() })
             }
 
             Spacer(Modifier.height(24.dp))

@@ -1,5 +1,9 @@
 package com.freetime.lumastore
 
+import me.free_time.design.freetimeGlass
+
+import android.content.Intent
+
 import android.os.Build
 
 import androidx.compose.foundation.background
@@ -19,14 +23,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -36,6 +39,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -50,6 +54,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -133,19 +138,25 @@ fun FdroidDiscoverScreen(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name), maxLines = 1) },
-                actions = {
-                    IconButton(onClick = { refreshKey++ }) {
-                        Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.refresh))
-                    }
-                },
                 scrollBehavior = scrollBehavior,
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent)
             )
         }
     ) { padding ->
+        PullToRefreshBox(
+            isRefreshing = loading && apps.isNotEmpty(),
+            onRefresh = {
+                loading = true
+                refreshKey++
+            },
+            modifier = Modifier.fillMaxSize()
+        ) {
         if (loading && apps.isEmpty()) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+            Column(
+                Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                repeat(7) { SkeletonAppRow() }
             }
         } else {
             LazyColumn(
@@ -267,6 +278,7 @@ fun FdroidDiscoverScreen(
                     HorizontalDivider(modifier = Modifier.padding(start = 92.dp))
                 }
             }
+        }
         }
     }
 
@@ -403,6 +415,22 @@ fun FdroidSearchScreen(
 }
 
 @Composable
+private fun SkeletonAppRow() {
+    Row(
+        Modifier.fillMaxWidth().freetimeGlass(interactive = false).padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(Modifier.size(64.dp).clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)))
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(Modifier.fillMaxWidth(0.55f).height(16.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)))
+            Box(Modifier.fillMaxWidth(0.85f).height(12.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)))
+            Box(Modifier.fillMaxWidth(0.68f).height(12.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)))
+        }
+    }
+}
+
+@Composable
 private fun DiscoverCarousel(
     title: String,
     apps: List<StoreApp>,
@@ -511,6 +539,7 @@ private fun FdroidDetailsHost(
     onDismiss: () -> Unit
 ) {
     val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
     var selectedSource by remember(selectedAppId) { mutableStateOf<String?>(null) }
     var installingKey by remember { mutableStateOf<String?>(null) }
     var progress by remember { mutableIntStateOf(0) }
@@ -588,7 +617,16 @@ private fun FdroidDetailsHost(
                     repository.rememberPreferredSource(it)
                 },
                 onScreenshotSelected = {},
+                dataSaver = repository.dataSaverEnabled(),
                 onOpenUri = { uri -> runCatching { uriHandler.openUri(uri) } },
+                onShare = { shared ->
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_SUBJECT, shared.name)
+                        putExtra(Intent.EXTRA_TEXT, shared.websiteUrl ?: shared.sourceCodeUrl ?: shared.apkUrl)
+                    }
+                    context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share)))
+                },
                 onDeveloperSelected = { selectedDeveloper = it },
                 isUpdateIgnored = repository.isUpdateIgnored(app),
                 onIgnoreUpdateToggle = {

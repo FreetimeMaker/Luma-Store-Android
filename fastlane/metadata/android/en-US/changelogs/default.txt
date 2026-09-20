@@ -1,6 +1,13 @@
-• Improved Liquid Glass transparency so the shared Freetime Design backdrop is properly visible
-• Made app and developer detail surfaces transparent to match GeoWeather's Liquid Glass behavior
-• The Open button is now hidden only for the Luma Store app itself and remains available for other installed apps
-• Added distinct icons for the different donation methods
-• Removed Favorites, Always use this source and Version history controls from app details
-• Fixed navigation from an author page to an app and back so the author page is restored correctly
+• Added pull-to-refresh and Liquid Glass loading skeletons to Discover
+• Added adaptive wide-screen and tablet layouts with a dedicated app details pane
+• Added OLED mode and Data Saver, including optional screenshot suppression
+• Added in-app QR repository scanning with a preview before importing
+• Added app sharing from app details
+• Added clearer APK hash and signing-certificate security information
+• Added an Installed but unavailable section for apps missing from enabled sources
+• Improved Liquid Glass navigation, readability and app details presentation
+• Added release freshness information to app details
+• Improved update, download queue and offline/cache handling
+• Removed obsolete Favorites, source locking and version-history controls
+• Fixed navigation between author pages and app details
+• Fixed Luma Store's Open button behavior and several UI/build regressions
