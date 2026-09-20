@@ -82,6 +82,7 @@ fun AppDetailsScreen(
     variants: List<StoreApp>,
     installedVersionName: String?,
     actionLabel: String,
+    showAction: Boolean,
     installing: Boolean,
     progress: Int,
     onBack: () -> Unit,
@@ -149,6 +150,7 @@ fun AppDetailsScreen(
                 variants = variants,
                 installedVersionName = installedVersionName,
                 actionLabel = actionLabel,
+                showAction = !(app.sourceName.equals("Luma Store", ignoreCase = true) && installedVersionName != null && actionLabel == stringResource(R.string.open)),
                 installing = installing,
                 progress = progress,
                 onAction = onAction,
@@ -493,7 +495,7 @@ private fun AppDetailsHeader(
             Spacer(Modifier.height(6.dp))
             if (progress > 0) LinearProgressIndicator(progress = { progress / 100f }, modifier = Modifier.fillMaxWidth()) else LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         }
-    } else {
+    } else if (showAction) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
