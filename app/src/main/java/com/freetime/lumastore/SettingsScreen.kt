@@ -37,6 +37,7 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
     var addSourceError by remember { mutableStateOf<String?>(null) }
     var editingSource by remember { mutableStateOf<AppSource?>(null) }
     var repositoryImportValue by remember { mutableStateOf("") }
+    var repositoryImportPreview by remember { mutableStateOf<String?>(null) }
     var priorityRevision by remember { mutableIntStateOf(0) }
     val sourceAddFailed = stringResource(R.string.source_add_failed)
     val context = LocalContext.current
@@ -56,6 +57,7 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
     val qrScanner = rememberLauncherForActivityResult(ScanContract()) { result ->
         result.contents?.takeIf { it.isNotBlank() }?.let {
             repositoryImportValue = it
+            repositoryImportPreview = it
             addSourceError = null
         }
     }
@@ -226,10 +228,20 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
             Spacer(Modifier.height(10.dp))
             OutlinedTextField(
                 value = repositoryImportValue,
-                onValueChange = { repositoryImportValue = it; addSourceError = null },
+                onValueChange = { repositoryImportValue = it; repositoryImportPreview = null; addSourceError = null },
                 label = { Text(stringResource(R.string.repository_or_qr_value)) },
                 modifier = Modifier.fillMaxWidth()
             )
+            repositoryImportPreview?.let { preview ->
+                Spacer(Modifier.height(8.dp))
+                Column(
+                    Modifier.fillMaxWidth().freetimeGlass(interactive = false).padding(14.dp)
+                ) {
+                    Text(stringResource(R.string.repository_preview), style = MaterialTheme.typography.titleMedium)
+                    Text(preview, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.repository_preview_description), style = MaterialTheme.typography.bodySmall)
+                }
+            }
             Spacer(Modifier.height(8.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(
@@ -249,6 +261,7 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
                         repository.importRepository(repositoryImportValue)
                             .onSuccess { source ->
                                 repositoryImportValue = ""
+                                repositoryImportPreview = null
                                 addSourceError = null
                                 enabledStates[source.name] = repository.isSourceEnabled(source)
                                 refreshSources()
