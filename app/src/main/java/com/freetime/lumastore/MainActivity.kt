@@ -61,6 +61,7 @@ import com.freetime.lumastore.data.supabase
 import com.freetime.lumastore.install.ApkInstaller
 import com.freetime.lumastore.notifications.NotificationSyncJobService
 import com.freetime.lumastore.notifications.SystemNotificationManager
+import com.freetime.lumastore.ui.glass.LumaGlassRoot
 import com.freetime.lumastore.ui.glass.lumaBackdropSource
 import com.freetime.lumastore.ui.glass.lumaLiquidGlass
 import com.freetime.lumastore.ui.glass.rememberLumaBackdrop
@@ -128,6 +129,7 @@ class MainActivity : ComponentActivity() {
             }
 
             LumaStoreTheme(darkTheme = darkTheme) {
+                LumaGlassRoot {
                 val backdrop = rememberLumaBackdrop()
                 val navigationShape = RoundedCornerShape(50)
 
@@ -229,6 +231,7 @@ class MainActivity : ComponentActivity() {
                         FdroidNavigationItem(screen == MainScreen.SOURCES, { screen = MainScreen.SOURCES }, stringResource(R.string.sources)) { Icon(Icons.Filled.Storage, contentDescription = stringResource(R.string.sources)) }
                         FdroidNavigationItem(screen == MainScreen.DEVELOPER, { screen = MainScreen.DEVELOPER }, stringResource(R.string.developer)) { Icon(Icons.Filled.Code, contentDescription = stringResource(R.string.developer)) }
                     }
+                }
                 }
                 }
             }
