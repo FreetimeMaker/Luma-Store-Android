@@ -229,6 +229,12 @@ class AppRepository(context: Context) {
             .map { it.first }
     }
 
+    fun dataSaverEnabled(): Boolean = sourcePreferences.getBoolean("data_saver", false)
+    fun setDataSaverEnabled(enabled: Boolean) { sourcePreferences.edit().putBoolean("data_saver", enabled).apply() }
+
+    fun oledModeEnabled(): Boolean = sourcePreferences.getBoolean("oled_mode", false)
+    fun setOledModeEnabled(enabled: Boolean) { sourcePreferences.edit().putBoolean("oled_mode", enabled).apply() }
+
     fun discoverSectionEnabled(key: String, defaultValue: Boolean = true): Boolean =
         sourcePreferences.getBoolean("discover_" + key, defaultValue)
 
