@@ -63,6 +63,7 @@ dependencies {
     implementation(libs.freetime.design)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
     implementation("io.coil-kt.coil3:coil-compose:3.6.2")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.6.2")
     testImplementation(libs.junit)
