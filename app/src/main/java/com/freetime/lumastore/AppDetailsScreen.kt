@@ -94,12 +94,8 @@ fun AppDetailsScreen(
     onScreenshotSelected: (String) -> Unit,
     onOpenUri: (String) -> Unit,
     onDeveloperSelected: (String) -> Unit = {},
-    isFavorite: Boolean = false,
-    onFavoriteToggle: () -> Unit = {},
     isUpdateIgnored: Boolean = false,
     onIgnoreUpdateToggle: () -> Unit = {},
-    lockedSourceName: String? = null,
-    onSourceLockToggle: () -> Unit = {},
     signatureConflict: Boolean = false,
     verifiedMetadata: Boolean = false,
     similarApps: List<StoreApp> = emptyList(),
@@ -184,36 +180,13 @@ fun AppDetailsScreen(
             }
 
             DetailsExpandableSection(stringResource(R.string.app_information)) {
-                TextButton(onClick = onFavoriteToggle, modifier = Modifier.fillMaxWidth()) {
-                    Text(if (isFavorite) stringResource(R.string.remove_favorite) else stringResource(R.string.add_favorite))
-                }
                 if (installedVersionName != null && actionLabel == stringResource(R.string.update)) {
                     TextButton(onClick = onIgnoreUpdateToggle, modifier = Modifier.fillMaxWidth()) {
                         Text(if (isUpdateIgnored) stringResource(R.string.stop_ignoring_update) else stringResource(R.string.ignore_update))
                     }
                 }
-                TextButton(onClick = onSourceLockToggle, modifier = Modifier.fillMaxWidth()) {
-                    Text(if (lockedSourceName == app.sourceName) stringResource(R.string.unlock_source) else stringResource(R.string.lock_to_source))
-                }
-                lockedSourceName?.let { DetailValueRow(stringResource(R.string.source_lock_value, it), it) }
             }
 
-            DetailsExpandableSection(stringResource(R.string.version_history)) {
-                Text(stringResource(R.string.version_history_read_only), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.92f), modifier = Modifier.padding(bottom = 8.dp))
-                if (app.versions.isEmpty()) {
-                    Text(stringResource(R.string.no_version_history), style = MaterialTheme.typography.bodyMedium)
-                } else {
-                    app.versions.forEachIndexed { index, version ->
-                        DetailValueRow(
-                            if (index == 0) stringResource(R.string.current_version) else stringResource(R.string.older_version),
-                            version.versionName + " (" + version.versionCode + ") • " + version.sourceName
-                        )
-                        version.changelog?.takeIf { it.isNotBlank() }?.let { changelogText ->
-                            Text(changelogText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.92f), modifier = Modifier.padding(bottom = 6.dp))
-                        }
-                    }
-                }
-            }
             app.versionChangelog?.takeIf { it.isNotBlank() }?.let { changelog ->
                 ElevatedCard(
                     modifier = Modifier
