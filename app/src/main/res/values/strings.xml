@@ -226,6 +226,12 @@
     <string name="repository_imported">Repository imported.</string>
     <string name="repository_import_invalid">The scanned or pasted value is not a supported F-Droid repository address.</string>
     <string name="scan_qr_code">Scan QR code</string>
+    <string name="repository_preview">Repository preview</string>
+    <string name="repository_preview_description">Review the scanned repository address before adding it.</string>
+    <string name="security_status">Security status</string>
+    <string name="signature_available">Signing certificate metadata available</string>
+    <string name="hash_available">APK SHA-256 metadata available</string>
+    <string name="no_verification_metadata">This source does not provide hash or signing-certificate metadata.</string>
     <string name="favorites_description">Apps you marked as favorites.</string>
     <string name="privacy_collection">Privacy friendly</string>
     <string name="games_collection">Games</string>
