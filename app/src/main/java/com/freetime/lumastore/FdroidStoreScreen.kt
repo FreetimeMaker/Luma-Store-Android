@@ -481,6 +481,7 @@ fun FdroidStoreScreen(
                 onAction = { runAppAction(app) },
                 onSourceSelected = { variant -> selectSource(appId, variant.sourceName) },
                 onScreenshotSelected = { selectedScreenshotUrl = it },
+                dataSaver = repository.dataSaverEnabled(),
                 onOpenUri = { uriHandler.openUri(it) },
                 onShare = { shared ->
                     val shareIntent = Intent(Intent.ACTION_SEND).apply {
