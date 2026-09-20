@@ -133,19 +133,10 @@ class AppRepository(context: Context) {
     fun preferredSourceName(packageName: String): String? =
         appSourcePreferences.getString(APP_SOURCE_KEY_PREFIX + packageName, null)
 
-    fun isFavorite(packageName: String): Boolean = appSourcePreferences.getBoolean("favorite_" + packageName, false)
-    fun setFavorite(packageName: String, favorite: Boolean) { appSourcePreferences.edit().putBoolean("favorite_" + packageName, favorite).apply() }
     fun ignoredVersion(packageName: String): Long = appSourcePreferences.getLong("ignored_" + packageName, Long.MIN_VALUE)
     fun ignoreVersion(app: StoreApp) { appSourcePreferences.edit().putLong("ignored_" + app.id, app.versionCode).apply() }
     fun clearIgnoredVersion(packageName: String) { appSourcePreferences.edit().remove("ignored_" + packageName).apply() }
     fun isUpdateIgnored(app: StoreApp): Boolean = ignoredVersion(app.id) == app.versionCode
-    fun lockedSourceName(packageName: String): String? = appSourcePreferences.getString("locked_" + packageName, null)
-    fun setSourceLock(packageName: String, sourceName: String?) {
-        val editor = appSourcePreferences.edit()
-        if (sourceName == null) editor.remove("locked_" + packageName) else editor.putString("locked_" + packageName, sourceName)
-        editor.apply()
-    }
-
     fun signatureConflict(variants: List<StoreApp>): Boolean {
         val fingerprints = variants.flatMap { it.signerSha256 }.map { it.lowercase() }.toSet()
         return fingerprints.size > 1
@@ -164,20 +155,6 @@ class AppRepository(context: Context) {
         }
 
         val apps = JSONArray()
-        currentApps().groupBy { it.id }.forEach { (packageName, variants) ->
-            val favorite = isFavorite(packageName)
-            val locked = lockedSourceName(packageName)
-            val preferred = preferredSourceName(packageName)
-            if (favorite || locked != null || preferred != null) {
-                apps.put(JSONObject()
-                    .put("packageName", packageName)
-                    .put("favorite", favorite)
-                    .put("lockedSource", locked)
-                    .put("preferredSource", preferred)
-                    .put("knownSources", JSONArray(variants.map { it.sourceName }.distinct())))
-            }
-        }
-
         return JSONObject()
             .put("format", "luma-store-backup")
             .put("version", 1)
@@ -201,17 +178,6 @@ class AppRepository(context: Context) {
             if (source != null) setSourceEnabled(source, item.optBoolean("enabled", true))
         }
 
-        val apps = root.optJSONArray("apps") ?: JSONArray()
-        for (i in 0 until apps.length()) {
-            val item = apps.optJSONObject(i) ?: continue
-            val packageName = item.optString("packageName").trim()
-            if (packageName.isBlank()) continue
-            setFavorite(packageName, item.optBoolean("favorite", false))
-            item.optNullableString("lockedSource")?.let { setSourceLock(packageName, it) }
-            item.optNullableString("preferredSource")?.let {
-                appSourcePreferences.edit().putString(APP_SOURCE_KEY_PREFIX + packageName, it).apply()
-            }
-        }
         memoryApps = null
     }
 
@@ -228,8 +194,6 @@ class AppRepository(context: Context) {
     }
 
     fun preferredVariant(packageName: String, variants: List<StoreApp>, installedVersionCode: Long? = null): StoreApp? {
-        val lockedSource = lockedSourceName(packageName)
-        variants.firstOrNull { it.sourceName == lockedSource }?.let { return it }
         val preferredSource = preferredSourceName(packageName)
         variants.firstOrNull { it.sourceName == preferredSource }?.let { return it }
 

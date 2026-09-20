@@ -107,7 +107,6 @@ fun FdroidDiscoverScreen(
     val recentlyUpdatedApps = remember(selectedApps) {
         selectedApps.filter { it.lastUpdatedTimestamp != null }.sortedByDescending { it.lastUpdatedTimestamp }.take(12)
     }
-    val favoriteApps = remember(selectedApps) { selectedApps.filter { repository.isFavorite(it.id) } }
     val privacyApps = remember(selectedApps) {
         selectedApps.filter { app ->
             app.antiFeatures.isEmpty() && !app.closedSource &&
@@ -197,15 +196,6 @@ fun FdroidDiscoverScreen(
                     }
                 }
 
-                if (repository.discoverSectionEnabled("favorites") && favoriteApps.isNotEmpty()) {
-                    item("favorites") {
-                        DiscoverCarousel(
-                            title = stringResource(R.string.favorites),
-                            apps = favoriteApps,
-                            onAppTap = { selectedAppId = it.id }
-                        )
-                    }
-                }
 
                 if (repository.discoverSectionEnabled("privacy") && privacyApps.isNotEmpty()) {
                     item("privacy_collection") {
