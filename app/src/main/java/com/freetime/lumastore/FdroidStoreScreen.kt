@@ -1,5 +1,7 @@
 package com.freetime.lumastore
 
+import me.free_time.design.freetimeGlass
+
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -65,8 +67,6 @@ import coil3.compose.SubcomposeAsyncImageContent
 import com.freetime.lumastore.data.AppRepository
 import com.freetime.lumastore.data.StoreApp
 import com.freetime.lumastore.install.ApkInstaller
-import com.freetime.lumastore.ui.glass.lumaLiquidGlass
-import com.freetime.lumastore.ui.glass.rememberLumaBackdrop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -499,11 +499,10 @@ fun FdroidStoreScreen(
     }
 
     selectedScreenshotUrl?.let { screenshotUrl ->
-        val dialogBackdrop = rememberLumaBackdrop()
         val dialogShape = RoundedCornerShape(28.dp)
         AlertDialog(
             onDismissRequest = { selectedScreenshotUrl = null },
-            modifier = Modifier.lumaLiquidGlass(dialogBackdrop, dialogShape, interactive = false),
+            modifier = Modifier.freetimeGlass(dialogShape, interactive = false),
             shape = dialogShape,
             containerColor = Color.Transparent,
             tonalElevation = 0.dp,
