@@ -14,7 +14,7 @@ import me.free_time.design.freetimeGlassCapsule
  */
 @Composable
 fun LumaGlassRoot(content: @Composable () -> Unit) {
-    FreetimeGlassRoot(content)
+    FreetimeGlassRoot(content = content)
 }
 
 @Composable

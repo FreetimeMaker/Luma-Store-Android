@@ -1,6 +1,6 @@
 package com.freetime.lumastore
 
-import me.free_time.design.freetimeGlass
+import me.free_time.design.freetimeGlassCapsule
 import me.free_time.design.FreetimeGlassRoot
 
 import android.app.job.JobInfo
@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Code
@@ -78,6 +77,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         handleSupabaseDeepLinkSafely(intent)
+        handleFdroidRepositoryLink(intent)
         scheduleNotificationSyncSafely()
         enableEdgeToEdge()
 
@@ -90,6 +90,8 @@ class MainActivity : ComponentActivity() {
                         MainScreen.DEVELOPER
                     } else if (intent.data?.scheme == "lumastore" && intent.data?.host == "app") {
                         MainScreen.SEARCH
+                    } else if (isFdroidRepositoryLink(intent.data)) {
+                        MainScreen.SOURCES
                     } else {
                         MainScreen.DISCOVER
                     }
@@ -129,12 +131,8 @@ class MainActivity : ComponentActivity() {
 
             LumaStoreTheme(darkTheme = darkTheme) {
                 FreetimeGlassRoot {
-                val navigationShape = RoundedCornerShape(50)
-
                 BoxWithConstraints(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background)
+                    modifier = Modifier.fillMaxSize()
                 ) {
                 val wideWindow = maxWidth >= 840.dp
                 val navigationHorizontalPadding = if (wideWindow) maxWidth * 0.18f else 18.dp
@@ -216,7 +214,7 @@ class MainActivity : ComponentActivity() {
                             .navigationBarsPadding()
                             .padding(bottom = 14.dp)
                             .heightIn(min = 68.dp)
-                            .freetimeGlass(shape = navigationShape, interactive = true),
+                            .freetimeGlassCapsule(interactive = false),
                         containerColor = Color.Transparent,
                         contentColor = MaterialTheme.colorScheme.onSurface,
                         tonalElevation = 0.dp,
@@ -304,6 +302,24 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleSupabaseDeepLinkSafely(intent)
+        if (handleFdroidRepositoryLink(intent)) {
+            recreate()
+        }
+    }
+
+    private fun isFdroidRepositoryLink(uri: Uri?): Boolean =
+        uri?.scheme.equals("fdroidrepo", ignoreCase = true) ||
+            uri?.scheme.equals("fdroidrepos", ignoreCase = true)
+
+    private fun handleFdroidRepositoryLink(intent: Intent): Boolean {
+        val uri = intent.data ?: return false
+        if (!isFdroidRepositoryLink(uri)) return false
+        repository.importRepository(uri.toString())
+            .onSuccess {
+                repository.setSourceEnabled(it, true)
+                sourcesRevision.intValue++
+            }
+        return true
     }
 
     override fun onResume() {

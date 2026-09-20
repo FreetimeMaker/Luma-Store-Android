@@ -1,21 +1,6 @@
-• Added read-only app version history with per-version changelog information
-• Added favorites, ignored update versions and per-app source locks
-• Added repository metadata verification and warnings for conflicting signatures between sources
-• Added Update All with a sequential update queue and clearer ignored-update management
-• Added backup import/export for Luma Store settings and app-data export
-• Added F-Droid repository import from pasted URLs and QR codes
-• Added Favorites, Privacy Friendly and Games collections to Discover
-• Added configurable Discover sections for New Apps, Recently Updated, Favorites, Privacy Friendly and Games
-• Added source priorities to control which repository is preferred when the same app/version exists in multiple sources
-• Added cache management controls and app-cache clearing
-• Added Similar Apps to app details with navigation between related apps
-• Added offline/cache fallback status when fresh repository data cannot be loaded
-• Added cancellable APK downloads and retry support for failed downloads
-• Update All can now be stopped by cancelling the active download
-• Improved layouts for tablets, foldables and other wide windows
-• Reworked the floating bottom navigation so app content scrolls behind it and is visible through the Liquid Glass effect
-• Improved Liquid Glass contrast and text readability across app details, developer pages and other glass surfaces
-• Fixed app/developer detail screens overlapping each other
-• Improved F-Droid index-v2 icon URL resolution and icon fallbacks
-• Removed the redundant back button from the Sources/Settings screen
-• Fixed multiple Kotlin compilation issues introduced by the new repository, backup, version-history and navigation features
+• Improved Liquid Glass transparency so the shared Freetime Design backdrop is properly visible
+• Made app and developer detail surfaces transparent to match GeoWeather's Liquid Glass behavior
+• The Open button is now hidden only for the Luma Store app itself and remains available for other installed apps
+• Added distinct icons for the different donation methods
+• Removed Favorites, Always use this source and Version history controls from app details
+• Fixed navigation from an author page to an app and back so the author page is restored correctly

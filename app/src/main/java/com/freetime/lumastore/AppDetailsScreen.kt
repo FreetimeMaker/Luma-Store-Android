@@ -26,6 +26,10 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.CurrencyBitcoin
+import androidx.compose.material.icons.filled.Paid
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Email
@@ -82,7 +86,6 @@ fun AppDetailsScreen(
     variants: List<StoreApp>,
     installedVersionName: String?,
     actionLabel: String,
-    showAction: Boolean,
     installing: Boolean,
     progress: Int,
     onBack: () -> Unit,
@@ -91,12 +94,8 @@ fun AppDetailsScreen(
     onScreenshotSelected: (String) -> Unit,
     onOpenUri: (String) -> Unit,
     onDeveloperSelected: (String) -> Unit = {},
-    isFavorite: Boolean = false,
-    onFavoriteToggle: () -> Unit = {},
     isUpdateIgnored: Boolean = false,
     onIgnoreUpdateToggle: () -> Unit = {},
-    lockedSourceName: String? = null,
-    onSourceLockToggle: () -> Unit = {},
     signatureConflict: Boolean = false,
     verifiedMetadata: Boolean = false,
     similarApps: List<StoreApp> = emptyList(),
@@ -149,7 +148,7 @@ fun AppDetailsScreen(
                 variants = variants,
                 installedVersionName = installedVersionName,
                 actionLabel = actionLabel,
-                showAction = !(app.sourceName.equals("Luma Store", ignoreCase = true) && installedVersionName != null && actionLabel == stringResource(R.string.open)),
+                showAction = !(app.id == "com.freetime.lumastore" && installedVersionName != null && actionLabel == stringResource(R.string.open)),
                 installing = installing,
                 progress = progress,
                 onAction = onAction,
@@ -181,36 +180,13 @@ fun AppDetailsScreen(
             }
 
             DetailsExpandableSection(stringResource(R.string.app_information)) {
-                TextButton(onClick = onFavoriteToggle, modifier = Modifier.fillMaxWidth()) {
-                    Text(if (isFavorite) stringResource(R.string.remove_favorite) else stringResource(R.string.add_favorite))
-                }
                 if (installedVersionName != null && actionLabel == stringResource(R.string.update)) {
                     TextButton(onClick = onIgnoreUpdateToggle, modifier = Modifier.fillMaxWidth()) {
                         Text(if (isUpdateIgnored) stringResource(R.string.stop_ignoring_update) else stringResource(R.string.ignore_update))
                     }
                 }
-                TextButton(onClick = onSourceLockToggle, modifier = Modifier.fillMaxWidth()) {
-                    Text(if (lockedSourceName == app.sourceName) stringResource(R.string.unlock_source) else stringResource(R.string.lock_to_source))
-                }
-                lockedSourceName?.let { DetailValueRow(stringResource(R.string.source_lock_value, it), it) }
             }
 
-            DetailsExpandableSection(stringResource(R.string.version_history)) {
-                Text(stringResource(R.string.version_history_read_only), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.92f), modifier = Modifier.padding(bottom = 8.dp))
-                if (app.versions.isEmpty()) {
-                    Text(stringResource(R.string.no_version_history), style = MaterialTheme.typography.bodyMedium)
-                } else {
-                    app.versions.forEachIndexed { index, version ->
-                        DetailValueRow(
-                            if (index == 0) stringResource(R.string.current_version) else stringResource(R.string.older_version),
-                            version.versionName + " (" + version.versionCode + ") • " + version.sourceName
-                        )
-                        version.changelog?.takeIf { it.isNotBlank() }?.let { changelogText ->
-                            Text(changelogText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.92f), modifier = Modifier.padding(bottom = 6.dp))
-                        }
-                    }
-                }
-            }
             app.versionChangelog?.takeIf { it.isNotBlank() }?.let { changelog ->
                 ElevatedCard(
                     modifier = Modifier
@@ -336,14 +312,14 @@ fun AppDetailsScreen(
                         horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
                         verticalAlignment = Alignment.Top
                     ) {
-                        items(app.donationUrls, key = { it }) { url -> DetailActionItem(stringResource(R.string.donation_link), Icons.Filled.AttachMoney) { onOpenUri(url) } }
+                        items(app.donationUrls, key = { it }) { url -> DetailActionItem(stringResource(R.string.donation_link), Icons.Filled.Favorite) { onOpenUri(url) } }
                         app.liberapay?.let { value -> item("liberapay") {
                             val url = fundingUrl("https://liberapay.com/", value)
-                            DetailActionItem(stringResource(R.string.liberapay), Icons.Filled.AttachMoney) { onOpenUri(url) } } }
+                            DetailActionItem(stringResource(R.string.liberapay), Icons.Filled.Paid) { onOpenUri(url) } } }
                         app.openCollective?.let { value -> item("opencollective") {
                             val url = fundingUrl("https://opencollective.com/", value)
-                            DetailActionItem(stringResource(R.string.open_collective), Icons.Filled.AttachMoney) { onOpenUri(url) } } }
-                        app.bitcoin?.let { value -> item("bitcoin") { DetailActionItem(stringResource(R.string.bitcoin), Icons.Filled.AttachMoney) { onOpenUri(cryptoUri("bitcoin", value)) } } }
+                            DetailActionItem(stringResource(R.string.open_collective), Icons.Filled.Groups) { onOpenUri(url) } } }
+                        app.bitcoin?.let { value -> item("bitcoin") { DetailActionItem(stringResource(R.string.bitcoin), Icons.Filled.CurrencyBitcoin) { onOpenUri(cryptoUri("bitcoin", value)) } } }
                         app.litecoin?.let { value -> item("litecoin") { DetailActionItem(stringResource(R.string.litecoin), Icons.Filled.AttachMoney) { onOpenUri(cryptoUri("litecoin", value)) } } }
                     
                     }
@@ -433,6 +409,7 @@ private fun AppDetailsHeader(
     variants: List<StoreApp>,
     installedVersionName: String?,
     actionLabel: String,
+    showAction: Boolean,
     installing: Boolean,
     progress: Int,
     onAction: () -> Unit,

@@ -533,14 +533,13 @@ private fun FdroidDetailsHost(
     val app = variants.firstOrNull { it.sourceName == selectedSource }
         ?: effectiveSelectedAppId?.let { repository.preferredVariant(it, variants, installedCodeForSelection) }
 
-    if (selectedDeveloper != null) {
+    if (selectedDeveloper != null && developerSelectedAppId == null) {
         selectedDeveloper?.let { developer ->
             DeveloperAppsScreen(
                 developerName = developer,
                 apps = appVariants.values.flatten(),
                 onBack = { selectedDeveloper = null },
                 onAppSelected = { selected ->
-                    selectedDeveloper = null
                     developerSelectedAppId = selected.id
                     selectedSource = selected.sourceName
                 }
@@ -568,7 +567,12 @@ private fun FdroidDetailsHost(
                 installing = installingKey == key,
                 progress = progress,
                 onBack = {
-                    if (developerSelectedAppId != null) developerSelectedAppId = null else onDismiss()
+                    if (developerSelectedAppId != null) {
+                        developerSelectedAppId = null
+                        selectedSource = null
+                    } else {
+                        onDismiss()
+                    }
                 },
                 onAction = {
                     if (!sdkCompatible || !abiCompatible) {
@@ -596,16 +600,9 @@ private fun FdroidDetailsHost(
                 onScreenshotSelected = {},
                 onOpenUri = { uri -> runCatching { uriHandler.openUri(uri) } },
                 onDeveloperSelected = { selectedDeveloper = it },
-                isFavorite = repository.isFavorite(app.id),
-                onFavoriteToggle = { repository.setFavorite(app.id, !repository.isFavorite(app.id)) },
                 isUpdateIgnored = repository.isUpdateIgnored(app),
                 onIgnoreUpdateToggle = {
                     if (repository.isUpdateIgnored(app)) repository.clearIgnoredVersion(app.id) else repository.ignoreVersion(app)
-                },
-                lockedSourceName = repository.lockedSourceName(app.id),
-                onSourceLockToggle = {
-                    if (repository.lockedSourceName(app.id) == app.sourceName) repository.setSourceLock(app.id, null)
-                    else repository.setSourceLock(app.id, app.sourceName)
                 },
                 signatureConflict = repository.signatureConflict(variants),
                 verifiedMetadata = repository.verifiedMetadata(app),

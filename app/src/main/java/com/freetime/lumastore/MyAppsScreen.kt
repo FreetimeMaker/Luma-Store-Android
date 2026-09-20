@@ -347,16 +347,9 @@ fun MyAppsScreen(
             },
             onScreenshotSelected = {},
             onOpenUri = { uri -> runCatching { uriHandler.openUri(uri) } },
-            isFavorite = repository.isFavorite(selectedApp.id),
-            onFavoriteToggle = { repository.setFavorite(selectedApp.id, !repository.isFavorite(selectedApp.id)) },
             isUpdateIgnored = repository.isUpdateIgnored(selectedApp),
             onIgnoreUpdateToggle = {
                 if (repository.isUpdateIgnored(selectedApp)) repository.clearIgnoredVersion(selectedApp.id) else repository.ignoreVersion(selectedApp)
-            },
-            lockedSourceName = repository.lockedSourceName(selectedApp.id),
-            onSourceLockToggle = {
-                if (repository.lockedSourceName(selectedApp.id) == selectedApp.sourceName) repository.setSourceLock(selectedApp.id, null)
-                else repository.setSourceLock(selectedApp.id, selectedApp.sourceName)
             },
             signatureConflict = repository.signatureConflict(variants),
             verifiedMetadata = repository.verifiedMetadata(selectedApp),
