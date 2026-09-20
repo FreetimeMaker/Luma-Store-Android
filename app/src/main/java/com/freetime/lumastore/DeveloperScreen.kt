@@ -1,5 +1,7 @@
 package com.freetime.lumastore
 
+import me.free_time.design.freetimeGlass
+
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
@@ -21,8 +23,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.core.content.ContextCompat
 import com.freetime.lumastore.data.*
 import com.freetime.lumastore.notifications.SystemNotificationManager
-import com.freetime.lumastore.ui.glass.lumaLiquidGlass
-import com.freetime.lumastore.ui.glass.rememberLumaBackdrop
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -32,7 +32,6 @@ fun DeveloperScreen(
     onBack: () -> Unit,
     active: Boolean = true
 ) {
-    val backdrop = rememberLumaBackdrop()
     val context = LocalContext.current
     val systemNotifications = remember(context) { SystemNotificationManager(context) }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -213,10 +212,9 @@ fun DeveloperScreen(
 
 @Composable
 private fun NotificationCard(notification: DeveloperNotification, onMarkRead: (() -> Unit)?) {
-    val backdrop = rememberLumaBackdrop()
     val shape = RoundedCornerShape(18.dp)
     Card(
-        modifier = Modifier.fillMaxWidth().lumaLiquidGlass(backdrop, shape, interactive = false),
+        modifier = Modifier.fillMaxWidth().freetimeGlass(shape, interactive = false),
         shape = shape,
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -235,10 +233,9 @@ private fun NotificationCard(notification: DeveloperNotification, onMarkRead: ((
 
 @Composable
 private fun SubmissionCard(submission: DeveloperSubmission, comments: List<String>) {
-    val backdrop = rememberLumaBackdrop()
     val shape = RoundedCornerShape(18.dp)
     Card(
-        modifier = Modifier.fillMaxWidth().lumaLiquidGlass(backdrop, shape, interactive = false),
+        modifier = Modifier.fillMaxWidth().freetimeGlass(shape, interactive = false),
         shape = shape,
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
