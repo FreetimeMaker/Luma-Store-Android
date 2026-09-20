@@ -93,6 +93,7 @@ fun AppDetailsScreen(
     onAction: () -> Unit,
     onSourceSelected: (StoreApp) -> Unit,
     onScreenshotSelected: (String) -> Unit,
+    dataSaver: Boolean = false,
     onOpenUri: (String) -> Unit,
     onShare: (StoreApp) -> Unit = {},
     onDeveloperSelected: (String) -> Unit = {},
@@ -243,7 +244,16 @@ fun AppDetailsScreen(
             }
 
             if (app.screenshotUrls.isNotEmpty()) {
-                DetailsScreenshots(app, onScreenshotSelected)
+                if (dataSaver) {
+                    Text(
+                        stringResource(R.string.screenshots_hidden_data_saver),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                } else {
+                    DetailsScreenshots(app, onScreenshotSelected)
+                }
             }
 
             if (app.antiFeatures.isNotEmpty()) {
