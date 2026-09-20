@@ -17,6 +17,8 @@
     <string name="updates_count">Updates (%1$d)</string>
     <string name="updates_available_description">Updates are available for some of your installed apps.</string>
     <string name="installed_apps">Installed apps</string>
+    <string name="installed_unavailable">Installed but unavailable</string>
+    <string name="installed_unavailable_description">This installed package is not available from any currently enabled source.</string>
     <string name="no_installed_apps">No installed apps from your configured sources were found.</string>
     <string name="installed_and_available_version">Installed: %1$s • Available: %2$s</string>
     <string name="search_updates">Search updates</string>
