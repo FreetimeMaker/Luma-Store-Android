@@ -1,5 +1,7 @@
 package com.freetime.lumastore
 
+import android.content.Intent
+
 import android.os.Build
 
 import androidx.compose.foundation.background
@@ -50,6 +52,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -511,6 +514,7 @@ private fun FdroidDetailsHost(
     onDismiss: () -> Unit
 ) {
     val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
     var selectedSource by remember(selectedAppId) { mutableStateOf<String?>(null) }
     var installingKey by remember { mutableStateOf<String?>(null) }
     var progress by remember { mutableIntStateOf(0) }
@@ -589,6 +593,14 @@ private fun FdroidDetailsHost(
                 },
                 onScreenshotSelected = {},
                 onOpenUri = { uri -> runCatching { uriHandler.openUri(uri) } },
+                onShare = { shared ->
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_SUBJECT, shared.name)
+                        putExtra(Intent.EXTRA_TEXT, shared.websiteUrl ?: shared.sourceCodeUrl ?: shared.apkUrl)
+                    }
+                    context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share)))
+                },
                 onDeveloperSelected = { selectedDeveloper = it },
                 isUpdateIgnored = repository.isUpdateIgnored(app),
                 onIgnoreUpdateToggle = {
