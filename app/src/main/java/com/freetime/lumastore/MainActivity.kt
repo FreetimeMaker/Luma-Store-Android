@@ -175,6 +175,7 @@ class MainActivity : ComponentActivity() {
                                     MyAppsScreen(
                                         repository = repository,
                                         installedAppsRevision = revision,
+                                        installedPackageNames = { installedPackageNames() },
                                         installedVersionCode = { installedVersionCode(it) },
                                         installedVersionName = { installedVersionName(it) },
                                         openInstalledApp = { openInstalledApp(it) },
