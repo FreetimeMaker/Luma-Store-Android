@@ -164,7 +164,6 @@ class MainActivity : ComponentActivity() {
                                 key(currentSourcesRevision) {
                                     FdroidSearchScreen(
                                         repository = repository,
-                                        installedPackageNames = { installedPackageNames() },
                                         installedVersionCode = { installedVersionCode(it) },
                                         installedVersionName = { installedVersionName(it) },
                                         openInstalledApp = { openInstalledApp(it) },
