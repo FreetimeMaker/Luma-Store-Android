@@ -39,6 +39,8 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
     var repositoryImportValue by remember { mutableStateOf("") }
     var repositoryImportPreview by remember { mutableStateOf<String?>(null) }
     var priorityRevision by remember { mutableIntStateOf(0) }
+    var dataSaver by remember { mutableStateOf(repository.dataSaverEnabled()) }
+    var oledMode by remember { mutableStateOf(repository.oledModeEnabled()) }
     val sourceAddFailed = stringResource(R.string.source_add_failed)
     val context = LocalContext.current
     var transferMessage by remember { mutableStateOf<String?>(null) }
@@ -272,6 +274,23 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
                     enabled = repositoryImportValue.isNotBlank(),
                     modifier = Modifier.weight(1f)
                 ) { Text(stringResource(R.string.import_repository)) }
+            }
+
+            Spacer(Modifier.height(24.dp))
+            Text(stringResource(R.string.appearance_and_data), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.oled_mode))
+                    Text(stringResource(R.string.oled_mode_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(checked = oledMode, onCheckedChange = { oledMode = it; repository.setOledModeEnabled(it); onSourcesChanged() })
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.data_saver))
+                    Text(stringResource(R.string.data_saver_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(checked = dataSaver, onCheckedChange = { dataSaver = it; repository.setDataSaverEnabled(it); onSourcesChanged() })
             }
 
             Spacer(Modifier.height(24.dp))
