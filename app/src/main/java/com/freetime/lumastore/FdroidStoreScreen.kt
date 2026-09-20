@@ -91,7 +91,6 @@ fun FdroidStoreScreen(
 ) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
-    val context = LocalContext.current
     val sourcePreferences = remember(context) {
         context.applicationContext.getSharedPreferences(FDROID_SOURCE_PREFERENCES, Context.MODE_PRIVATE)
     }
