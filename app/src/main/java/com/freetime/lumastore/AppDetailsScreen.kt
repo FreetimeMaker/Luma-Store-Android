@@ -373,9 +373,19 @@ fun AppDetailsScreen(
                 app.minSdk?.let { DetailValueRow(stringResource(R.string.minimum_android_sdk), it.toString()) }
                 app.targetSdk?.let { DetailValueRow(stringResource(R.string.target_android_sdk), it.toString()) }
                 if (app.nativeCode.isNotEmpty()) DetailValueRow(stringResource(R.string.supported_architectures), app.nativeCode.joinToString(", "))
+                DetailValueRow(
+                    stringResource(R.string.security_status),
+                    when {
+                        app.signerSha256.isNotEmpty() && !app.expectedSha256.isNullOrBlank() ->
+                            stringResource(R.string.signature_available) + " • " + stringResource(R.string.hash_available)
+                        app.signerSha256.isNotEmpty() -> stringResource(R.string.signature_available)
+                        !app.expectedSha256.isNullOrBlank() -> stringResource(R.string.hash_available)
+                        else -> stringResource(R.string.no_verification_metadata)
+                    }
+                )
                 if (app.signerSha256.isNotEmpty()) DetailValueRow(stringResource(R.string.signing_certificate), app.signerSha256.joinToString("\n"))
                 if (app.expectedSha256 != null) DetailValueRow(stringResource(R.string.apk_sha256), app.expectedSha256)
-                if (app.permissions.isNotEmpty()) DetailValueRow(stringResource(R.string.permissions), app.permissions.joinToString("\n"))
+                if (app.permissions.isNotEmpty()) DetailValueRow(stringResource(R.string.permissions), app.permissions.sorted().joinToString("\n"))
             }
 
             Spacer(Modifier.height(96.dp))
