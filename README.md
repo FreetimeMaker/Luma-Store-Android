@@ -76,8 +76,6 @@ You can download the latest version of Luma Store from the following platforms:
 
 [<img src="media-resources/badge_f_droid.png" alt="Get it on F-Droid" height="80">](https://f-droid.org/packages/com.freetime.lumastore)
 
-[<img src="media-resources/badge_obtainium.png" alt="Get it on Obtainium" width="194">]()
-
 [<img src="media-resources/openapk-badge.png" alt="Get it on OpenAPK.net" height="80">](https://www.openapk.net/de/lumastore/com.freetime.lumastore/)
 
 [<img src="media-resources/badge_github_store.png" alt="Get it on GitHub Store" height="70">](https://github-store.org/app?repo=FreetimeMaker/Luma-Store-Android)
