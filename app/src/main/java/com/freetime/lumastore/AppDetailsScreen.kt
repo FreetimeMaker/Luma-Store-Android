@@ -437,7 +437,7 @@ private fun AppDetailsHeader(
     onAction: () -> Unit,
     onSourceSelected: (StoreApp) -> Unit,
     onDeveloperSelected: (String) -> Unit,
-    backdrop: io.github.fletchmckee.liquid.LiquidState?,
+    backdrop: Unit,
     actionShape: androidx.compose.ui.graphics.Shape
 ) {
     Column(
