@@ -26,6 +26,10 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.CurrencyBitcoin
+import androidx.compose.material.icons.filled.Paid
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Email
@@ -335,14 +339,14 @@ fun AppDetailsScreen(
                         horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
                         verticalAlignment = Alignment.Top
                     ) {
-                        items(app.donationUrls, key = { it }) { url -> DetailActionItem(stringResource(R.string.donation_link), Icons.Filled.AttachMoney) { onOpenUri(url) } }
+                        items(app.donationUrls, key = { it }) { url -> DetailActionItem(stringResource(R.string.donation_link), Icons.Filled.Favorite) { onOpenUri(url) } }
                         app.liberapay?.let { value -> item("liberapay") {
                             val url = fundingUrl("https://liberapay.com/", value)
-                            DetailActionItem(stringResource(R.string.liberapay), Icons.Filled.AttachMoney) { onOpenUri(url) } } }
+                            DetailActionItem(stringResource(R.string.liberapay), Icons.Filled.Paid) { onOpenUri(url) } } }
                         app.openCollective?.let { value -> item("opencollective") {
                             val url = fundingUrl("https://opencollective.com/", value)
-                            DetailActionItem(stringResource(R.string.open_collective), Icons.Filled.AttachMoney) { onOpenUri(url) } } }
-                        app.bitcoin?.let { value -> item("bitcoin") { DetailActionItem(stringResource(R.string.bitcoin), Icons.Filled.AttachMoney) { onOpenUri(cryptoUri("bitcoin", value)) } } }
+                            DetailActionItem(stringResource(R.string.open_collective), Icons.Filled.Groups) { onOpenUri(url) } } }
+                        app.bitcoin?.let { value -> item("bitcoin") { DetailActionItem(stringResource(R.string.bitcoin), Icons.Filled.CurrencyBitcoin) { onOpenUri(cryptoUri("bitcoin", value)) } } }
                         app.litecoin?.let { value -> item("litecoin") { DetailActionItem(stringResource(R.string.litecoin), Icons.Filled.AttachMoney) { onOpenUri(cryptoUri("litecoin", value)) } } }
                     
                     }
