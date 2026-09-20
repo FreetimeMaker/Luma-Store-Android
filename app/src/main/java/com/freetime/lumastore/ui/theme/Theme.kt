@@ -62,6 +62,14 @@ fun LumaStoreTheme(
         onBackground = foreground,
         onSurface = foreground,
         onSurfaceVariant = secondaryForeground,
+        onPrimary = foreground,
+        onPrimaryContainer = foreground,
+        onSecondary = foreground,
+        onSecondaryContainer = foreground,
+        onTertiary = foreground,
+        onTertiaryContainer = foreground,
+        onError = foreground,
+        onErrorContainer = foreground,
         inverseOnSurface = if (darkTheme) Color.Black else Color.White
     )
 
