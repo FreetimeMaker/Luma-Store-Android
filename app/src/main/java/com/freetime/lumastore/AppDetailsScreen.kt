@@ -108,7 +108,7 @@ fun AppDetailsScreen(
     val actionShape = RoundedCornerShape(50)
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier
             .fillMaxSize()
@@ -148,7 +148,7 @@ fun AppDetailsScreen(
                 variants = variants,
                 installedVersionName = installedVersionName,
                 actionLabel = actionLabel,
-                showAction = !(app.sourceName.equals("Luma Store", ignoreCase = true) && installedVersionName != null && actionLabel == stringResource(R.string.open)),
+                showAction = !(app.id == "com.freetime.lumastore" && installedVersionName != null && actionLabel == stringResource(R.string.open)),
                 installing = installing,
                 progress = progress,
                 onAction = onAction,
