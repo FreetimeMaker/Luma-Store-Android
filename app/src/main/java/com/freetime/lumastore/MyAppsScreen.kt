@@ -1,5 +1,7 @@
 package com.freetime.lumastore
 
+import android.content.Intent
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -37,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -87,6 +90,7 @@ fun MyAppsScreen(
     var activeDownload by remember { mutableStateOf<ApkInstaller.DownloadHandle?>(null) }
     var lastFailedItem by remember { mutableStateOf<InstalledStoreApp?>(null) }
     val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
 
     fun runAction(item: InstalledStoreApp) {
         if (item.app.versionCode <= item.installedCode) {
@@ -347,6 +351,14 @@ fun MyAppsScreen(
             },
             onScreenshotSelected = {},
             onOpenUri = { uri -> runCatching { uriHandler.openUri(uri) } },
+                onShare = { shared ->
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_SUBJECT, shared.name)
+                        putExtra(Intent.EXTRA_TEXT, shared.websiteUrl ?: shared.sourceCodeUrl ?: shared.apkUrl)
+                    }
+                    context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share)))
+                },
             isUpdateIgnored = repository.isUpdateIgnored(selectedApp),
             onIgnoreUpdateToggle = {
                 if (repository.isUpdateIgnored(selectedApp)) repository.clearIgnoredVersion(selectedApp.id) else repository.ignoreVersion(selectedApp)
