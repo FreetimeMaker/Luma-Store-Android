@@ -26,6 +26,7 @@ androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 
+freetime-core = { module = "me.free-time:freetime-core", version.ref = "freetime" }
 freetime-design = { module = "me.free-time:freetime-design", version.ref = "freetime" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
