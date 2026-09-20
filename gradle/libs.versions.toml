@@ -26,8 +26,9 @@ androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 
-freetime-core = { module = "me.free-time:freetime-core", version.ref = "freetime" }
-freetime-design = { module = "me.free-time:freetime-design", version.ref = "freetime" }
+freetime-core = { module = "com.github.FreetimeMaker.Freetime-Core:Core", version.ref = "freetime" }
+freetime-design = { module = "com.github.FreetimeMaker.Freetime-Core:Design", version.ref = "freetime" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
