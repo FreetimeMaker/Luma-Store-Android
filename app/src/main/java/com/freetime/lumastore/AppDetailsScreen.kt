@@ -187,6 +187,15 @@ fun AppDetailsScreen(
             }
 
             DetailsExpandableSection(stringResource(R.string.app_information)) {
+                DetailValueRow(stringResource(R.string.version), app.version)
+                DetailValueRow(stringResource(R.string.package_name), app.id)
+                DetailValueRow(stringResource(R.string.source), app.sourceName)
+                app.license?.takeIf { it.isNotBlank() }?.let { DetailValueRow(stringResource(R.string.license), it) }
+                app.minSdk?.let { DetailValueRow(stringResource(R.string.minimum_android_sdk), it.toString()) }
+                app.targetSdk?.let { DetailValueRow(stringResource(R.string.target_android_sdk), it.toString()) }
+                app.downloadSize?.let { DetailValueRow(stringResource(R.string.download_size), formatFileSize(it)) }
+                if (app.nativeCode.isNotEmpty()) DetailValueRow(stringResource(R.string.architectures), app.nativeCode.joinToString())
+                app.lastUpdatedTimestamp?.let { DetailValueRow(stringResource(R.string.last_updated), formatRelativeAge(it)) }
                 if (installedVersionName != null && actionLabel == stringResource(R.string.update)) {
                     TextButton(onClick = onIgnoreUpdateToggle, modifier = Modifier.fillMaxWidth()) {
                         Text(if (isUpdateIgnored) stringResource(R.string.stop_ignoring_update) else stringResource(R.string.ignore_update))
@@ -406,6 +415,13 @@ fun AppDetailsScreen(
         }
     }
     }
+}
+
+private fun formatFileSize(bytes: Long): String = when {
+    bytes >= 1_073_741_824L -> String.format("%.1f GB", bytes / 1_073_741_824.0)
+    bytes >= 1_048_576L -> String.format("%.1f MB", bytes / 1_048_576.0)
+    bytes >= 1024L -> String.format("%.1f KB", bytes / 1024.0)
+    else -> "$bytes B"
 }
 
 private fun formatRelativeAge(timestamp: Long): String {
