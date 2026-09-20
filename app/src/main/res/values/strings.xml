@@ -247,6 +247,11 @@
     <string name="cache_cleared">App cache cleared.</string>
     <string name="cached_data">Cached data</string>
     <string name="offline_cached_data">Offline • showing cached repository data</string>
+    <string name="appearance_and_data">Appearance &amp; data</string>
+    <string name="oled_mode">OLED mode</string>
+    <string name="oled_mode_description">Use true black surfaces during the automatic dark theme.</string>
+    <string name="data_saver">Data saver</string>
+    <string name="data_saver_description">Reduce optional image loading and network-heavy visual content.</string>
     <string name="discover_settings">Discover settings</string>
     <string name="show_new_apps">Show new apps</string>
     <string name="show_recently_updated">Show recently updated</string>
