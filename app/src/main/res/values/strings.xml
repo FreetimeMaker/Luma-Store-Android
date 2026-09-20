@@ -160,6 +160,7 @@
     <string name="share">Share</string>
     <string name="offline">Offline</string>
     <string name="download_size">Download size</string>
+    <string name="last_updated">Last updated</string>
     <string name="minimum_android_sdk">Minimum Android SDK</string>
     <string name="target_android_sdk">Target Android SDK</string>
     <string name="supported_architectures">Architectures</string>
