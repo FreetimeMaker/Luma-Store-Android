@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Translate
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
@@ -93,6 +94,7 @@ fun AppDetailsScreen(
     onSourceSelected: (StoreApp) -> Unit,
     onScreenshotSelected: (String) -> Unit,
     onOpenUri: (String) -> Unit,
+    onShare: (StoreApp) -> Unit = {},
     onDeveloperSelected: (String) -> Unit = {},
     isUpdateIgnored: Boolean = false,
     onIgnoreUpdateToggle: () -> Unit = {},
@@ -339,6 +341,7 @@ fun AppDetailsScreen(
                     app.changelogUrl?.let { url -> item("changelog") { DetailActionItem(stringResource(R.string.changelog), Icons.Filled.History) { onOpenUri(url) } } }
                     app.translationUrl?.let { url -> item("translation") { DetailActionItem(stringResource(R.string.translation), Icons.Filled.Translate) { onOpenUri(url) } } }
                     app.sourceCodeUrl?.let { url -> item("source") { DetailActionItem(stringResource(R.string.source_code), Icons.Filled.Code) { onOpenUri(url) } } }
+                    item("share") { DetailActionItem(stringResource(R.string.share), Icons.Filled.Share) { onShare(app) } }
                 }
                 app.license?.let { DetailValueRow(stringResource(R.string.license), it) }
             }
@@ -365,6 +368,7 @@ fun AppDetailsScreen(
                     stringResource(R.string.app_information),
                     if (app.closedSource) stringResource(R.string.closed_source) else stringResource(R.string.open_source)
                 )
+                app.lastUpdatedTimestamp?.let { DetailValueRow(stringResource(R.string.last_updated), formatRelativeAge(it)) }
                 app.downloadSize?.let { DetailValueRow(stringResource(R.string.download_size), formatBytes(it)) }
                 app.minSdk?.let { DetailValueRow(stringResource(R.string.minimum_android_sdk), it.toString()) }
                 app.targetSdk?.let { DetailValueRow(stringResource(R.string.target_android_sdk), it.toString()) }
@@ -376,6 +380,18 @@ fun AppDetailsScreen(
 
             Spacer(Modifier.height(96.dp))
         }
+    }
+}
+
+private fun formatRelativeAge(timestamp: Long): String {
+    val age = (System.currentTimeMillis() - timestamp).coerceAtLeast(0L)
+    val days = age / 86_400_000L
+    return when {
+        days == 0L -> "Today"
+        days == 1L -> "1 day ago"
+        days < 30L -> "$days days ago"
+        days < 365L -> "${days / 30L} months ago"
+        else -> "${days / 365L} years ago"
     }
 }
 
