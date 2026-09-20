@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -110,11 +111,14 @@ fun AppDetailsScreen(
     val glassShape = RoundedCornerShape(20.dp)
     val actionShape = RoundedCornerShape(50)
 
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+    val wideDetails = maxWidth >= 840.dp
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         contentColor = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier
             .fillMaxSize()
+            .then(if (wideDetails) Modifier.padding(start = maxWidth * 0.42f) else Modifier)
             .nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
@@ -400,6 +404,7 @@ fun AppDetailsScreen(
 
             Spacer(Modifier.height(96.dp))
         }
+    }
     }
 }
 
