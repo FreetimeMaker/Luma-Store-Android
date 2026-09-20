@@ -73,9 +73,6 @@ fun MyAppsScreen(
             InstalledStoreApp(app, code, installedVersionName(packageName))
         }.sortedBy { it.app.name.lowercase() }
     }
-    val unavailableInstalledPackages = remember(allVariants, installedAppsRevision) {
-        installedPackageNames().filterNot { it in allVariants.keys || it == "com.freetime.lumastore" }.sorted()
-    }
     val updates = remember(installed) { installed.filter { it.app.versionCode > it.installedCode && !repository.isUpdateIgnored(it.app) } }
     val ignoredUpdates = remember(installed) { installed.filter { it.app.versionCode > it.installedCode && repository.isUpdateIgnored(it.app) } }
     val installedWithoutUpdates = remember(installed, updates) {
@@ -270,29 +267,7 @@ fun MyAppsScreen(
                 }
             }
 
-            if (unavailableInstalledPackages.isNotEmpty()) {
-                item {
-                    Text(
-                        stringResource(R.string.installed_unavailable),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)
-                    )
-                }
-                items(unavailableInstalledPackages, key = { "unavailable:$it" }) { packageName ->
-                    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
-                        Text(packageName, style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            stringResource(R.string.installed_unavailable_description),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
-                }
-            }
-
-            if (installed.isEmpty() && unavailableInstalledPackages.isEmpty()) {
+            if (installed.isEmpty()) {
                 item {
                     Text(
                         stringResource(R.string.no_installed_apps),
