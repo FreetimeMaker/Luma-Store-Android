@@ -376,6 +376,7 @@ fun MyAppsScreen(
                 repository.rememberPreferredSource(it)
             },
             onScreenshotSelected = {},
+                dataSaver = repository.dataSaverEnabled(),
             onOpenUri = { uri -> runCatching { uriHandler.openUri(uri) } },
                 onShare = { shared ->
                     val shareIntent = Intent(Intent.ACTION_SEND).apply {
