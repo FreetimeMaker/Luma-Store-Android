@@ -1,5 +1,7 @@
 package com.freetime.lumastore
 
+import me.free_time.design.freetimeGlass
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -26,8 +28,6 @@ import java.util.Date
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.freetime.lumastore.data.AppRepository
 import com.freetime.lumastore.data.AppSource
-import com.freetime.lumastore.ui.glass.lumaLiquidGlass
-import com.freetime.lumastore.ui.glass.rememberLumaBackdrop
 
 @Composable
 fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChanged: () -> Unit) {
@@ -360,13 +360,11 @@ private fun EditSourceDialog(
     var url by remember(source) { mutableStateOf(source.indexUrl) }
     var error by remember(source) { mutableStateOf<String?>(null) }
     val editFailed = stringResource(R.string.source_edit_failed)
-
-    val backdrop = rememberLumaBackdrop()
     val dialogShape = RoundedCornerShape(28.dp)
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        modifier = Modifier.lumaLiquidGlass(backdrop, dialogShape, interactive = false),
+        modifier = Modifier.freetimeGlass(dialogShape, interactive = false),
         shape = dialogShape,
         containerColor = Color.Transparent,
         tonalElevation = 0.dp,
@@ -423,12 +421,11 @@ private fun SourceCard(
     onEdit: () -> Unit,
     onRemove: () -> Unit
 ) {
-    val backdrop = rememberLumaBackdrop()
     val shape = RoundedCornerShape(20.dp)
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .lumaLiquidGlass(backdrop, shape, interactive = false),
+            .freetimeGlass(shape, interactive = false),
         shape = shape,
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
