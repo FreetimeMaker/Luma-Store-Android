@@ -157,6 +157,7 @@ class MainActivity : ComponentActivity() {
                                 key(currentSourcesRevision) {
                                     FdroidSearchScreen(
                                         repository = repository,
+                                        installedPackageNames = { installedPackageNames() },
                                         installedVersionCode = { installedVersionCode(it) },
                                         installedVersionName = { installedVersionName(it) },
                                         openInstalledApp = { openInstalledApp(it) },
@@ -344,6 +345,9 @@ class MainActivity : ComponentActivity() {
             )
         }
     }
+
+    private fun installedPackageNames(): Set<String> =
+        packageManager.getInstalledPackages(0).mapTo(mutableSetOf()) { it.packageName }
 
     private fun installedVersionCode(packageName: String): Long? = runCatching {
         val info = packageManager.getPackageInfo(packageName, 0)
