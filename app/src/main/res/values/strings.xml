@@ -263,4 +263,7 @@
     <string name="retry_download">Retry download</string>
     <string name="download_cancelled">Download cancelled.</string>
     <string name="download_manager_note">Downloads can be cancelled and retried. Pause/resume is only offered when the server supports safe resumable downloads.</string>
+    <string name="version">Version</string>
+    <string name="package_name">Package name</string>
+    <string name="architectures">Architectures</string>
 </resources>
