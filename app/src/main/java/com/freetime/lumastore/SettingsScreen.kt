@@ -266,7 +266,6 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
             listOf(
                 "new" to R.string.show_new_apps,
                 "recent" to R.string.show_recently_updated,
-                "favorites" to R.string.show_favorites,
                 "privacy" to R.string.show_privacy_collection,
                 "games" to R.string.show_games_collection
             ).forEach { (key, label) ->
