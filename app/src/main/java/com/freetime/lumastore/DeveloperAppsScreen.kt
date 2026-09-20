@@ -1,5 +1,7 @@
 package com.freetime.lumastore
 
+import me.free_time.design.freetimeGlass
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -22,13 +24,10 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.SubcomposeAsyncImage
 import coil3.compose.SubcomposeAsyncImageContent
 import com.freetime.lumastore.data.StoreApp
-import com.freetime.lumastore.ui.glass.lumaLiquidGlass
-import com.freetime.lumastore.ui.glass.rememberLumaBackdrop
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeveloperAppsScreen(developerName: String, apps: List<StoreApp>, onBack: () -> Unit, onAppSelected: (StoreApp) -> Unit) {
-    val backdrop = rememberLumaBackdrop()
     val developerApps = apps.filter { it.authorName?.trim()?.equals(developerName.trim(), true) == true }
         .groupBy { it.id }.mapNotNull { (_, variants) -> variants.maxByOrNull { it.versionCode } }.sortedBy { it.name.lowercase() }
     Scaffold(containerColor = MaterialTheme.colorScheme.background, topBar = {
@@ -42,7 +41,7 @@ fun DeveloperAppsScreen(developerName: String, apps: List<StoreApp>, onBack: () 
         else LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             items(developerApps, key = { it.id }) { app ->
                 Row(
-                    Modifier.fillMaxWidth().lumaLiquidGlass(backdrop, RoundedCornerShape(22.dp), interactive = true).clickable { onAppSelected(app) }.padding(14.dp),
+                    Modifier.fillMaxWidth().freetimeGlass(RoundedCornerShape(22.dp), interactive = true).clickable { onAppSelected(app) }.padding(14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     DeveloperAppIcon(app, 60)
