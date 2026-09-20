@@ -25,13 +25,11 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -41,6 +39,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -139,19 +138,19 @@ fun FdroidDiscoverScreen(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name), maxLines = 1) },
-                actions = {
-                    IconButton(
-                        onClick = { refreshKey++ },
-                        modifier = Modifier.freetimeGlass(shape = RoundedCornerShape(18.dp))
-                    ) {
-                        Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.refresh))
-                    }
-                },
                 scrollBehavior = scrollBehavior,
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent)
             )
         }
     ) { padding ->
+        PullToRefreshBox(
+            isRefreshing = loading && apps.isNotEmpty(),
+            onRefresh = {
+                loading = true
+                refreshKey++
+            },
+            modifier = Modifier.fillMaxSize()
+        ) {
         if (loading && apps.isEmpty()) {
             Column(
                 Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
@@ -279,6 +278,7 @@ fun FdroidDiscoverScreen(
                     HorizontalDivider(modifier = Modifier.padding(start = 92.dp))
                 }
             }
+        }
         }
     }
 
