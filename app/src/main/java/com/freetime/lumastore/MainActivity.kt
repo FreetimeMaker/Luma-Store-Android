@@ -1,6 +1,6 @@
 package com.freetime.lumastore
 
-import me.free_time.design.freetimeGlass
+import me.free_time.design.freetimeGlassCapsule
 import me.free_time.design.FreetimeGlassRoot
 
 import android.app.job.JobInfo
@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Code
@@ -132,8 +131,6 @@ class MainActivity : ComponentActivity() {
 
             LumaStoreTheme(darkTheme = darkTheme) {
                 FreetimeGlassRoot {
-                val navigationShape = RoundedCornerShape(50)
-
                 BoxWithConstraints(
                     modifier = Modifier.fillMaxSize()
                 ) {
@@ -217,7 +214,7 @@ class MainActivity : ComponentActivity() {
                             .navigationBarsPadding()
                             .padding(bottom = 14.dp)
                             .heightIn(min = 68.dp)
-                            .freetimeGlass(shape = navigationShape, interactive = true),
+                            .freetimeGlassCapsule(interactive = false),
                         containerColor = Color.Transparent,
                         contentColor = MaterialTheme.colorScheme.onSurface,
                         tonalElevation = 0.dp,
