@@ -1,5 +1,7 @@
 package com.freetime.lumastore
 
+import me.free_time.design.freetimeGlass
+
 import android.content.Intent
 
 import android.os.Build
@@ -21,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AssistChip
@@ -137,7 +140,10 @@ fun FdroidDiscoverScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name), maxLines = 1) },
                 actions = {
-                    IconButton(onClick = { refreshKey++ }) {
+                    IconButton(
+                        onClick = { refreshKey++ },
+                        modifier = Modifier.freetimeGlass(shape = RoundedCornerShape(18.dp))
+                    ) {
                         Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.refresh))
                     }
                 },
@@ -147,8 +153,11 @@ fun FdroidDiscoverScreen(
         }
     ) { padding ->
         if (loading && apps.isEmpty()) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+            Column(
+                Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                repeat(7) { SkeletonAppRow() }
             }
         } else {
             LazyColumn(
@@ -403,6 +412,22 @@ fun FdroidSearchScreen(
         install = install,
         onDismiss = { selectedAppId = null }
     )
+}
+
+@Composable
+private fun SkeletonAppRow() {
+    Row(
+        Modifier.fillMaxWidth().freetimeGlass(interactive = false).padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(Modifier.size(64.dp).clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)))
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(Modifier.fillMaxWidth(0.55f).height(16.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)))
+            Box(Modifier.fillMaxWidth(0.85f).height(12.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)))
+            Box(Modifier.fillMaxWidth(0.68f).height(12.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)))
+        }
+    }
 }
 
 @Composable
