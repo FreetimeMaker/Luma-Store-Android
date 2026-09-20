@@ -31,11 +31,11 @@ fun DeveloperAppsScreen(developerName: String, apps: List<StoreApp>, onBack: () 
     val backdrop = rememberLumaBackdrop()
     val developerApps = apps.filter { it.authorName?.trim()?.equals(developerName.trim(), true) == true }
         .groupBy { it.id }.mapNotNull { (_, variants) -> variants.maxByOrNull { it.versionCode } }.sortedBy { it.name.lowercase() }
-    Scaffold(containerColor = Color.Transparent, topBar = {
+    Scaffold(containerColor = MaterialTheme.colorScheme.background, topBar = {
         TopAppBar(
             title = { Text(stringResource(R.string.apps_by_developer, developerName), maxLines = 1, overflow = TextOverflow.Ellipsis) },
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent)
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background, scrolledContainerColor = Color.Transparent)
         )
     }) { padding ->
         if (developerApps.isEmpty()) Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { Text(stringResource(R.string.no_developer_apps)) }
