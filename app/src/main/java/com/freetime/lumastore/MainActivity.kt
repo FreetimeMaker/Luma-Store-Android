@@ -122,6 +122,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
             val darkTheme = currentHour < 7 || currentHour >= 19
+            val oledMode = remember(currentSourcesRevision) { repository.oledModeEnabled() }
             val availableUpdateCount = remember(revision, currentSourcesRevision) {
                 repository.currentApps().groupBy { it.id }.count { (packageName, variants) ->
                     val installed = installedVersionCode(packageName)
@@ -129,7 +130,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            LumaStoreTheme(darkTheme = darkTheme) {
+            LumaStoreTheme(darkTheme = darkTheme, oledMode = oledMode) {
                 FreetimeGlassRoot {
                 BoxWithConstraints(
                     modifier = Modifier.fillMaxSize()
