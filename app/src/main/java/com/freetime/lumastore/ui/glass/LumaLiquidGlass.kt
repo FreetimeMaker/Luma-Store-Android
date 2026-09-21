@@ -3,9 +3,9 @@ package com.freetime.lumastore.ui.glass
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
-import me.free_time.design.FreetimeGlassRoot
-import me.free_time.design.freetimeGlass
-import me.free_time.design.freetimeGlassCapsule
+import com.freetime.design.FreetimeGlassRoot
+import com.freetime.design.freetimeGlass
+import com.freetime.design.freetimeGlassCapsule
 
 /**
  * Luma Store compatibility aliases backed by the shared Freetime Design library.
