@@ -1,7 +1,7 @@
 package com.freetime.lumastore
 
-import me.free_time.design.freetimeGlassCapsule
-import me.free_time.design.FreetimeGlassRoot
+import com.freetime.design.freetimeGlassCapsule
+import com.freetime.design.FreetimeGlassRoot
 
 import android.app.job.JobInfo
 import android.app.job.JobScheduler
