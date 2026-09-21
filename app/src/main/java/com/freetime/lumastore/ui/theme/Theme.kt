@@ -1,5 +1,7 @@
 package com.freetime.lumastore.ui.theme
 
+import com.freetime.design.FreetimeTheme
+
 import android.os.Build
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -79,9 +81,15 @@ fun LumaStoreTheme(
         inverseOnSurface = if (darkTheme) Color.Black else Color.White
     )
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+    FreetimeTheme(
+        darkTheme = darkTheme,
+        dynamicColor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
+        oledBlack = oledMode
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            content = content
+        )
+    }
 }
