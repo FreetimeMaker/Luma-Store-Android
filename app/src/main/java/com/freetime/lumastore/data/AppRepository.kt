@@ -880,10 +880,17 @@ class AppRepository(context: Context) {
                     }
                 }
 
-                val apkUrl = androidDownloadUrl
+                val directApkUrl = androidDownloadUrl
                     ?: item.optDownloadUrl("download_url")
                     ?: item.optDownloadUrl("apk_url")
                     ?: continue
+                val apkUrl = if (item.optString("package_name").isNotBlank()) {
+                    "https://ndlaevedujqxhygbyxfh.supabase.co/functions/v1/download-app?package_name=" +
+                        java.net.URLEncoder.encode(item.optString("package_name"), "UTF-8") +
+                        "&platform=Android"
+                } else {
+                    directApkUrl
+                }
 
                 add(StoreApp(
                     id = id,
