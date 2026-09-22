@@ -27,6 +27,7 @@
 [![GitHub license](https://img.shields.io/github/license/FreetimeMaker/Luma-Store-Android?style=for-the-badge)](https://github.com/FreetimeMaker/Luma-Store-Android/blob/main/LICENSE)
 [![GitHub Downloads (all time)](https://img.shields.io/github/downloads/FreetimeMaker/Luma-Store-Android/total?style=for-the-badge)](https://github.com/FreetimeMaker/Luma-Store-Android/releases)
 ![F-Droid Downloads (all time)](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgithub.com%2Fkitswas%2Ffdroid-metrics-dashboard%2Fraw%2Frefs%2Fheads%2Fmain%2Fprocessed%2Ftotal%2Fcom.freetime.lumastore.json&query=%24.total_downloads&logo=fdroid&label=Downloads%20(all%20time))
+[![Luma Store downloads](https://ndlaevedujqxhygbyxfh.supabase.co/functions/v1/download-badge?package_name=com.freetime.lumastore)](https://luma.free-time.me/discover/com.freetime.lumastore)
 [![GitHub stars](https://img.shields.io/github/stars/FreetimeMaker/Luma-Store-Android?color=%2359a14f&style=for-the-badge)](https://github.com/FreetimeMaker/Luma-Store-Android/stargazers)
 [![Android Build, Sign and Release](https://github.com/FreetimeMaker/Luma-Store-Android/actions/workflows/build_and_co.yml/badge.svg)](https://github.com/FreetimeMaker/Luma-Store-Android/actions/workflows/build_and_co.yml)
 [![API](https://img.shields.io/badge/API-24%2B-brightgreen.svg?style=flat)](https://android-arsenal.com/api?level=24)
