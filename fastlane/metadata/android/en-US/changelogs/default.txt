@@ -1,6 +1,5 @@
-• Improved Liquid Glass presentation and navigation readability
-• Restored detailed app information including version, package name, source, license, SDK levels, download size and architectures
-• Made author/developer detail pages use a proper opaque background
-• Removed the “installed but unavailable” section from My Apps
-• Fixed navigation labels appearing black in dark mode
-• Fixed missing app-information resources that could prevent release builds
+• Updated Freetime Core and Design to 1.11.0
+• Integrated the newer Freetime theme and design-token system while keeping Material You compatibility
+• Migrated Liquid Glass components to the current Freetime Design API and package namespace
+• Improved compatibility with the latest Freetime Liquid Glass implementation
+• Fixed unresolved Freetime Design imports that could prevent release builds
