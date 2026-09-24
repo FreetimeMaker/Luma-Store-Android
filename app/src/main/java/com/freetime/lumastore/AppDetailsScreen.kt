@@ -1,6 +1,6 @@
 package com.freetime.lumastore
 
-import me.free_time.design.freetimeGlass
+import com.freetime.design.freetimeGlass
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
