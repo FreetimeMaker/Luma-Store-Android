@@ -2,7 +2,7 @@ package com.freetime.lumastore
 
 import android.content.Intent
 
-import me.free_time.design.freetimeGlass
+import com.freetime.design.freetimeGlass
 
 import android.content.Context
 import androidx.compose.foundation.background
