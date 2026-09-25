@@ -59,6 +59,8 @@ fun DeveloperScreen(
     val submissionUpdateError = stringResource(R.string.submission_update_failed)
     val submissionRemoveError = stringResource(R.string.submission_remove_failed)
     val platformUpdateError = stringResource(R.string.platform_update_failed)
+    val artifactAddError = stringResource(R.string.artifact_add_failed)
+    val artifactRemoveError = stringResource(R.string.artifact_remove_failed)
 
     suspend fun reload(current: DeveloperSession) {
         loading = true
@@ -243,6 +245,20 @@ fun DeveloperScreen(
                                 reload(current)
                             }
                         },
+                        onArtifactAdd = { submission, platform, packageType, downloadUrl, repoUrl ->
+                            scope.launch {
+                                runCatching { repository.addPlatformArtifact(submission, platform, packageType, downloadUrl, repoUrl) }
+                                    .onFailure { error = it.message ?: artifactAddError }
+                                reload(current)
+                            }
+                        },
+                        onArtifactRemove = { submission, platform, packageType ->
+                            scope.launch {
+                                runCatching { repository.removePlatformArtifact(submission, platform, packageType) }
+                                    .onFailure { error = it.message ?: artifactRemoveError }
+                                reload(current)
+                            }
+                        },
                         onPlatformSave = { submission, platform, title, shortDescription, fullDescription, changelog, repoUrl, downloadUrl, screenshots ->
                             scope.launch {
                                 runCatching { repository.updatePlatformMetadata(submission, platform, title, shortDescription, fullDescription, changelog, repoUrl, downloadUrl, screenshots) }
@@ -294,6 +310,8 @@ private fun SubmissionCard(
     scan: DeveloperSecurityScan?,
     downloadStats: DeveloperDownloadStats?,
     onSave: (DeveloperSubmission, String, String, String, String, Long?, String, String) -> Unit,
+    onArtifactAdd: (DeveloperSubmission, String, String, String, String) -> Unit,
+    onArtifactRemove: (DeveloperSubmission, String, String) -> Unit,
     onPlatformSave: (DeveloperSubmission, String, String, String, String, String, String, String, List<String>) -> Unit,
     onRemove: (DeveloperSubmission) -> Unit
 ) {
@@ -341,6 +359,10 @@ private fun SubmissionCard(
                 }
             }
 
+            if (editable) {
+                AddPlatformArtifactEditor(submission, onArtifactAdd)
+            }
+
             if (artifacts.isNotEmpty()) {
                 HorizontalDivider()
                 Text(stringResource(R.string.platform_artifacts), fontWeight = FontWeight.SemiBold)
@@ -353,6 +375,11 @@ private fun SubmissionCard(
                             artifact.sha256?.let { Text(stringResource(R.string.sha256_value, it), style = MaterialTheme.typography.labelSmall) }
                             artifact.repoUrl?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) }
                             PlatformMetadataEditor(submission, artifact, onPlatformSave)
+                            if (editable && artifact.packageType != null) {
+                                TextButton(onClick = { onArtifactRemove(submission, artifact.platform, artifact.packageType) }) {
+                                    Text(stringResource(R.string.remove_artifact), color = MaterialTheme.colorScheme.error)
+                                }
+                            }
                         }
                     }
                 }
@@ -397,6 +424,47 @@ private fun SubmissionCard(
                 comments.forEach { Text(stringResource(R.string.comment_bullet, it)) }
             }
         }
+    }
+}
+
+@Composable
+private fun AddPlatformArtifactEditor(
+    submission: DeveloperSubmission,
+    onAdd: (DeveloperSubmission, String, String, String, String) -> Unit
+) {
+    var expanded by remember(submission.id) { mutableStateOf(false) }
+    var platform by remember(submission.id) { mutableStateOf("Android") }
+    var packageType by remember(submission.id, platform) { mutableStateOf(if (platform == "Android") "apk" else if (platform == "Windows") "exe" else "deb") }
+    var downloadUrl by remember(submission.id) { mutableStateOf("") }
+    var repoUrl by remember(submission.id) { mutableStateOf("") }
+    val types = when (platform) { "Android" -> listOf("apk"); "Windows" -> listOf("exe", "msi"); else -> listOf("deb", "rpm") }
+
+    if (!expanded) {
+        OutlinedButton(onClick = { expanded = true }) { Text(stringResource(R.string.add_platform_artifact)) }
+        return
+    }
+    Text(stringResource(R.string.add_platform_artifact), fontWeight = FontWeight.SemiBold)
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        listOf("Android", "Windows", "Linux").forEach { item ->
+            FilterChip(selected = platform == item, onClick = {
+                platform = item
+                packageType = when (item) { "Android" -> "apk"; "Windows" -> "exe"; else -> "deb" }
+            }, label = { Text(item) })
+        }
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        types.forEach { item -> FilterChip(selected = packageType == item, onClick = { packageType = item }, label = { Text(item.uppercase()) }) }
+    }
+    OutlinedTextField(downloadUrl, { downloadUrl = it }, label = { Text(stringResource(R.string.download_url)) }, modifier = Modifier.fillMaxWidth())
+    OutlinedTextField(repoUrl, { repoUrl = it }, label = { Text(stringResource(R.string.repository_url)) }, modifier = Modifier.fillMaxWidth())
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Button(onClick = {
+            onAdd(submission, platform, packageType, downloadUrl, repoUrl)
+            expanded = false
+            downloadUrl = ""
+            repoUrl = ""
+        }, enabled = downloadUrl.startsWith("https://") || downloadUrl.startsWith("http://")) { Text(stringResource(R.string.add_artifact)) }
+        TextButton(onClick = { expanded = false }) { Text(stringResource(android.R.string.cancel)) }
     }
 }
 
