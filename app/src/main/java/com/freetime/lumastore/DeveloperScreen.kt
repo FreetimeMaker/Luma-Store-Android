@@ -192,6 +192,15 @@ fun DeveloperScreen(
         item {
             Text(stringResource(R.string.developer_area), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             Text(current.email ?: current.userId, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            data?.let { dashboardData ->
+                val totalDownloads = dashboardData.downloadStats.values.sumOf { stats -> stats.total }
+                Text(
+                    stringResource(R.string.developer_total_downloads, totalDownloads),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
             Spacer(Modifier.height(6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = { scope.launch { reload(current) } }, enabled = !loading) {
