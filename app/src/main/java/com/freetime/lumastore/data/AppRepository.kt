@@ -51,6 +51,7 @@ data class StoreApp(
     val addedTimestamp: Long? = null,
     val lastUpdatedTimestamp: Long? = null,
     val downloadSize: Long? = null,
+    val downloadCount: Long? = null,
     val minSdk: Int? = null,
     val targetSdk: Int? = null,
     val nativeCode: List<String> = emptyList(),
@@ -929,7 +930,8 @@ class AppRepository(context: Context) {
                     litecoin = item.optNullableString("litecoin"),
                     license = item.optNullableString("license_type") ?: item.optNullableString("license"),
                     antiFeatures = jsonStringList(item.optJSONArray("ant_features")).ifEmpty { jsonStringList(item.optJSONArray("anti_features")) },
-                    closedSource = item.optBoolean("closed_source", false)
+                    closedSource = item.optBoolean("closed_source", false),
+                    downloadCount = item.optLong("download_count", -1L).takeIf { it >= 0 }
                 ))
             }
         }
@@ -989,7 +991,7 @@ class AppRepository(context: Context) {
             put("license", app.license); put("antiFeatures", JSONArray(app.antiFeatures)); put("antiFeatureReasons", JSONObject(app.antiFeatureReasons)); put("closedSource", app.closedSource)
             put("versionChangelog", app.versionChangelog); put("expectedSha256", app.expectedSha256)
             app.addedTimestamp?.let { put("addedTimestamp", it) }; app.lastUpdatedTimestamp?.let { put("lastUpdatedTimestamp", it) }
-            app.downloadSize?.let { put("downloadSize", it) }; app.minSdk?.let { put("minSdk", it) }; app.targetSdk?.let { put("targetSdk", it) }
+            app.downloadSize?.let { put("downloadSize", it) }; app.downloadCount?.let { put("downloadCount", it) }; app.minSdk?.let { put("minSdk", it) }; app.targetSdk?.let { put("targetSdk", it) }
             put("nativeCode", JSONArray(app.nativeCode)); put("signerSha256", JSONArray(app.signerSha256)); put("permissions", JSONArray(app.permissions))
             put("versions", JSONArray().apply { app.versions.forEach { version -> put(JSONObject()
                 .put("versionName", version.versionName).put("versionCode", version.versionCode).put("sourceName", version.sourceName)
@@ -1020,8 +1022,8 @@ class AppRepository(context: Context) {
                     jsonStringMap(item.optJSONObject("antiFeatureReasons")), item.optBoolean("closedSource", false), item.optNullableString("versionChangelog"),
                     item.optNullableString("expectedSha256"), item.optLong("addedTimestamp", 0L).takeIf { it > 0 },
                     item.optLong("lastUpdatedTimestamp", 0L).takeIf { it > 0 },
-                    item.optLong("downloadSize", 0L).takeIf { it > 0 }, item.optInt("minSdk", 0).takeIf { it > 0 },
-                    item.optInt("targetSdk", 0).takeIf { it > 0 }, jsonStringList(item.optJSONArray("nativeCode")),
+                    item.optLong("downloadSize", 0L).takeIf { it > 0 }, item.optLong("downloadCount", -1L).takeIf { it >= 0 },
+                    item.optInt("minSdk", 0).takeIf { it > 0 }, item.optInt("targetSdk", 0).takeIf { it > 0 }, jsonStringList(item.optJSONArray("nativeCode")),
                     jsonStringList(item.optJSONArray("signerSha256")), jsonStringList(item.optJSONArray("permissions")),
                     item.optJSONArray("versions")?.let { versions ->
                         buildList {
