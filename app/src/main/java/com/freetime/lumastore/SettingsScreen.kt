@@ -252,7 +252,7 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
                                 .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
                                 .setPrompt(context.getString(R.string.scan_qr_code))
                                 .setBeepEnabled(false)
-                                .setOrientationLocked(false)
+                                .setOrientationLocked(true)
                         )
                     },
                     modifier = Modifier.weight(1f)
