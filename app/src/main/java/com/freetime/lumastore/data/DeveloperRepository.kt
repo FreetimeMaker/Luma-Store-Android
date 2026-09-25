@@ -35,7 +35,7 @@ import java.util.TimeZone
 @Serializable data class DeveloperSecurityScan(val id: String, @SerialName("submission_id") val submissionId: String, val status: String, @SerialName("risk_level") val riskLevel: String, val provider: String? = null, @SerialName("malicious_count") val maliciousCount: Int? = null, @SerialName("suspicious_count") val suspiciousCount: Int? = null, @SerialName("harmless_count") val harmlessCount: Int? = null, @SerialName("undetected_count") val undetectedCount: Int? = null, @SerialName("virus_total_permalink") val virusTotalPermalink: String? = null, @SerialName("error_message") val errorMessage: String? = null, @SerialName("scanned_at") val scannedAt: String? = null)
 @Serializable data class DeveloperDownloadStats(@SerialName("app_id") val appId: String, val total: Long = 0, val today: Long = 0, @SerialName("this_month") val thisMonth: Long = 0, @SerialName("this_year") val thisYear: Long = 0)
 @Serializable private data class DeveloperProfileRef(@SerialName("developer_id") val developerId: String)
-@Serializable private data class StoreAppSubmissionRef(val id: String, @SerialName("luma_submission_id") val lumaSubmissionId: String? = null)
+@Serializable private data class StoreAppSubmissionRef(val id: String? = null, @SerialName("luma_submission_id") val lumaSubmissionId: String? = null)
 data class DeveloperDashboard(val submissions: List<DeveloperSubmission>, val comments: List<DeveloperComment>, val notifications: List<DeveloperNotification>, val artifacts: Map<String, List<DeveloperPlatformArtifact>> = emptyMap(), val scans: Map<String, DeveloperSecurityScan> = emptyMap(), val downloadStats: Map<String, DeveloperDownloadStats> = emptyMap(), val submissionStoreIds: Map<String, String> = emptyMap())
 
 class DeveloperRepository(context: Context) {
@@ -73,8 +73,11 @@ class DeveloperRepository(context: Context) {
                 }
                 .decodeList<StoreAppSubmissionRef>()
         }.getOrDefault(emptyList())
-        val submissionStoreIds = storeRefs.mapNotNull { ref -> ref.lumaSubmissionId?.let { it to ref.id } }.toMap()
-        val appIds = (submissions.mapNotNull { it.storeAppId } + storeRefs.map { it.id }).distinct()
+        val submissionStoreIds = storeRefs.mapNotNull { ref ->
+            val storeId = ref.id ?: return@mapNotNull null
+            ref.lumaSubmissionId?.let { it to storeId }
+        }.toMap()
+        val appIds = (submissions.mapNotNull { it.storeAppId } + storeRefs.mapNotNull { it.id }).distinct()
         val artifacts: Map<String, List<DeveloperPlatformArtifact>> = if (appIds.isEmpty()) {
             emptyMap()
         } else {
