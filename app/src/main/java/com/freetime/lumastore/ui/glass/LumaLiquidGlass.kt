@@ -3,9 +3,9 @@ package com.freetime.lumastore.ui.glass
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
-import com.freetime.design.FreetimeGlassRoot
-import com.freetime.design.freetimeGlass
-import com.freetime.design.freetimeGlassCapsule
+import com.freetime.design.LiquidGlassRoot
+import com.freetime.design.liquidGlass
+import com.freetime.design.liquidGlassCapsule
 
 /**
  * Luma Store compatibility aliases backed by the shared Freetime Design library.
@@ -14,16 +14,16 @@ import com.freetime.design.freetimeGlassCapsule
  */
 @Composable
 fun LumaGlassRoot(content: @Composable () -> Unit) {
-    FreetimeGlassRoot(content = content)
+    LiquidGlassRoot(content = content)
 }
 
 @Composable
 fun Modifier.lumaGlass(shape: Shape, interactive: Boolean = true): Modifier =
-    freetimeGlass(shape = shape, interactive = interactive)
+    liquidGlass(shape = shape, interactive = interactive)
 
 @Composable
 fun Modifier.lumaGlassCapsule(interactive: Boolean = true): Modifier =
-    freetimeGlassCapsule(interactive = interactive)
+    liquidGlassCapsule(interactive = interactive)
 
 // Compatibility shims for existing Luma Store screens. Freetime Design owns the backdrop.
 @Composable
@@ -36,4 +36,4 @@ fun Modifier.lumaLiquidGlass(
     backdrop: Unit,
     shape: Shape,
     interactive: Boolean = true,
-): Modifier = freetimeGlass(shape = shape, interactive = interactive)
+): Modifier = liquidGlass(shape = shape, interactive = interactive)
