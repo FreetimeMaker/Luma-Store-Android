@@ -235,9 +235,9 @@ fun DeveloperScreen(
                     SubmissionCard(
                         submission = it,
                         comments = comments[it.id].orEmpty().map { c -> c.body },
-                        artifacts = it.storeAppId?.let { id -> data.artifacts[id] }.orEmpty(),
+                        artifacts = (it.storeAppId ?: data.submissionStoreIds[it.id])?.let { id -> data.artifacts[id] }.orEmpty(),
                         scan = data.scans[it.id],
-                        downloadStats = it.storeAppId?.let { id -> data.downloadStats[id] },
+                        downloadStats = (it.storeAppId ?: data.submissionStoreIds[it.id])?.let { id -> data.downloadStats[id] },
                         onSave = { submission, name, shortDescription, description, version, versionCode, changelog, repoUrl ->
                             scope.launch {
                                 runCatching { repository.updateSubmission(submission, name, shortDescription, description, version, versionCode, changelog, repoUrl) }
