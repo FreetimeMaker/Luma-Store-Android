@@ -478,7 +478,6 @@ private fun AppDetailsHeader(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 8.dp)
-            .liquidGlass(RoundedCornerShape(28.dp), interactive = false)
             .padding(16.dp)
     ) {
     Row(
