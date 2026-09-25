@@ -86,11 +86,12 @@ class MainActivity : ComponentActivity() {
         setContent {
             val revision = installedAppsRevision.intValue
             val currentSourcesRevision = sourcesRevision.intValue
+            val deepLinkedAppId = deepLinkedAppId(intent.data)
             var screen by rememberSaveable {
                 mutableStateOf(
                     if (intent.getBooleanExtra(SystemNotificationManager.EXTRA_OPEN_DEVELOPER, false)) {
                         MainScreen.DEVELOPER
-                    } else if (intent.data?.scheme == "lumastore" && intent.data?.host == "app") {
+                    } else if (deepLinkedAppId(intent.data) != null) {
                         MainScreen.SEARCH
                     } else if (isFdroidRepositoryLink(intent.data)) {
                         MainScreen.SOURCES
@@ -164,6 +165,7 @@ class MainActivity : ComponentActivity() {
                                 key(currentSourcesRevision) {
                                     FdroidSearchScreen(
                                         repository = repository,
+                                        initialAppId = deepLinkedAppId,
                                         installedVersionCode = { installedVersionCode(it) },
                                         installedVersionName = { installedVersionName(it) },
                                         openInstalledApp = { openInstalledApp(it) },
@@ -315,6 +317,20 @@ class MainActivity : ComponentActivity() {
         if (handleFdroidRepositoryLink(intent)) {
             recreate()
         }
+    }
+
+    private fun deepLinkedAppId(uri: Uri?): String? {
+        uri ?: return null
+        if (uri.scheme.equals("lumastore", true) && uri.host.equals("app", true)) {
+            return uri.pathSegments.firstOrNull()?.takeIf { it.isNotBlank() }
+                ?: uri.getQueryParameter("id")?.takeIf { it.isNotBlank() }
+        }
+        if ((uri.scheme.equals("https", true) || uri.scheme.equals("http", true)) &&
+            uri.host.equals("luma-store.free-time.me", true) &&
+            uri.pathSegments.firstOrNull().equals("discover", true)) {
+            return uri.pathSegments.getOrNull(1)?.takeIf { it.isNotBlank() }
+        }
+        return null
     }
 
     private fun isFdroidRepositoryLink(uri: Uri?): Boolean =
