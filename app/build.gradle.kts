@@ -61,6 +61,9 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
     implementation(libs.freetime.core)
     implementation(libs.freetime.design)
+    implementation(libs.freetime.browser)
+    implementation(libs.freetime.donations)
+    implementation(libs.freetime.warn)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
