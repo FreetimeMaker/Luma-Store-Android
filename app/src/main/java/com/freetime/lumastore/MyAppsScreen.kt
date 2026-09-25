@@ -357,7 +357,7 @@ fun MyAppsScreen(
                     val shareIntent = Intent(Intent.ACTION_SEND).apply {
                         type = "text/plain"
                         putExtra(Intent.EXTRA_SUBJECT, shared.name)
-                        putExtra(Intent.EXTRA_TEXT, shared.websiteUrl ?: shared.sourceCodeUrl ?: shared.apkUrl)
+                        putExtra(Intent.EXTRA_TEXT, "https://luma-store.free-time.me/discover/" + android.net.Uri.encode(shared.id))
                     }
                     context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share)))
                 },
