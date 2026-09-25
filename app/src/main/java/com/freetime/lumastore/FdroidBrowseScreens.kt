@@ -1,6 +1,6 @@
 package com.freetime.lumastore
 
-import com.freetime.design.freetimeGlass
+import com.freetime.design.liquidGlass
 
 import android.content.Intent
 
@@ -418,7 +418,7 @@ fun FdroidSearchScreen(
 @Composable
 private fun SkeletonAppRow() {
     Row(
-        Modifier.fillMaxWidth().freetimeGlass(interactive = false).padding(12.dp),
+        Modifier.fillMaxWidth().liquidGlass(interactive = false).padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(Modifier.size(64.dp).clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)))
