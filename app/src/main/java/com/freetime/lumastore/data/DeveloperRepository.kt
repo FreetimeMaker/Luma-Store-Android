@@ -23,6 +23,7 @@ import java.util.TimeZone
 @Serializable data class DeveloperSubmission(val id: String, val name: String, val status: String, @SerialName("review_message") val reviewMessage: String? = null, val version: String? = null, @SerialName("package_name") val packageName: String? = null, @SerialName("submitted_at") val submittedAt: String? = null, @SerialName("status_updated_at") val statusUpdatedAt: String? = null)
 @Serializable data class DeveloperComment(val id: String, @SerialName("submission_id") val submissionId: String, val body: String, @SerialName("created_at") val createdAt: String? = null, @SerialName("user_id") val userId: String? = null)
 @Serializable data class DeveloperNotification(val id: String, @SerialName("submission_id") val submissionId: String, val type: String, val title: String, val message: String? = null, @SerialName("created_at") val createdAt: String? = null, @SerialName("read_at") val readAt: String? = null)
+@Serializable private data class DeveloperProfileRef(@SerialName("developer_id") val developerId: String)
 @Serializable private data class StoreAppSubmissionRef(@SerialName("luma_submission_id") val lumaSubmissionId: String? = null)
 data class DeveloperDashboard(val submissions: List<DeveloperSubmission>, val comments: List<DeveloperComment>, val notifications: List<DeveloperNotification>)
 
@@ -42,6 +43,14 @@ class DeveloperRepository(context: Context) {
     suspend fun signInWithGitLab() { supabase.auth.signInWith(Gitlab, redirectUrl = OAUTH_REDIRECT_URL) }
     suspend fun currentSession(): DeveloperSession? = supabase.auth.currentSessionOrNull()?.toDeveloperSession()
     suspend fun signOut() { supabase.auth.signOut() }
+
+    suspend fun isDeveloper(session: DeveloperSession): Boolean =
+        runCatching {
+            supabase.from("luma_developer_profiles")
+                .select(columns = Columns.list("developer_id")) { filter { eq("developer_id", session.userId) }; limit(1) }
+                .decodeList<DeveloperProfileRef>()
+                .isNotEmpty()
+        }.getOrDefault(false)
 
     suspend fun loadDashboard(session: DeveloperSession): DeveloperDashboard {
         val submissions = loadSubmissions(session)
