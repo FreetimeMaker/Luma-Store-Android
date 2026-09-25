@@ -889,15 +889,21 @@ class AppRepository(context: Context) {
                 // or mismatched artifact for apps with multiple approved versions.
                 val apkUrl = directApkUrl
 
+                val versionCode = item.optLong("version_code")
+                val iconUrl = item.optNullableString("icon_url")?.let { url ->
+                    val separator = if ('?' in url) '&' else '?'
+                    url + separator + "v=" + versionCode
+                }
+
                 add(StoreApp(
                     id = id,
                     name = name,
                     summary = item.optString("short_description").ifBlank { item.optString("summary") },
                     description = item.optString("description"),
                     version = item.optString("version_name").ifBlank { item.optString("version") },
-                    versionCode = item.optLong("version_code"),
-                    iconUrl = item.optNullableString("icon_url"),
-                    iconUrls = listOfNotNull(item.optNullableString("icon_url")),
+                    versionCode = versionCode,
+                    iconUrl = iconUrl,
+                    iconUrls = listOfNotNull(iconUrl),
                     screenshotUrls = jsonStringList(item.optJSONArray("screenshots")).ifEmpty { jsonStringList(item.optJSONArray("screenshot_urls")) },
                     categories = jsonStringList(item.optJSONArray("categories")),
                     apkUrl = apkUrl,
