@@ -884,13 +884,10 @@ class AppRepository(context: Context) {
                     ?: item.optDownloadUrl("download_url")
                     ?: item.optDownloadUrl("apk_url")
                     ?: continue
-                val apkUrl = if (item.optString("package_name").isNotBlank()) {
-                    "https://ndlaevedujqxhygbyxfh.supabase.co/functions/v1/download-app?package_name=" +
-                        java.net.URLEncoder.encode(item.optString("package_name"), "UTF-8") +
-                        "&platform=Android"
-                } else {
-                    directApkUrl
-                }
+                // Prefer the exact Android artifact URL returned by the Luma API.
+                // Replacing it with the generic download Edge Function can return a stale
+                // or mismatched artifact for apps with multiple approved versions.
+                val apkUrl = directApkUrl
 
                 add(StoreApp(
                     id = id,
