@@ -15,13 +15,19 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
 @Serializable data class DeveloperSession(val accessToken: String, val refreshToken: String?, val userId: String, val email: String?)
-@Serializable data class DeveloperSubmission(val id: String, val name: String, val status: String, @SerialName("review_message") val reviewMessage: String? = null, val version: String? = null, @SerialName("version_code") val versionCode: Long? = null, @SerialName("package_name") val packageName: String? = null, @SerialName("short_description") val shortDescription: String? = null, val description: String? = null, val changelog: String? = null, @SerialName("repo_url") val repoUrl: String? = null, val link: String? = null, @SerialName("store_app_id") val storeAppId: String? = null, @SerialName("submitted_at") val submittedAt: String? = null, @SerialName("status_updated_at") val statusUpdatedAt: String? = null)
+@Serializable data class DeveloperSubmission(val id: String, val name: String, val status: String, @SerialName("review_message") val reviewMessage: String? = null, val version: String? = null, @SerialName("version_code") val versionCode: Long? = null, @SerialName("package_name") val packageName: String? = null, @SerialName("short_description") val shortDescription: String? = null, val description: String? = null, val changelog: String? = null, @SerialName("repo_url") val repoUrl: String? = null, val link: String? = null, @SerialName("store_app_id") val storeAppId: String? = null, val platforms: JsonElement? = null, @SerialName("separate_platform_repos") val separatePlatformRepos: Boolean? = null, @SerialName("submitted_at") val submittedAt: String? = null, @SerialName("status_updated_at") val statusUpdatedAt: String? = null)
 @Serializable data class DeveloperComment(val id: String, @SerialName("submission_id") val submissionId: String, val body: String, @SerialName("created_at") val createdAt: String? = null, @SerialName("user_id") val userId: String? = null)
 @Serializable data class DeveloperNotification(val id: String, @SerialName("submission_id") val submissionId: String, val type: String, val title: String, val message: String? = null, @SerialName("created_at") val createdAt: String? = null, @SerialName("read_at") val readAt: String? = null)
 @Serializable data class DeveloperPlatformArtifact(val id: String, @SerialName("app_id") val appId: String, val platform: String, @SerialName("package_type") val packageType: String? = null, @SerialName("download_url") val downloadUrl: String? = null, @SerialName("file_size_mb") val fileSizeMb: Double? = null, @SerialName("linux_package_base") val linuxPackageBase: String? = null, val sha256: String? = null, @SerialName("artifact_verified_at") val artifactVerifiedAt: String? = null, @SerialName("artifact_size_bytes") val artifactSizeBytes: Long? = null, @SerialName("repo_url") val repoUrl: String? = null, @SerialName("listing_metadata") val listingMetadata: JsonElement? = null)
@@ -86,6 +92,35 @@ class DeveloperRepository(context: Context) {
             set("status", "Pending")
             set("status_updated_at", now)
         }) { filter { eq("id", submission.id); eq("user_id", supabase.auth.currentUserOrNull()?.id ?: error("Authentication required")); eq("status", submission.status) } }
+    }
+
+    suspend fun updatePlatformMetadata(submission: DeveloperSubmission, platform: String, title: String, shortDescription: String, fullDescription: String, changelog: String, repoUrl: String, downloadUrl: String, screenshots: List<String>) {
+        require(submission.status in setOf("Draft", "Rejected", "Approved", "Changes Requested")) { "This submission cannot be edited in its current state." }
+        val entries = (submission.platforms as? JsonArray)?.toMutableList() ?: mutableListOf()
+        val index = entries.indexOfFirst { runCatching { it.jsonObject["platform"]?.jsonPrimitive?.contentOrNull == platform }.getOrDefault(false) }
+        val existing = if (index >= 0) entries[index].jsonObject else JsonObject(emptyMap())
+        val metadata = JsonObject(mapOf(
+            "title" to JsonPrimitive(title.trim()),
+            "shortDescription" to JsonPrimitive(shortDescription.trim()),
+            "fullDescription" to JsonPrimitive(fullDescription.trim()),
+            "changelog" to JsonPrimitive(changelog.trim()),
+            "screenshots" to JsonArray(screenshots.filter { it.isNotBlank() }.map { JsonPrimitive(it.trim()) })
+        ))
+        val updated = JsonObject(existing.toMutableMap().apply {
+            put("platform", JsonPrimitive(platform))
+            put("repoUrl", JsonPrimitive(repoUrl.trim()))
+            put("downloadUrl", JsonPrimitive(downloadUrl.trim()))
+            put("metadata", metadata)
+        })
+        if (index >= 0) entries[index] = updated else entries.add(updated)
+        val now = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }.format(Date())
+        val userId = supabase.auth.currentUserOrNull()?.id ?: error("Authentication required")
+        supabase.from("luma_submissions").update({
+            set("platforms", JsonArray(entries))
+            set("separate_platform_repos", true)
+            set("status", "Pending")
+            set("status_updated_at", now)
+        }) { filter { eq("id", submission.id); eq("user_id", userId); eq("status", submission.status) } }
     }
 
     suspend fun removeSubmission(submission: DeveloperSubmission) {
