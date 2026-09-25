@@ -120,20 +120,6 @@ fun DeveloperScreen(
             Text(stringResource(R.string.developer_login_description), color = MaterialTheme.colorScheme.onSurfaceVariant)
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
-            Text(stringResource(R.string.normal_account), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Button(
-                onClick = {
-                    scope.launch {
-                        loggingIn = true
-                        error = null
-                        runCatching { repository.signInWithGoogle() }
-                            .onFailure { error = it.message ?: googleError; loggingIn = false }
-                    }
-                },
-                enabled = !loggingIn,
-                modifier = Modifier.fillMaxWidth()
-            ) { Text(stringResource(R.string.sign_in_google)) }
-
             HorizontalDivider()
             Text(stringResource(R.string.developer_sign_in_options), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             OutlinedButton(
