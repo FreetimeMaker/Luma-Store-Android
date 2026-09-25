@@ -1045,13 +1045,21 @@ class AppRepository(context: Context) {
     }
 
     private fun httpGet(url: String): String {
-        val connection = URL(url).openConnection() as HttpURLConnection
+        val requestUrl = if (url.contains("api.free-time.me/v2/lumastore/")) {
+            val separator = if ('?' in url) '&' else '?'
+            url + separator + "_ts=" + System.currentTimeMillis()
+        } else url
+        val connection = URL(requestUrl).openConnection() as HttpURLConnection
         connection.connectTimeout = 15_000
         connection.readTimeout = 20_000
         connection.requestMethod = "GET"
         connection.instanceFollowRedirects = true
         connection.setRequestProperty("Accept", "application/json")
         connection.setRequestProperty("User-Agent", "Luma-Store-Android")
+        if (url.contains("api.free-time.me/v2/lumastore/")) {
+            connection.setRequestProperty("Cache-Control", "no-cache, no-store, max-age=0")
+            connection.setRequestProperty("Pragma", "no-cache")
+        }
         return try {
             val code = connection.responseCode
             check(code in 200..299) { appContext.getString(R.string.http_request_failed, code, url) }
@@ -1064,7 +1072,7 @@ class AppRepository(context: Context) {
         private const val SOURCE_PREFERENCES = "app_sources"
         private const val APP_SOURCE_PREFERENCES = "luma_store_source_preferences"
         private const val APP_SOURCE_KEY_PREFIX = "source_"
-        private const val CACHE_KEY_APPS = "apps_validated_download_urls_v9"
+        private const val CACHE_KEY_APPS = "apps_validated_download_urls_v10"
         private const val CACHE_KEY_TIMESTAMP = "timestamp"
         private const val CUSTOM_SOURCES_KEY = "custom_sources"
     }
