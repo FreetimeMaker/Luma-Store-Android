@@ -49,6 +49,8 @@ fun DeveloperScreen(
     val gitlabError = stringResource(R.string.gitlab_sign_in_failed)
     val signOutError = stringResource(R.string.sign_out_failed)
     val notificationError = stringResource(R.string.notification_update_failed)
+    val submissionUpdateError = stringResource(R.string.submission_update_failed)
+    val submissionRemoveError = stringResource(R.string.submission_remove_failed)
 
     suspend fun reload(current: DeveloperSession) {
         loading = true
@@ -220,7 +222,24 @@ fun DeveloperScreen(
                 item { Text(stringResource(R.string.no_account_apps), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             } else {
                 items(data.submissions, key = { it.id }) {
-                    SubmissionCard(it, comments[it.id].orEmpty().map { c -> c.body })
+                    SubmissionCard(
+                        submission = it,
+                        comments = comments[it.id].orEmpty().map { c -> c.body },
+                        onSave = { submission, name, shortDescription, description, version, versionCode, changelog, repoUrl ->
+                            scope.launch {
+                                runCatching { repository.updateSubmission(submission, name, shortDescription, description, version, versionCode, changelog, repoUrl) }
+                                    .onFailure { error = it.message ?: submissionUpdateError }
+                                reload(current)
+                            }
+                        },
+                        onRemove = { submission ->
+                            scope.launch {
+                                runCatching { repository.removeSubmission(submission) }
+                                    .onFailure { error = it.message ?: submissionRemoveError }
+                                reload(current)
+                            }
+                        }
+                    )
                 }
             }
         }
@@ -250,19 +269,63 @@ private fun NotificationCard(notification: DeveloperNotification, onMarkRead: ((
 }
 
 @Composable
-private fun SubmissionCard(submission: DeveloperSubmission, comments: List<String>) {
+private fun SubmissionCard(
+    submission: DeveloperSubmission,
+    comments: List<String>,
+    onSave: (DeveloperSubmission, String, String, String, String, Long?, String, String) -> Unit,
+    onRemove: (DeveloperSubmission) -> Unit
+) {
     val shape = RoundedCornerShape(18.dp)
+    var editing by remember(submission.id, submission.status) { mutableStateOf(false) }
+    var name by remember(submission.id) { mutableStateOf(submission.name) }
+    var shortDescription by remember(submission.id) { mutableStateOf(submission.shortDescription.orEmpty()) }
+    var description by remember(submission.id) { mutableStateOf(submission.description.orEmpty()) }
+    var version by remember(submission.id) { mutableStateOf(submission.version.orEmpty()) }
+    var versionCode by remember(submission.id) { mutableStateOf(submission.versionCode?.toString().orEmpty()) }
+    var changelog by remember(submission.id) { mutableStateOf(submission.changelog.orEmpty()) }
+    var repoUrl by remember(submission.id) { mutableStateOf(submission.repoUrl ?: submission.link.orEmpty()) }
+    val editable = submission.status in setOf("Draft", "Rejected", "Approved", "Changes Requested")
+
     Card(
         modifier = Modifier.fillMaxWidth().freetimeGlass(shape, interactive = false),
         shape = shape,
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(submission.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text(stringResource(R.string.status_value, localizedSubmissionStatus(submission.status)), color = statusColor(submission.status))
             submission.version?.let { Text(stringResource(R.string.version_value, it), style = MaterialTheme.typography.bodySmall) }
             submission.packageName?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+
+            if (editing) {
+                OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.app_name)) }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(shortDescription, { shortDescription = it }, label = { Text(stringResource(R.string.short_description)) }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(description, { description = it }, label = { Text(stringResource(R.string.description)) }, modifier = Modifier.fillMaxWidth(), minLines = 3)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(version, { version = it }, label = { Text(stringResource(R.string.version)) }, modifier = Modifier.weight(1f))
+                    OutlinedTextField(versionCode, { versionCode = it.filter(Char::isDigit) }, label = { Text(stringResource(R.string.version_code)) }, modifier = Modifier.weight(1f))
+                }
+                OutlinedTextField(changelog, { changelog = it }, label = { Text(stringResource(R.string.changelog)) }, modifier = Modifier.fillMaxWidth(), minLines = 2)
+                OutlinedTextField(repoUrl, { repoUrl = it }, label = { Text(stringResource(R.string.repository_url)) }, modifier = Modifier.fillMaxWidth())
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = {
+                        onSave(submission, name, shortDescription, description, version, versionCode.toLongOrNull(), changelog, repoUrl)
+                        editing = false
+                    }, enabled = name.isNotBlank() && version.isNotBlank() && repoUrl.isNotBlank()) {
+                        Text(stringResource(R.string.save_and_resubmit))
+                    }
+                    TextButton(onClick = { editing = false }) { Text(stringResource(android.R.string.cancel)) }
+                }
+            } else if (editable) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = { editing = true }) { Text(stringResource(R.string.edit_submission)) }
+                    TextButton(onClick = { onRemove(submission) }) {
+                        Text(stringResource(if (submission.status == "Approved") R.string.archive_app else R.string.remove_submission))
+                    }
+                }
+            }
+
             submission.reviewMessage?.let {
                 HorizontalDivider()
                 Text(stringResource(R.string.review_feedback), fontWeight = FontWeight.SemiBold)
