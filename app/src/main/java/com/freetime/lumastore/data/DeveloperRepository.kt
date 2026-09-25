@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -23,9 +24,12 @@ import java.util.TimeZone
 @Serializable data class DeveloperSubmission(val id: String, val name: String, val status: String, @SerialName("review_message") val reviewMessage: String? = null, val version: String? = null, @SerialName("version_code") val versionCode: Long? = null, @SerialName("package_name") val packageName: String? = null, @SerialName("short_description") val shortDescription: String? = null, val description: String? = null, val changelog: String? = null, @SerialName("repo_url") val repoUrl: String? = null, val link: String? = null, @SerialName("store_app_id") val storeAppId: String? = null, @SerialName("submitted_at") val submittedAt: String? = null, @SerialName("status_updated_at") val statusUpdatedAt: String? = null)
 @Serializable data class DeveloperComment(val id: String, @SerialName("submission_id") val submissionId: String, val body: String, @SerialName("created_at") val createdAt: String? = null, @SerialName("user_id") val userId: String? = null)
 @Serializable data class DeveloperNotification(val id: String, @SerialName("submission_id") val submissionId: String, val type: String, val title: String, val message: String? = null, @SerialName("created_at") val createdAt: String? = null, @SerialName("read_at") val readAt: String? = null)
+@Serializable data class DeveloperPlatformArtifact(val id: String, @SerialName("app_id") val appId: String, val platform: String, @SerialName("package_type") val packageType: String? = null, @SerialName("download_url") val downloadUrl: String? = null, @SerialName("file_size_mb") val fileSizeMb: Double? = null, @SerialName("linux_package_base") val linuxPackageBase: String? = null, val sha256: String? = null, @SerialName("artifact_verified_at") val artifactVerifiedAt: String? = null, @SerialName("artifact_size_bytes") val artifactSizeBytes: Long? = null, @SerialName("repo_url") val repoUrl: String? = null, @SerialName("listing_metadata") val listingMetadata: JsonElement? = null)
+@Serializable data class DeveloperSecurityScan(val id: String, @SerialName("submission_id") val submissionId: String, val status: String, @SerialName("risk_level") val riskLevel: String, val provider: String? = null, @SerialName("malicious_count") val maliciousCount: Int? = null, @SerialName("suspicious_count") val suspiciousCount: Int? = null, @SerialName("harmless_count") val harmlessCount: Int? = null, @SerialName("undetected_count") val undetectedCount: Int? = null, @SerialName("virus_total_permalink") val virusTotalPermalink: String? = null, @SerialName("error_message") val errorMessage: String? = null, @SerialName("scanned_at") val scannedAt: String? = null)
+@Serializable data class DeveloperDownloadStats(@SerialName("app_id") val appId: String, val total: Long = 0, val today: Long = 0, @SerialName("this_month") val thisMonth: Long = 0, @SerialName("this_year") val thisYear: Long = 0)
 @Serializable private data class DeveloperProfileRef(@SerialName("developer_id") val developerId: String)
 @Serializable private data class StoreAppSubmissionRef(@SerialName("luma_submission_id") val lumaSubmissionId: String? = null)
-data class DeveloperDashboard(val submissions: List<DeveloperSubmission>, val comments: List<DeveloperComment>, val notifications: List<DeveloperNotification>)
+data class DeveloperDashboard(val submissions: List<DeveloperSubmission>, val comments: List<DeveloperComment>, val notifications: List<DeveloperNotification>, val artifacts: Map<String, List<DeveloperPlatformArtifact>> = emptyMap(), val scans: Map<String, DeveloperSecurityScan> = emptyMap(), val downloadStats: Map<String, DeveloperDownloadStats> = emptyMap())
 
 class DeveloperRepository(context: Context) {
     private val appContext = context.applicationContext
@@ -55,7 +59,16 @@ class DeveloperRepository(context: Context) {
     suspend fun loadDashboard(session: DeveloperSession): DeveloperDashboard {
         val submissions = loadSubmissions(session)
         if (submissions.isEmpty()) return DeveloperDashboard(emptyList(), emptyList(), loadNotifications(session))
-        return DeveloperDashboard(submissions, loadComments(submissions.map { it.id }), loadNotifications(session))
+        val appIds = submissions.mapNotNull { it.storeAppId }.distinct()
+        val artifacts = if (appIds.isEmpty()) emptyList() else supabase.from("store_app_platforms")
+            .select(columns = Columns.list("id", "app_id", "platform", "package_type", "download_url", "file_size_mb", "linux_package_base", "sha256", "artifact_verified_at", "artifact_size_bytes", "repo_url", "listing_metadata")) { filter { isIn("app_id", appIds) } }
+            .decodeList<DeveloperPlatformArtifact>()
+            .groupBy { it.appId }
+        val scans = supabase.from("luma_security_scans")
+            .select(columns = Columns.list("id", "submission_id", "status", "risk_level", "provider", "malicious_count", "suspicious_count", "harmless_count", "undetected_count", "virus_total_permalink", "error_message", "scanned_at")) { filter { isIn("submission_id", submissions.map { it.id }) }; order("created_at", Order.DESCENDING) }
+            .decodeList<DeveloperSecurityScan>().groupBy { it.submissionId }.mapValues { it.value.first() }
+        val stats = runCatching { supabase.postgrest.rpc("get_my_luma_download_stats").decodeList<DeveloperDownloadStats>() }.getOrDefault(emptyList()).associateBy { it.appId }
+        return DeveloperDashboard(submissions, loadComments(submissions.map { it.id }), loadNotifications(session), artifacts, scans, stats)
     }
 
     suspend fun updateSubmission(submission: DeveloperSubmission, name: String, shortDescription: String, description: String, version: String, versionCode: Long?, changelog: String, repoUrl: String) {
@@ -95,7 +108,7 @@ class DeveloperRepository(context: Context) {
 
     private suspend fun loadSubmissions(session: DeveloperSession): List<DeveloperSubmission> {
         val submissions: List<DeveloperSubmission> = supabase.from("luma_submissions")
-            .select(columns = Columns.list("id", "name", "status", "review_message", "version", "version_code", "package_name", "short_description", "description", "changelog", "repo_url", "link", "store_app_id", "submitted_at", "status_updated_at")) {
+            .select(columns = Columns.list("id", "name", "status", "review_message", "version", "version_code", "package_name", "short_description", "description", "changelog", "repo_url", "link", "store_app_id", "platforms", "separate_platform_repos", "submitted_at", "status_updated_at")) {
                 filter { eq("user_id", session.userId) }
                 order("submitted_at", Order.DESCENDING)
             }
