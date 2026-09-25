@@ -280,4 +280,19 @@
 
     <string name="submission_update_failed">Could not update the app.</string>
     <string name="submission_remove_failed">Could not remove the app.</string>
+    <string name="platform_artifacts">Platform artifacts</string>
+    <string name="security_scan">Security scan</string>
+    <string name="download_statistics">Download statistics</string>
+    <string name="downloads_total">Total: %1$d</string>
+    <string name="downloads_today">Today: %1$d</string>
+    <string name="downloads_month">This month: %1$d</string>
+    <string name="downloads_year">This year: %1$d</string>
+    <string name="risk_level">Risk: %1$s</string>
+    <string name="scan_detections">Malicious %1$d · Suspicious %2$d · Harmless %3$d · Undetected %4$d</string>
+    <string name="artifact_size">Size: %1$s</string>
+    <string name="artifact_verified">Verified: %1$s</string>
+    <string name="sha256_value">SHA-256: %1$s</string>
+    <string name="platform_metadata">%1$s metadata</string>
+    <string name="no_platform_metadata">No separate listing metadata</string>
+    <string name="open_virustotal">Open VirusTotal</string>
 </resources>
