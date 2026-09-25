@@ -4,6 +4,8 @@ import com.freetime.design.freetimeGlass
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -225,6 +227,9 @@ fun DeveloperScreen(
                     SubmissionCard(
                         submission = it,
                         comments = comments[it.id].orEmpty().map { c -> c.body },
+                        artifacts = it.storeAppId?.let { id -> data.artifacts[id] }.orEmpty(),
+                        scan = data.scans[it.id],
+                        downloadStats = it.storeAppId?.let { id -> data.downloadStats[id] },
                         onSave = { submission, name, shortDescription, description, version, versionCode, changelog, repoUrl ->
                             scope.launch {
                                 runCatching { repository.updateSubmission(submission, name, shortDescription, description, version, versionCode, changelog, repoUrl) }
@@ -272,6 +277,9 @@ private fun NotificationCard(notification: DeveloperNotification, onMarkRead: ((
 private fun SubmissionCard(
     submission: DeveloperSubmission,
     comments: List<String>,
+    artifacts: List<DeveloperPlatformArtifact>,
+    scan: DeveloperSecurityScan?,
+    downloadStats: DeveloperDownloadStats?,
     onSave: (DeveloperSubmission, String, String, String, String, Long?, String, String) -> Unit,
     onRemove: (DeveloperSubmission) -> Unit
 ) {
@@ -297,6 +305,45 @@ private fun SubmissionCard(
             Text(stringResource(R.string.status_value, localizedSubmissionStatus(submission.status)), color = statusColor(submission.status))
             submission.version?.let { Text(stringResource(R.string.version_value, it), style = MaterialTheme.typography.bodySmall) }
             submission.packageName?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+
+            if (downloadStats != null) {
+                HorizontalDivider()
+                Text(stringResource(R.string.download_statistics), fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.downloads_total, downloadStats.total))
+                Text(stringResource(R.string.downloads_today, downloadStats.today), style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.downloads_month, downloadStats.thisMonth), style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.downloads_year, downloadStats.thisYear), style = MaterialTheme.typography.bodySmall)
+            }
+
+            if (scan != null) {
+                HorizontalDivider()
+                Text(stringResource(R.string.security_scan), fontWeight = FontWeight.SemiBold)
+                Text(scan.status + " · " + stringResource(R.string.risk_level, scan.riskLevel))
+                Text(stringResource(R.string.scan_detections, scan.maliciousCount ?: 0, scan.suspiciousCount ?: 0, scan.harmlessCount ?: 0, scan.undetectedCount ?: 0), style = MaterialTheme.typography.bodySmall)
+                scan.errorMessage?.takeIf { it.isNotBlank() }?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                val scanContext = LocalContext.current
+                scan.virusTotalPermalink?.takeIf { it.isNotBlank() }?.let { url ->
+                    TextButton(onClick = { scanContext.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }) { Text(stringResource(R.string.open_virustotal)) }
+                }
+            }
+
+            if (artifacts.isNotEmpty()) {
+                HorizontalDivider()
+                Text(stringResource(R.string.platform_artifacts), fontWeight = FontWeight.SemiBold)
+                artifacts.forEach { artifact ->
+                    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)) {
+                        Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text(artifact.platform + (artifact.packageType?.let { " · $it" } ?: ""), fontWeight = FontWeight.SemiBold)
+                            artifact.fileSizeMb?.let { Text(stringResource(R.string.artifact_size, "%.2f MB".format(it)), style = MaterialTheme.typography.bodySmall) }
+                            artifact.artifactVerifiedAt?.let { Text(stringResource(R.string.artifact_verified, it), style = MaterialTheme.typography.bodySmall) }
+                            artifact.sha256?.let { Text(stringResource(R.string.sha256_value, it), style = MaterialTheme.typography.labelSmall) }
+                            artifact.repoUrl?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) }
+                            Text(stringResource(R.string.platform_metadata, artifact.platform), style = MaterialTheme.typography.labelMedium)
+                            Text(artifact.listingMetadata?.toString()?.takeIf { it != "null" && it != "{}" } ?: stringResource(R.string.no_platform_metadata), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
 
             if (editing) {
                 OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.app_name)) }, modifier = Modifier.fillMaxWidth())
