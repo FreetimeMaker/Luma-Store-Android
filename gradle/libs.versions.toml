@@ -28,6 +28,9 @@ androidx-compose-material3 = { group = "androidx.compose.material3", name = "mat
 
 freetime-core = { module = "com.github.FreetimeMaker.Freetime-Core:Core", version.ref = "freetime" }
 freetime-design = { module = "com.github.FreetimeMaker.Freetime-Core:Design", version.ref = "freetime" }
+freetime-browser = { module = "com.github.FreetimeMaker.Freetime-Core:Browser", version.ref = "freetime" }
+freetime-donations = { module = "com.github.FreetimeMaker.Freetime-Core:Donations", version.ref = "freetime" }
+freetime-warn = { module = "com.github.FreetimeMaker.Freetime-Core:FreetimeWarn", version.ref = "freetime" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
