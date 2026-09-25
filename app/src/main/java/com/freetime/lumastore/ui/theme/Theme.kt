@@ -4,13 +4,16 @@ import com.freetime.design.AppTheme
 import com.freetime.design.ThemeMode
 
 import android.os.Build
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
@@ -28,6 +31,17 @@ private val DarkColorScheme = darkColorScheme(
     surfaceVariant = LumaSurfaceVariantDark,
     onSurface = Color(0xFFE1E3E4),
     onSurfaceVariant = Color(0xFFC2C7CB)
+)
+
+private val ExpressiveShapes = Shapes(
+    extraSmall = RoundedCornerShape(12.dp),
+    small = RoundedCornerShape(16.dp),
+    medium = RoundedCornerShape(24.dp),
+    large = RoundedCornerShape(32.dp),
+    largeIncreased = RoundedCornerShape(40.dp),
+    extraLarge = RoundedCornerShape(40.dp),
+    extraLargeIncreased = RoundedCornerShape(48.dp),
+    extraExtraLarge = RoundedCornerShape(56.dp)
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -91,8 +105,9 @@ fun LumaStoreTheme(
         dynamicColor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
         liquidGlassEnabled = true
     ) {
-        MaterialTheme(
+        MaterialExpressiveTheme(
             colorScheme = colorScheme,
+            shapes = ExpressiveShapes,
             typography = Typography,
             content = content
         )
