@@ -384,9 +384,15 @@ class AppRepository(context: Context) {
             .groupBy { it.id to it.sourceName }
             .mapNotNull { (_, entries) -> entries.maxByOrNull { it.versionCode } }
             .sortedWith(compareBy<StoreApp> { it.name.lowercase() }.thenBy { it.sourceName.lowercase() })
-            .also {
-                memoryApps = it
-                saveCache(it)
+            .let { refreshed ->
+                if (refreshed.isEmpty()) {
+                    val cached = loadCachedApps()
+                    if (cached.isNotEmpty()) return@runCatching cached.also { memoryApps = it }
+                }
+                refreshed.also {
+                    memoryApps = it
+                    if (it.isNotEmpty()) saveCache(it)
+                }
             }
     }
 
