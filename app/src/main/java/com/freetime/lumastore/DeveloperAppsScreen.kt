@@ -1,6 +1,6 @@
 package com.freetime.lumastore
 
-import com.freetime.design.freetimeGlass
+import com.freetime.design.liquidGlass
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -41,7 +41,7 @@ fun DeveloperAppsScreen(developerName: String, apps: List<StoreApp>, onBack: () 
         else LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             items(developerApps, key = { it.id }) { app ->
                 Row(
-                    Modifier.fillMaxWidth().freetimeGlass(RoundedCornerShape(22.dp), interactive = true).clickable { onAppSelected(app) }.padding(14.dp),
+                    Modifier.fillMaxWidth().liquidGlass(RoundedCornerShape(22.dp), interactive = true).clickable { onAppSelected(app) }.padding(14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     DeveloperAppIcon(app, 60)
