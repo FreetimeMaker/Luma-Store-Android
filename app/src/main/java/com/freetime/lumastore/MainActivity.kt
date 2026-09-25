@@ -336,9 +336,8 @@ class MainActivity : ComponentActivity() {
                 ?: uri.getQueryParameter("id")?.takeIf { it.isNotBlank() }
         }
         if ((uri.scheme.equals("https", true) || uri.scheme.equals("http", true)) &&
-            uri.host.equals("luma-store.free-time.me", true) &&
-            uri.pathSegments.firstOrNull().equals("discover", true)) {
-            return uri.pathSegments.getOrNull(1)?.takeIf { it.isNotBlank() }
+            uri.host.equals("luma.free-time.me", true)) {
+            return uri.pathSegments.firstOrNull()?.takeIf { it.isNotBlank() }
         }
         return null
     }
