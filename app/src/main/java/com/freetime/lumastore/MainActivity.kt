@@ -140,7 +140,7 @@ class MainActivity : ComponentActivity() {
                 val warnState = rememberFreetimeWarnState(
                     context = this@MainActivity,
                     appName = getString(R.string.app_name),
-                    versionCode = BuildConfig.VERSION_CODE.toLong(),
+                    versionCode = packageManager.getPackageInfo(packageName, 0).longVersionCode,
                     frequency = FreetimeWarnFrequency.ONCE_PER_VERSION
                 )
                 LiquidGlassRoot {
