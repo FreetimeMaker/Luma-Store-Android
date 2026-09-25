@@ -277,7 +277,7 @@
     <string name="short_description">Short description</string>
     <string name="description">Description</string>
     <string name="version_code">Version code</string>
-    <string name="repository_url">Repository URL</string>
+
     <string name="submission_update_failed">Could not update the app.</string>
     <string name="submission_remove_failed">Could not remove the app.</string>
 </resources>
