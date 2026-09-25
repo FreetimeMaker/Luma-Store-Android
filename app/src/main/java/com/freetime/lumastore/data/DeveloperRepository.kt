@@ -5,6 +5,7 @@ import com.freetime.lumastore.R
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.Github
 import io.github.jan.supabase.auth.providers.Gitlab
+import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
@@ -26,7 +27,14 @@ data class DeveloperDashboard(val submissions: List<DeveloperSubmission>, val co
 
 class DeveloperRepository(context: Context) {
     private val appContext = context.applicationContext
-    fun sessionFlow(): Flow<DeveloperSession?> = supabase.auth.sessionStatus.map { supabase.auth.currentSessionOrNull()?.toDeveloperSession() }
+    fun sessionFlow(): Flow<DeveloperSession?> = supabase.auth.sessionStatus.map { status ->
+        when (status) {
+            is SessionStatus.Authenticated -> status.session.toDeveloperSession()
+            is SessionStatus.NotAuthenticated -> null
+            is SessionStatus.RefreshFailure -> supabase.auth.currentSessionOrNull()?.toDeveloperSession()
+            SessionStatus.Initializing -> supabase.auth.currentSessionOrNull()?.toDeveloperSession()
+        }
+    }
     suspend fun savedSession(): DeveloperSession? { supabase.auth.awaitInitialization(); return supabase.auth.currentSessionOrNull()?.toDeveloperSession() }
     suspend fun signInWithGitHub() { supabase.auth.signInWith(Github, redirectUrl = OAUTH_REDIRECT_URL) }
     suspend fun signInWithGitLab() { supabase.auth.signInWith(Gitlab, redirectUrl = OAUTH_REDIRECT_URL) }
