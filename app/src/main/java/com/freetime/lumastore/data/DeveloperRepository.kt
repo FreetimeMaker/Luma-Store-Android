@@ -66,20 +66,37 @@ class DeveloperRepository(context: Context) {
     suspend fun loadDashboard(session: DeveloperSession): DeveloperDashboard {
         val submissions = loadSubmissions(session)
         if (submissions.isEmpty()) return DeveloperDashboard(emptyList(), emptyList(), loadNotifications(session))
-        val storeRefs = supabase.from("store_apps")
-            .select(columns = Columns.list("id", "luma_submission_id")) {
-                filter { isIn("luma_submission_id", submissions.map { it.id }) }
-            }
-            .decodeList<StoreAppSubmissionRef>()
+        val storeRefs = runCatching {
+            supabase.from("store_apps")
+                .select(columns = Columns.list("id", "luma_submission_id")) {
+                    filter { isIn("luma_submission_id", submissions.map { it.id }) }
+                }
+                .decodeList<StoreAppSubmissionRef>()
+        }.getOrDefault(emptyList())
         val submissionStoreIds = storeRefs.mapNotNull { ref -> ref.lumaSubmissionId?.let { it to ref.id } }.toMap()
         val appIds = (submissions.mapNotNull { it.storeAppId } + storeRefs.map { it.id }).distinct()
-        val artifacts: Map<String, List<DeveloperPlatformArtifact>> = if (appIds.isEmpty()) emptyMap() else supabase.from("store_app_platforms")
-            .select(columns = Columns.list("id", "app_id", "platform", "package_type", "download_url", "file_size_mb", "linux_package_base", "sha256", "artifact_verified_at", "artifact_size_bytes", "repo_url", "listing_metadata")) { filter { isIn("app_id", appIds) } }
-            .decodeList<DeveloperPlatformArtifact>()
-            .groupBy { it.appId }
-        val scans = supabase.from("luma_security_scans")
-            .select(columns = Columns.list("id", "submission_id", "status", "risk_level", "provider", "malicious_count", "suspicious_count", "harmless_count", "undetected_count", "virus_total_permalink", "error_message", "scanned_at")) { filter { isIn("submission_id", submissions.map { it.id }) }; order("created_at", Order.DESCENDING) }
-            .decodeList<DeveloperSecurityScan>().groupBy { it.submissionId }.mapValues { it.value.first() }
+        val artifacts: Map<String, List<DeveloperPlatformArtifact>> = if (appIds.isEmpty()) {
+            emptyMap()
+        } else {
+            runCatching {
+                supabase.from("store_app_platforms")
+                    .select(columns = Columns.list("id", "app_id", "platform", "package_type", "download_url", "file_size_mb", "linux_package_base", "sha256", "artifact_verified_at", "artifact_size_bytes", "repo_url", "listing_metadata")) {
+                        filter { isIn("app_id", appIds) }
+                    }
+                    .decodeList<DeveloperPlatformArtifact>()
+                    .groupBy { it.appId }
+            }.getOrDefault(emptyMap())
+        }
+        val scans: Map<String, DeveloperSecurityScan> = runCatching {
+            supabase.from("luma_security_scans")
+                .select(columns = Columns.list("id", "submission_id", "status", "risk_level", "provider", "malicious_count", "suspicious_count", "harmless_count", "undetected_count", "virus_total_permalink", "error_message", "scanned_at")) {
+                    filter { isIn("submission_id", submissions.map { it.id }) }
+                    order("created_at", Order.DESCENDING)
+                }
+                .decodeList<DeveloperSecurityScan>()
+                .groupBy { it.submissionId }
+                .mapValues { it.value.first() }
+        }.getOrDefault(emptyMap())
         val stats: Map<String, DeveloperDownloadStats> = runCatching {
             supabase.postgrest.rpc("get_my_luma_download_stats").decodeList<DeveloperDownloadStats>().associateBy { stat -> stat.appId }
         }.getOrElse { emptyMap() }
