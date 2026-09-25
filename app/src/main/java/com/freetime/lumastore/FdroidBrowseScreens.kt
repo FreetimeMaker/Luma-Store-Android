@@ -299,6 +299,7 @@ fun FdroidDiscoverScreen(
 @Composable
 fun FdroidSearchScreen(
     repository: AppRepository,
+    initialAppId: String? = null,
     installedVersionCode: (String) -> Long?,
     installedVersionName: (String) -> String?,
     openInstalledApp: (String) -> Boolean,
@@ -308,7 +309,7 @@ fun FdroidSearchScreen(
 ) {
     var apps by remember(repository) { mutableStateOf(repository.currentApps()) }
     var query by remember { mutableStateOf("") }
-    var selectedAppId by remember { mutableStateOf<String?>(null) }
+    var selectedAppId by remember(initialAppId) { mutableStateOf(initialAppId) }
 
     LaunchedEffect(Unit) {
         if (apps.isEmpty()) {
