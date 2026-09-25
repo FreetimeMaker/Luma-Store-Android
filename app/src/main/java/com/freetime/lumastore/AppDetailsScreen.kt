@@ -705,7 +705,8 @@ private fun AppRatingSection(identifier: String) {
     LaunchedEffect(identifier) {
         runCatching { LumaStoreApi.ratings(identifier) }.onSuccess { average = it.average; count = it.count }
         supabase.auth.awaitInitialization()
-        signedIn = supabase.auth.currentSessionOrNull() != null
+        val session = supabase.auth.currentSessionOrNull()
+        signedIn = session?.user?.identities?.any { it.provider == "google" } == true
         if (signedIn) runCatching { LumaStoreApi.myRating(identifier) }.onSuccess { myRating = it.rating }.onFailure { error = it.message }
     }
 
