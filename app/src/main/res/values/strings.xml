@@ -295,4 +295,10 @@
     <string name="platform_metadata">%1$s metadata</string>
     <string name="no_platform_metadata">No separate listing metadata</string>
     <string name="open_virustotal">Open VirusTotal</string>
+    <string name="edit_platform_metadata">Edit %1$s metadata</string>
+    <string name="full_description">Full description</string>
+    <string name="download_url">Download URL</string>
+    <string name="screenshots_urls">Screenshot URLs (one per line)</string>
+    <string name="save_platform_metadata">Save platform metadata</string>
+    <string name="platform_update_failed">Could not update platform metadata.</string>
 </resources>
