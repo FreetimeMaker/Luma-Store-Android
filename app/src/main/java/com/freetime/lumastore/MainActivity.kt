@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Search
@@ -71,7 +72,7 @@ import com.freetime.lumastore.notifications.SystemNotificationManager
 import com.freetime.lumastore.ui.theme.LumaStoreTheme
 import io.github.jan.supabase.auth.handleDeeplinks
 
-private enum class MainScreen { DISCOVER, SEARCH, MY_APPS, SOURCES, DEVELOPER }
+private enum class MainScreen { DISCOVER, SEARCH, MY_APPS, SOURCES, DEVELOPER, ACCOUNT }
 
 class MainActivity : ComponentActivity() {
     private val repository by lazy { AppRepository(applicationContext) }
@@ -107,6 +108,7 @@ class MainActivity : ComponentActivity() {
             var myAppsMounted by rememberSaveable { mutableStateOf(screen == MainScreen.MY_APPS) }
             var sourcesMounted by rememberSaveable { mutableStateOf(screen == MainScreen.SOURCES) }
             var developerMounted by rememberSaveable { mutableStateOf(screen == MainScreen.DEVELOPER) }
+            var accountMounted by rememberSaveable { mutableStateOf(screen == MainScreen.ACCOUNT) }
 
             LaunchedEffect(screen) {
                 when (screen) {
@@ -114,6 +116,7 @@ class MainActivity : ComponentActivity() {
                     MainScreen.MY_APPS -> myAppsMounted = true
                     MainScreen.SOURCES -> sourcesMounted = true
                     MainScreen.DEVELOPER -> developerMounted = true
+                    MainScreen.ACCOUNT -> accountMounted = true
                     MainScreen.DISCOVER -> Unit
                 }
             }
@@ -223,6 +226,12 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
+
+                        if (accountMounted) {
+                            PersistentScreen(visible = screen == MainScreen.ACCOUNT) {
+                                AccountScreen(repository = developerRepository)
+                            }
+                        }
                     }
 
                     NavigationBar(
@@ -245,6 +254,7 @@ class MainActivity : ComponentActivity() {
                         FdroidNavigationItem(screen == MainScreen.MY_APPS, { screen = MainScreen.MY_APPS }, stringResource(R.string.my_apps), availableUpdateCount) { Icon(Icons.Filled.Apps, contentDescription = stringResource(R.string.my_apps)) }
                         FdroidNavigationItem(screen == MainScreen.SOURCES, { screen = MainScreen.SOURCES }, stringResource(R.string.sources)) { Icon(Icons.Filled.Storage, contentDescription = stringResource(R.string.sources)) }
                         FdroidNavigationItem(screen == MainScreen.DEVELOPER, { screen = MainScreen.DEVELOPER }, stringResource(R.string.developer)) { Icon(Icons.Filled.Code, contentDescription = stringResource(R.string.developer)) }
+                        FdroidNavigationItem(screen == MainScreen.ACCOUNT, { screen = MainScreen.ACCOUNT }, stringResource(R.string.account)) { Icon(Icons.Filled.AccountCircle, contentDescription = stringResource(R.string.account)) }
                     }
                 }
                 }
