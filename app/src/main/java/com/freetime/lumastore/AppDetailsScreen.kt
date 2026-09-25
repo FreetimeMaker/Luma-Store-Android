@@ -705,9 +705,17 @@ private fun AppRatingSection(identifier: String) {
     LaunchedEffect(identifier) {
         runCatching { LumaStoreApi.ratings(identifier) }.onSuccess { average = it.average; count = it.count }
         supabase.auth.awaitInitialization()
-        val session = supabase.auth.currentSessionOrNull()
-        signedIn = session != null
-        if (signedIn) runCatching { LumaStoreApi.myRating(identifier) }.onSuccess { myRating = it.rating }.onFailure { error = it.message }
+        supabase.auth.sessionStatus.collect { status ->
+            val session = supabase.auth.currentSessionOrNull()
+            signedIn = session != null
+            if (signedIn) {
+                runCatching { LumaStoreApi.myRating(identifier) }
+                    .onSuccess { myRating = it.rating; error = null }
+                    .onFailure { error = it.message }
+            } else {
+                myRating = null
+            }
+        }
     }
 
     ElevatedCard(
