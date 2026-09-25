@@ -123,6 +123,55 @@ class DeveloperRepository(context: Context) {
         }) { filter { eq("id", submission.id); eq("user_id", userId); eq("status", submission.status) } }
     }
 
+    suspend fun addPlatformArtifact(submission: DeveloperSubmission, platform: String, packageType: String, downloadUrl: String, repoUrl: String) {
+        require(submission.status in setOf("Draft", "Rejected", "Approved", "Changes Requested")) { "This submission cannot be edited in its current state." }
+        val allowed = mapOf("Android" to setOf("apk"), "Windows" to setOf("exe", "msi"), "Linux" to setOf("deb", "rpm"))
+        require(packageType in allowed[platform].orEmpty()) { "Unsupported package type for $platform." }
+        require(downloadUrl.startsWith("https://") || downloadUrl.startsWith("http://")) { "A valid download URL is required." }
+        val entries = (submission.platforms as? JsonArray)?.toMutableList() ?: mutableListOf()
+        val duplicate = entries.any { entry ->
+            runCatching {
+                val obj = entry.jsonObject
+                obj["platform"]?.jsonPrimitive?.contentOrNull == platform &&
+                    obj["packageType"]?.jsonPrimitive?.contentOrNull == packageType
+            }.getOrDefault(false)
+        }
+        require(!duplicate) { "$platform $packageType already exists." }
+        entries.add(JsonObject(buildMap {
+            put("platform", JsonPrimitive(platform))
+            put("packageType", JsonPrimitive(packageType))
+            put("downloadUrl", JsonPrimitive(downloadUrl.trim()))
+            if (repoUrl.isNotBlank()) put("repoUrl", JsonPrimitive(repoUrl.trim()))
+        }))
+        savePlatforms(submission, entries)
+    }
+
+    suspend fun removePlatformArtifact(submission: DeveloperSubmission, platform: String, packageType: String) {
+        require(submission.status in setOf("Draft", "Rejected", "Approved", "Changes Requested")) { "This submission cannot be edited in its current state." }
+        val entries = (submission.platforms as? JsonArray)?.toMutableList() ?: mutableListOf()
+        val removed = entries.removeAll { entry ->
+            runCatching {
+                val obj = entry.jsonObject
+                obj["platform"]?.jsonPrimitive?.contentOrNull == platform &&
+                    obj["packageType"]?.jsonPrimitive?.contentOrNull == packageType
+            }.getOrDefault(false)
+        }
+        require(removed) { "Platform artifact was not found." }
+        require(entries.isNotEmpty()) { "At least one platform artifact is required." }
+        savePlatforms(submission, entries)
+    }
+
+    private suspend fun savePlatforms(submission: DeveloperSubmission, entries: List<JsonElement>) {
+        val now = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }.format(Date())
+        val userId = supabase.auth.currentUserOrNull()?.id ?: error("Authentication required")
+        supabase.from("luma_submissions").update({
+            set("platforms", JsonArray(entries))
+            set("separate_platform_repos", true)
+            set("status", "Pending")
+            set("status_updated_at", now)
+        }) { filter { eq("id", submission.id); eq("user_id", userId); eq("status", submission.status) } }
+    }
+
     suspend fun removeSubmission(submission: DeveloperSubmission) {
         val userId = supabase.auth.currentUserOrNull()?.id ?: error("Authentication required")
         if (submission.status == "Approved") {
