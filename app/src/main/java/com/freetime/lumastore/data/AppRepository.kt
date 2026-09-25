@@ -884,11 +884,12 @@ class AppRepository(context: Context) {
                 val directApkUrl = androidDownloadUrl
                     ?: item.optDownloadUrl("download_url")
                     ?: item.optDownloadUrl("apk_url")
-                    ?: continue
+                // Keep catalog entries visible even if the backend temporarily has no
+                // Android artifact URL. Installation stays unavailable until sync catches up.
                 // Prefer the exact Android artifact URL returned by the Luma API.
                 // Replacing it with the generic download Edge Function can return a stale
                 // or mismatched artifact for apps with multiple approved versions.
-                val apkUrl = directApkUrl
+                val apkUrl = directApkUrl.orEmpty()
 
                 val versionCode = item.optLong("version_code")
                 val iconUrl = item.optNullableString("icon_url")?.let { url ->
