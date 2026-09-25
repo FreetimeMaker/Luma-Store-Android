@@ -194,6 +194,7 @@ fun AppDetailsScreen(
                 app.minSdk?.let { DetailValueRow(stringResource(R.string.minimum_android_sdk), it.toString()) }
                 app.targetSdk?.let { DetailValueRow(stringResource(R.string.target_android_sdk), it.toString()) }
                 app.downloadSize?.let { DetailValueRow(stringResource(R.string.download_size), formatFileSize(it)) }
+                app.downloadCount?.let { DetailValueRow(stringResource(R.string.downloads), it.toString()) }
                 if (app.nativeCode.isNotEmpty()) DetailValueRow(stringResource(R.string.architectures), app.nativeCode.joinToString())
                 app.lastUpdatedTimestamp?.let { DetailValueRow(stringResource(R.string.last_updated), formatRelativeAge(it)) }
                 if (installedVersionName != null && actionLabel == stringResource(R.string.update)) {
