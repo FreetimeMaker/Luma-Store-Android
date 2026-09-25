@@ -44,6 +44,7 @@ fun DeveloperScreen(
     val scope = rememberCoroutineScope()
     val developerLoadError = stringResource(R.string.developer_data_load_failed)
     val authLoadError = stringResource(R.string.supabase_sign_in_load_failed)
+    val googleError = stringResource(R.string.google_sign_in_failed)
     val githubError = stringResource(R.string.github_sign_in_failed)
     val gitlabError = stringResource(R.string.gitlab_sign_in_failed)
     val signOutError = stringResource(R.string.sign_out_failed)
@@ -107,7 +108,24 @@ fun DeveloperScreen(
             Text(stringResource(R.string.developer_login), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             Text(stringResource(R.string.developer_login_description), color = MaterialTheme.colorScheme.onSurfaceVariant)
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+
+            Text(stringResource(R.string.normal_account), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Button(
+                onClick = {
+                    scope.launch {
+                        loggingIn = true
+                        error = null
+                        runCatching { repository.signInWithGoogle() }
+                            .onFailure { error = it.message ?: googleError; loggingIn = false }
+                    }
+                },
+                enabled = !loggingIn,
+                modifier = Modifier.fillMaxWidth()
+            ) { Text(stringResource(R.string.sign_in_google)) }
+
+            HorizontalDivider()
+            Text(stringResource(R.string.developer_sign_in_options), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            OutlinedButton(
                 onClick = {
                     scope.launch {
                         loggingIn = true
