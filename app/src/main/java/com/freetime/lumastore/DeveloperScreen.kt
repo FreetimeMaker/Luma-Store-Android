@@ -1,6 +1,5 @@
 package com.freetime.lumastore
 
-import com.freetime.design.liquidGlass
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -294,7 +293,7 @@ fun DeveloperScreen(
 private fun NotificationCard(notification: DeveloperNotification, onMarkRead: (() -> Unit)?) {
     val shape = RoundedCornerShape(18.dp)
     Card(
-        modifier = Modifier.fillMaxWidth().liquidGlass(shape, interactive = false),
+        modifier = Modifier.fillMaxWidth(),
         shape = shape,
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -336,7 +335,7 @@ private fun SubmissionCard(
     val editable = submission.status in setOf("Draft", "Rejected", "Approved", "Changes Requested")
 
     Card(
-        modifier = Modifier.fillMaxWidth().liquidGlass(shape, interactive = false),
+        modifier = Modifier.fillMaxWidth(),
         shape = shape,
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
