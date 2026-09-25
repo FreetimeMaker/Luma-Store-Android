@@ -311,4 +311,7 @@
     <string name="at_least_one_artifact">At least one platform artifact must remain.</string>
     <string name="downloads">Downloads</string>
     <string name="developer_total_downloads">Total developer downloads: %1$d</string>
+    <string name="account">Account</string>
+    <string name="account_description">Sign in with Google to use your Luma Store account.</string>
+    <string name="signed_in_as">Signed in as</string>
 </resources>
