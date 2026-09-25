@@ -47,7 +47,9 @@ object LumaStoreApi {
             if (authenticated) {
                 supabase.auth.awaitInitialization()
                 val session = supabase.auth.currentSessionOrNull() ?: error("Authentication required")
-                connection.setRequestProperty("Authorization", "Bearer ${session.accessToken}")
+                val accessToken = session.accessToken.trim()
+                check(accessToken.isNotBlank()) { "Authentication required" }
+                connection.setRequestProperty("Authorization", "Bearer $accessToken")
             }
             if (body != null) {
                 connection.doOutput = true
