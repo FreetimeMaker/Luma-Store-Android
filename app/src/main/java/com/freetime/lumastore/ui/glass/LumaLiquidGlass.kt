@@ -14,7 +14,7 @@ import com.freetime.design.liquidGlassCapsule
  */
 @Composable
 fun LumaGlassRoot(content: @Composable () -> Unit) {
-    LiquidGlassRoot(content = content)
+    LiquidGlassRoot { content() }
 }
 
 @Composable
