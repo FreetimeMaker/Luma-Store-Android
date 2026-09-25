@@ -20,7 +20,7 @@ import java.util.Locale
 import java.util.TimeZone
 
 @Serializable data class DeveloperSession(val accessToken: String, val refreshToken: String?, val userId: String, val email: String?)
-@Serializable data class DeveloperSubmission(val id: String, val name: String, val status: String, @SerialName("review_message") val reviewMessage: String? = null, val version: String? = null, @SerialName("package_name") val packageName: String? = null, @SerialName("submitted_at") val submittedAt: String? = null, @SerialName("status_updated_at") val statusUpdatedAt: String? = null)
+@Serializable data class DeveloperSubmission(val id: String, val name: String, val status: String, @SerialName("review_message") val reviewMessage: String? = null, val version: String? = null, @SerialName("version_code") val versionCode: Long? = null, @SerialName("package_name") val packageName: String? = null, @SerialName("short_description") val shortDescription: String? = null, val description: String? = null, val changelog: String? = null, @SerialName("repo_url") val repoUrl: String? = null, val link: String? = null, @SerialName("store_app_id") val storeAppId: String? = null, @SerialName("submitted_at") val submittedAt: String? = null, @SerialName("status_updated_at") val statusUpdatedAt: String? = null)
 @Serializable data class DeveloperComment(val id: String, @SerialName("submission_id") val submissionId: String, val body: String, @SerialName("created_at") val createdAt: String? = null, @SerialName("user_id") val userId: String? = null)
 @Serializable data class DeveloperNotification(val id: String, @SerialName("submission_id") val submissionId: String, val type: String, val title: String, val message: String? = null, @SerialName("created_at") val createdAt: String? = null, @SerialName("read_at") val readAt: String? = null)
 @Serializable private data class DeveloperProfileRef(@SerialName("developer_id") val developerId: String)
@@ -58,6 +58,36 @@ class DeveloperRepository(context: Context) {
         return DeveloperDashboard(submissions, loadComments(submissions.map { it.id }), loadNotifications(session))
     }
 
+    suspend fun updateSubmission(submission: DeveloperSubmission, name: String, shortDescription: String, description: String, version: String, versionCode: Long?, changelog: String, repoUrl: String) {
+        require(submission.status in setOf("Draft", "Rejected", "Approved", "Changes Requested")) { "This submission cannot be edited in its current state." }
+        val now = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }.format(Date())
+        supabase.from("luma_submissions").update({
+            set("name", name.trim())
+            set("short_description", shortDescription.trim())
+            set("description", description.trim())
+            set("version", version.trim())
+            set("version_code", versionCode)
+            set("changelog", changelog.trim())
+            set("repo_url", repoUrl.trim())
+            set("link", repoUrl.trim())
+            set("status", "Pending")
+            set("status_updated_at", now)
+        }) { filter { eq("id", submission.id); eq("user_id", supabase.auth.currentUserOrNull()?.id ?: error("Authentication required")); eq("status", submission.status) } }
+    }
+
+    suspend fun removeSubmission(submission: DeveloperSubmission) {
+        val userId = supabase.auth.currentUserOrNull()?.id ?: error("Authentication required")
+        if (submission.status == "Approved") {
+            val appId = submission.storeAppId ?: error("Published app could not be found.")
+            val now = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }.format(Date())
+            supabase.from("store_apps").update({ set("archived_at", now); set("updated_at", now) }) { filter { eq("id", appId); eq("developer_id", userId) } }
+            supabase.from("luma_submissions").update({ set("status", "Archived"); set("status_updated_at", now) }) { filter { eq("id", submission.id); eq("user_id", userId) } }
+        } else {
+            require(submission.status in setOf("Draft", "Pending", "In Review", "Changes Requested", "Rejected")) { "This submission cannot be removed." }
+            supabase.from("luma_submissions").delete { filter { eq("id", submission.id); eq("user_id", userId) } }
+        }
+    }
+
     suspend fun markNotificationRead(notificationId: String) {
         val now = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }.format(Date())
         supabase.from("luma_developer_notifications").update({ set("read_at", now) }) { filter { eq("id", notificationId) } }
@@ -65,7 +95,7 @@ class DeveloperRepository(context: Context) {
 
     private suspend fun loadSubmissions(session: DeveloperSession): List<DeveloperSubmission> {
         val submissions: List<DeveloperSubmission> = supabase.from("luma_submissions")
-            .select(columns = Columns.list("id", "name", "status", "review_message", "version", "package_name", "submitted_at", "status_updated_at")) {
+            .select(columns = Columns.list("id", "name", "status", "review_message", "version", "version_code", "package_name", "short_description", "description", "changelog", "repo_url", "link", "store_app_id", "submitted_at", "status_updated_at")) {
                 filter { eq("user_id", session.userId) }
                 order("submitted_at", Order.DESCENDING)
             }
