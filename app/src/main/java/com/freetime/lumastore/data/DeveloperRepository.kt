@@ -125,7 +125,7 @@ class DeveloperRepository(context: Context) {
 
     suspend fun addPlatformArtifact(submission: DeveloperSubmission, platform: String, packageType: String, downloadUrl: String, repoUrl: String) {
         require(submission.status in setOf("Draft", "Rejected", "Approved", "Changes Requested")) { "This submission cannot be edited in its current state." }
-        val allowed = mapOf("Android" to setOf("apk"), "Windows" to setOf("exe", "msi"), "Linux" to setOf("deb", "rpm"))
+        val allowed = mapOf("Android" to setOf("apk"), "Windows" to setOf("exe", "msi"), "Linux" to setOf("deb", "rpm", "appimage"))
         require(packageType in allowed[platform].orEmpty()) { "Unsupported package type for $platform." }
         require(downloadUrl.startsWith("https://") || downloadUrl.startsWith("http://")) { "A valid download URL is required." }
         val entries = (submission.platforms as? JsonArray)?.toMutableList() ?: mutableListOf()
