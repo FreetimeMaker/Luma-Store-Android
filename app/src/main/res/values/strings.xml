@@ -309,4 +309,5 @@
     <string name="artifact_add_failed">Could not add platform artifact.</string>
     <string name="artifact_remove_failed">Could not remove platform artifact.</string>
     <string name="at_least_one_artifact">At least one platform artifact must remain.</string>
+    <string name="downloads">Downloads</string>
 </resources>
