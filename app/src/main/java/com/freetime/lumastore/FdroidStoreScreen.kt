@@ -2,7 +2,7 @@ package com.freetime.lumastore
 
 import android.content.Intent
 
-import com.freetime.design.freetimeGlass
+import com.freetime.design.liquidGlass
 
 import android.content.Context
 import androidx.compose.foundation.background
@@ -506,7 +506,7 @@ fun FdroidStoreScreen(
         val dialogShape = RoundedCornerShape(28.dp)
         AlertDialog(
             onDismissRequest = { selectedScreenshotUrl = null },
-            modifier = Modifier.freetimeGlass(dialogShape, interactive = false),
+            modifier = Modifier.liquidGlass(dialogShape, interactive = false),
             shape = dialogShape,
             containerColor = Color.Transparent,
             tonalElevation = 0.dp,
