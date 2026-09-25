@@ -27,6 +27,11 @@ import com.freetime.lumastore.data.*
 import com.freetime.lumastore.notifications.SystemNotificationManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 @Composable
 fun DeveloperScreen(
@@ -53,6 +58,7 @@ fun DeveloperScreen(
     val notificationError = stringResource(R.string.notification_update_failed)
     val submissionUpdateError = stringResource(R.string.submission_update_failed)
     val submissionRemoveError = stringResource(R.string.submission_remove_failed)
+    val platformUpdateError = stringResource(R.string.platform_update_failed)
 
     suspend fun reload(current: DeveloperSession) {
         loading = true
@@ -237,6 +243,13 @@ fun DeveloperScreen(
                                 reload(current)
                             }
                         },
+                        onPlatformSave = { submission, platform, title, shortDescription, fullDescription, changelog, repoUrl, downloadUrl, screenshots ->
+                            scope.launch {
+                                runCatching { repository.updatePlatformMetadata(submission, platform, title, shortDescription, fullDescription, changelog, repoUrl, downloadUrl, screenshots) }
+                                    .onFailure { error = it.message ?: platformUpdateError }
+                                reload(current)
+                            }
+                        },
                         onRemove = { submission ->
                             scope.launch {
                                 runCatching { repository.removeSubmission(submission) }
@@ -281,6 +294,7 @@ private fun SubmissionCard(
     scan: DeveloperSecurityScan?,
     downloadStats: DeveloperDownloadStats?,
     onSave: (DeveloperSubmission, String, String, String, String, Long?, String, String) -> Unit,
+    onPlatformSave: (DeveloperSubmission, String, String, String, String, String, String, String, List<String>) -> Unit,
     onRemove: (DeveloperSubmission) -> Unit
 ) {
     val shape = RoundedCornerShape(18.dp)
@@ -338,8 +352,7 @@ private fun SubmissionCard(
                             artifact.artifactVerifiedAt?.let { Text(stringResource(R.string.artifact_verified, it), style = MaterialTheme.typography.bodySmall) }
                             artifact.sha256?.let { Text(stringResource(R.string.sha256_value, it), style = MaterialTheme.typography.labelSmall) }
                             artifact.repoUrl?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) }
-                            Text(stringResource(R.string.platform_metadata, artifact.platform), style = MaterialTheme.typography.labelMedium)
-                            Text(artifact.listingMetadata?.toString()?.takeIf { it != "null" && it != "{}" } ?: stringResource(R.string.no_platform_metadata), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            PlatformMetadataEditor(submission, artifact, onPlatformSave)
                         }
                     }
                 }
@@ -383,6 +396,53 @@ private fun SubmissionCard(
                 Text(stringResource(R.string.comments_feedback), fontWeight = FontWeight.SemiBold)
                 comments.forEach { Text(stringResource(R.string.comment_bullet, it)) }
             }
+        }
+    }
+}
+
+@Composable
+private fun PlatformMetadataEditor(
+    submission: DeveloperSubmission,
+    artifact: DeveloperPlatformArtifact,
+    onSave: (DeveloperSubmission, String, String, String, String, String, String, String, List<String>) -> Unit
+) {
+    val metadata = artifact.listingMetadata as? JsonObject
+    fun value(key: String) = metadata?.get(key)?.let { runCatching { it.jsonPrimitive.contentOrNull }.getOrNull() }.orEmpty()
+    val screenshotValues = (metadata?.get("screenshots") as? JsonArray)?.mapNotNull { runCatching { it.jsonPrimitive.contentOrNull }.getOrNull() }.orEmpty()
+    var editing by remember(submission.id, artifact.id) { mutableStateOf(false) }
+    var title by remember(submission.id, artifact.id) { mutableStateOf(value("title")) }
+    var shortDescription by remember(submission.id, artifact.id) { mutableStateOf(value("shortDescription").ifBlank { value("short_description") }) }
+    var fullDescription by remember(submission.id, artifact.id) { mutableStateOf(value("fullDescription").ifBlank { value("full_description") }) }
+    var changelog by remember(submission.id, artifact.id) { mutableStateOf(value("changelog")) }
+    var repoUrl by remember(submission.id, artifact.id) { mutableStateOf(artifact.repoUrl.orEmpty()) }
+    var downloadUrl by remember(submission.id, artifact.id) { mutableStateOf(artifact.downloadUrl.orEmpty()) }
+    var screenshots by remember(submission.id, artifact.id) { mutableStateOf(screenshotValues.joinToString("\n")) }
+    val editable = submission.status in setOf("Draft", "Rejected", "Approved", "Changes Requested")
+
+    Text(stringResource(R.string.platform_metadata, artifact.platform), style = MaterialTheme.typography.labelMedium)
+    if (!editing) {
+        Text(title.ifBlank { stringResource(R.string.no_platform_metadata) }, fontWeight = FontWeight.Medium)
+        if (shortDescription.isNotBlank()) Text(shortDescription, style = MaterialTheme.typography.bodySmall)
+        if (fullDescription.isNotBlank()) Text(fullDescription, style = MaterialTheme.typography.bodySmall, maxLines = 4)
+        if (changelog.isNotBlank()) Text(changelog, style = MaterialTheme.typography.bodySmall, maxLines = 3)
+        if (screenshotValues.isNotEmpty()) Text(stringResource(R.string.screenshots_urls) + ": " + screenshotValues.size, style = MaterialTheme.typography.labelSmall)
+        if (editable) TextButton(onClick = { editing = true }) { Text(stringResource(R.string.edit_platform_metadata, artifact.platform)) }
+    } else {
+        OutlinedTextField(title, { title = it }, label = { Text(stringResource(R.string.app_name)) }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(shortDescription, { shortDescription = it }, label = { Text(stringResource(R.string.short_description)) }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(fullDescription, { fullDescription = it }, label = { Text(stringResource(R.string.full_description)) }, modifier = Modifier.fillMaxWidth(), minLines = 4)
+        OutlinedTextField(changelog, { changelog = it }, label = { Text(stringResource(R.string.changelog)) }, modifier = Modifier.fillMaxWidth(), minLines = 2)
+        OutlinedTextField(repoUrl, { repoUrl = it }, label = { Text(stringResource(R.string.repository_url)) }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(downloadUrl, { downloadUrl = it }, label = { Text(stringResource(R.string.download_url)) }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(screenshots, { screenshots = it }, label = { Text(stringResource(R.string.screenshots_urls)) }, modifier = Modifier.fillMaxWidth(), minLines = 3)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = {
+                onSave(submission, artifact.platform, title, shortDescription, fullDescription, changelog, repoUrl, downloadUrl, screenshots.lines().map(String::trim).filter(String::isNotBlank))
+                editing = false
+            }, enabled = title.isNotBlank() && shortDescription.isNotBlank() && fullDescription.isNotBlank() && changelog.isNotBlank() && downloadUrl.isNotBlank()) {
+                Text(stringResource(R.string.save_platform_metadata))
+            }
+            TextButton(onClick = { editing = false }) { Text(stringResource(android.R.string.cancel)) }
         }
     }
 }
