@@ -1,7 +1,7 @@
 package com.freetime.lumastore
 
-import com.freetime.design.freetimeGlassCapsule
-import com.freetime.design.FreetimeGlassRoot
+import com.freetime.design.liquidGlassCapsule
+import com.freetime.design.LiquidGlassRoot
 
 import android.app.job.JobInfo
 import android.app.job.JobScheduler
@@ -134,7 +134,7 @@ class MainActivity : ComponentActivity() {
             }
 
             LumaStoreTheme(darkTheme = darkTheme, oledMode = oledMode) {
-                FreetimeGlassRoot {
+                LiquidGlassRoot {
                 BoxWithConstraints(
                     modifier = Modifier.fillMaxSize()
                 ) {
@@ -225,7 +225,7 @@ class MainActivity : ComponentActivity() {
                             .navigationBarsPadding()
                             .padding(bottom = 14.dp)
                             .heightIn(min = 68.dp)
-                            .freetimeGlassCapsule(interactive = false),
+                            .liquidGlassCapsule(interactive = false),
                         containerColor = Color.Transparent,
                         contentColor = MaterialTheme.colorScheme.onSurface,
                         tonalElevation = 0.dp,
