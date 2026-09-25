@@ -1,6 +1,6 @@
 package com.freetime.lumastore
 
-import com.freetime.design.freetimeGlass
+import com.freetime.design.liquidGlass
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -237,7 +237,7 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
             repositoryImportPreview?.let { preview ->
                 Spacer(Modifier.height(8.dp))
                 Column(
-                    Modifier.fillMaxWidth().freetimeGlass(interactive = false).padding(14.dp)
+                    Modifier.fillMaxWidth().liquidGlass(interactive = false).padding(14.dp)
                 ) {
                     Text(stringResource(R.string.repository_preview), style = MaterialTheme.typography.titleMedium)
                     Text(preview, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -396,7 +396,7 @@ private fun EditSourceDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        modifier = Modifier.freetimeGlass(dialogShape, interactive = false),
+        modifier = Modifier.liquidGlass(dialogShape, interactive = false),
         shape = dialogShape,
         containerColor = Color.Transparent,
         tonalElevation = 0.dp,
@@ -457,7 +457,7 @@ private fun SourceCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .freetimeGlass(shape, interactive = false),
+            .liquidGlass(shape, interactive = false),
         shape = shape,
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
