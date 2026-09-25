@@ -1,8 +1,6 @@
-• Refreshed the interface with a cleaner non-glass design across app content
-• Kept Liquid Glass exclusively for the main navigation
-• Changed shared app links to luma.free-time.me/<app-id>
-• Improved direct app deep links
-• Fixed false offline status when cached store data is available
-• Improved developer dashboard reliability when optional statistics or metadata fail to load
-• Fixed Freetime Core 2.0.0 Liquid Glass compatibility issues
-• Improved FreetimeWarn version detection
+• Added a dedicated Account section to the main navigation
+• Added Google sign-in and account management to the new Account section
+• Added signed-in account information and sign-out controls
+• Separated Google accounts from the Developer login flow
+• Kept GitHub and GitLab authentication focused on the Developer area
+• Fixed a remaining Liquid Glass reference that caused release builds to fail
