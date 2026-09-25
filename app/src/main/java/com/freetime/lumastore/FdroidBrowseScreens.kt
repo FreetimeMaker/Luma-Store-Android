@@ -93,9 +93,12 @@ fun FdroidDiscoverScreen(
         }
         result.onSuccess {
             apps = it
-            usingCachedData = refreshKey > 0 && repository.enabledSources().none { repository.sourceHealth(it)?.successful == true }
+            usingCachedData = repository.enabledSources().isNotEmpty() &&
+                repository.enabledSources().none { repository.sourceHealth(it)?.successful == true }
         }.onFailure {
-            usingCachedData = repository.currentApps().isNotEmpty()
+            apps = repository.currentApps()
+            usingCachedData = repository.enabledSources().isNotEmpty() &&
+                repository.enabledSources().none { repository.sourceHealth(it)?.successful == true }
         }
         loading = false
     }
