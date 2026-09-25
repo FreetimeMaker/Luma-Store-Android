@@ -310,4 +310,5 @@
     <string name="artifact_remove_failed">Could not remove platform artifact.</string>
     <string name="at_least_one_artifact">At least one platform artifact must remain.</string>
     <string name="downloads">Downloads</string>
+    <string name="developer_total_downloads">Total developer downloads: %1$d</string>
 </resources>
