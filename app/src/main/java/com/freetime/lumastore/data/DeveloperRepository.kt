@@ -5,6 +5,7 @@ import com.freetime.lumastore.R
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.Github
 import io.github.jan.supabase.auth.providers.Gitlab
+import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
@@ -36,6 +37,7 @@ class DeveloperRepository(context: Context) {
         }
     }
     suspend fun savedSession(): DeveloperSession? { supabase.auth.awaitInitialization(); return supabase.auth.currentSessionOrNull()?.toDeveloperSession() }
+    suspend fun signInWithGoogle() { supabase.auth.signInWith(Google, redirectUrl = OAUTH_REDIRECT_URL) }
     suspend fun signInWithGitHub() { supabase.auth.signInWith(Github, redirectUrl = OAUTH_REDIRECT_URL) }
     suspend fun signInWithGitLab() { supabase.auth.signInWith(Gitlab, redirectUrl = OAUTH_REDIRECT_URL) }
     suspend fun currentSession(): DeveloperSession? = supabase.auth.currentSessionOrNull()?.toDeveloperSession()
