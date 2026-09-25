@@ -1,10 +1,8 @@
-• Updated to Freetime Core 2.0.0 and its new Liquid Glass design APIs
-• Added Freetime Browser, Donations, and FreetimeWarn libraries
-• FreetimeWarn now appears once after each app update
-• Added public download counts to Luma Store app details
-• Added total and per-app download statistics to the developer dashboard
-• Added AppImage support for Linux developer artifacts
-• Added native management for platform artifacts and per-platform metadata
-• Improved direct app sharing links
-• Fixed developer dashboard statistics loading and Supabase PostgREST type handling
-• Fixed compatibility issues introduced by the Freetime Core 2.0.0 migration
+• Refreshed the interface with a cleaner non-glass design across app content
+• Kept Liquid Glass exclusively for the main navigation
+• Changed shared app links to luma.free-time.me/<app-id>
+• Improved direct app deep links
+• Fixed false offline status when cached store data is available
+• Improved developer dashboard reliability when optional statistics or metadata fail to load
+• Fixed Freetime Core 2.0.0 Liquid Glass compatibility issues
+• Improved FreetimeWarn version detection
