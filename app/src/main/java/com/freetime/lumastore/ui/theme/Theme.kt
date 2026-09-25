@@ -73,28 +73,16 @@ fun LumaStoreTheme(
         if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
     } else if (darkTheme) DarkColorScheme else LightColorScheme
 
-    // Keep all standard foreground roles readable regardless of the dynamic Material You palette.
-    val foreground = if (darkTheme) Color.White else Color.Black
-    val secondaryForeground = foreground.copy(alpha = 0.78f)
+    // Preserve Material You's paired foreground colors. Dynamic color already
+    // calculates onPrimary/onSecondary/onContainer roles for the actual
+    // container luminance; forcing them to black/white can create dark text
+    // on dark dynamic containers.
     val themedBase = if (darkTheme && oledMode) baseColorScheme.copy(
         background = Color.Black,
         surface = Color.Black,
         surfaceVariant = Color(0xFF101010)
     ) else baseColorScheme
-    val colorScheme = themedBase.copy(
-        onBackground = foreground,
-        onSurface = foreground,
-        onSurfaceVariant = secondaryForeground,
-        onPrimary = foreground,
-        onPrimaryContainer = foreground,
-        onSecondary = foreground,
-        onSecondaryContainer = foreground,
-        onTertiary = foreground,
-        onTertiaryContainer = foreground,
-        onError = foreground,
-        onErrorContainer = foreground,
-        inverseOnSurface = if (darkTheme) Color.Black else Color.White
-    )
+    val colorScheme = themedBase
 
     AppTheme(
         themeMode = when {
