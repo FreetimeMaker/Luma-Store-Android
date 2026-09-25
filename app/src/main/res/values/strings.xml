@@ -314,4 +314,9 @@
     <string name="account">Account</string>
     <string name="account_description">Sign in with Google to use your Luma Store account.</string>
     <string name="signed_in_as">Signed in as</string>
+    <string name="ratings">Ratings</string>
+    <string name="rating_summary">%1$.1f / 5 · %2$d ratings</string>
+    <string name="your_rating">Your rating</string>
+    <string name="rating_sign_in">Sign in with Google in Account to rate this app.</string>
+    <string name="rating_saved">Rating saved</string>
 </resources>
