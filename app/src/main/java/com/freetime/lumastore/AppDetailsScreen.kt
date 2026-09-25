@@ -38,6 +38,8 @@ import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
@@ -58,11 +60,13 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -79,6 +83,10 @@ import coil3.compose.AsyncImage
 import coil3.compose.SubcomposeAsyncImage
 import coil3.compose.SubcomposeAsyncImageContent
 import com.freetime.lumastore.data.StoreApp
+import com.freetime.lumastore.data.LumaStoreApi
+import com.freetime.lumastore.data.supabase
+import io.github.jan.supabase.auth.auth
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -184,6 +192,8 @@ fun AppDetailsScreen(
                     Text(stringResource(R.string.verified_metadata_description), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 14.dp))
                 }
             }
+
+            AppRatingSection(app.id)
 
             DetailsExpandableSection(stringResource(R.string.app_information)) {
                 DetailValueRow(stringResource(R.string.version), app.version)
@@ -681,4 +691,56 @@ private fun FallbackAppIcon(app: StoreApp, size: Int, index: Int = 0) {
         success = { SubcomposeAsyncImageContent() },
         error = { FallbackAppIcon(app, size, index + 1) }
     )
+}
+
+@Composable
+private fun AppRatingSection(identifier: String) {
+    var average by remember(identifier) { mutableStateOf(0.0) }
+    var count by remember(identifier) { mutableStateOf(0) }
+    var myRating by remember(identifier) { mutableStateOf<Int?>(null) }
+    var signedIn by remember(identifier) { mutableStateOf(false) }
+    var error by remember(identifier) { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(identifier) {
+        runCatching { LumaStoreApi.ratings(identifier) }.onSuccess { average = it.average; count = it.count }
+        supabase.auth.awaitInitialization()
+        signedIn = supabase.auth.currentSessionOrNull() != null
+        if (signedIn) runCatching { LumaStoreApi.myRating(identifier) }.onSuccess { myRating = it.rating }.onFailure { error = it.message }
+    }
+
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.ratings), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.rating_summary, average, count), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (signedIn) {
+                Text(stringResource(R.string.your_rating), style = MaterialTheme.typography.labelLarge)
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    (1..5).forEach { value ->
+                        Icon(
+                            imageVector = if (value <= (myRating ?: 0)) Icons.Filled.Star else Icons.Outlined.Star,
+                            contentDescription = value.toString(),
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(36.dp).clickable {
+                                scope.launch {
+                                    error = null
+                                    runCatching { LumaStoreApi.setMyRating(identifier, value) }
+                                        .onSuccess {
+                                            myRating = it.rating
+                                            runCatching { LumaStoreApi.ratings(identifier) }.onSuccess { summary -> average = summary.average; count = summary.count }
+                                        }
+                                        .onFailure { error = it.message }
+                                }
+                            }
+                        )
+                    }
+                }
+            } else Text(stringResource(R.string.rating_sign_in), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+        }
+    }
 }
