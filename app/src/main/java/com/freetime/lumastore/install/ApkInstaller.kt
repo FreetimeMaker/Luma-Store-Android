@@ -43,6 +43,11 @@ object ApkInstaller {
                 connection.readTimeout = 60_000
                 connection.instanceFollowRedirects = true
                 connection.setRequestProperty("User-Agent", "Luma-Store")
+                connection.connect()
+                val responseCode = connection.responseCode
+                require(responseCode in 200..299) {
+                    "APK download failed with HTTP $responseCode"
+                }
                 val total = connection.contentLengthLong
                 connection.inputStream.use { input ->
                     target.outputStream().use { output ->
@@ -76,6 +81,7 @@ object ApkInstaller {
                     require(actual.equals(expected, true)) { context.getString(R.string.apk_sha256_verification_failed) }
                 }
 
+                verifyDownloadedApk(context, packageName, target)
                 verifyUpdateSignature(context, packageName, target)
 
                 val uri: Uri = FileProvider.getUriForFile(
@@ -99,6 +105,15 @@ object ApkInstaller {
 
     private fun targetFileCleanup(context: Context, packageName: String) {
         runCatching { File(File(context.cacheDir, "apks"), packageName.replace('.', '_') + ".apk").delete() }
+    }
+
+    private fun verifyDownloadedApk(context: Context, packageName: String, apk: File) {
+        require(apk.length() > 0L) { context.getString(R.string.downloaded_apk_inspection_failed) }
+        val archive = context.packageManager.getPackageArchiveInfo(apk.absolutePath, 0)
+            ?: error(context.getString(R.string.downloaded_apk_inspection_failed))
+        require(archive.packageName == packageName) {
+            context.getString(R.string.downloaded_apk_package_mismatch)
+        }
     }
 
     private fun verifyUpdateSignature(context: Context, packageName: String, apk: File) {
