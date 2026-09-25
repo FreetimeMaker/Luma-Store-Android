@@ -35,8 +35,8 @@ import java.util.TimeZone
 @Serializable data class DeveloperSecurityScan(val id: String, @SerialName("submission_id") val submissionId: String, val status: String, @SerialName("risk_level") val riskLevel: String, val provider: String? = null, @SerialName("malicious_count") val maliciousCount: Int? = null, @SerialName("suspicious_count") val suspiciousCount: Int? = null, @SerialName("harmless_count") val harmlessCount: Int? = null, @SerialName("undetected_count") val undetectedCount: Int? = null, @SerialName("virus_total_permalink") val virusTotalPermalink: String? = null, @SerialName("error_message") val errorMessage: String? = null, @SerialName("scanned_at") val scannedAt: String? = null)
 @Serializable data class DeveloperDownloadStats(@SerialName("app_id") val appId: String, val total: Long = 0, val today: Long = 0, @SerialName("this_month") val thisMonth: Long = 0, @SerialName("this_year") val thisYear: Long = 0)
 @Serializable private data class DeveloperProfileRef(@SerialName("developer_id") val developerId: String)
-@Serializable private data class StoreAppSubmissionRef(@SerialName("luma_submission_id") val lumaSubmissionId: String? = null)
-data class DeveloperDashboard(val submissions: List<DeveloperSubmission>, val comments: List<DeveloperComment>, val notifications: List<DeveloperNotification>, val artifacts: Map<String, List<DeveloperPlatformArtifact>> = emptyMap(), val scans: Map<String, DeveloperSecurityScan> = emptyMap(), val downloadStats: Map<String, DeveloperDownloadStats> = emptyMap())
+@Serializable private data class StoreAppSubmissionRef(val id: String, @SerialName("luma_submission_id") val lumaSubmissionId: String? = null)
+data class DeveloperDashboard(val submissions: List<DeveloperSubmission>, val comments: List<DeveloperComment>, val notifications: List<DeveloperNotification>, val artifacts: Map<String, List<DeveloperPlatformArtifact>> = emptyMap(), val scans: Map<String, DeveloperSecurityScan> = emptyMap(), val downloadStats: Map<String, DeveloperDownloadStats> = emptyMap(), val submissionStoreIds: Map<String, String> = emptyMap())
 
 class DeveloperRepository(context: Context) {
     private val appContext = context.applicationContext
@@ -66,7 +66,13 @@ class DeveloperRepository(context: Context) {
     suspend fun loadDashboard(session: DeveloperSession): DeveloperDashboard {
         val submissions = loadSubmissions(session)
         if (submissions.isEmpty()) return DeveloperDashboard(emptyList(), emptyList(), loadNotifications(session))
-        val appIds = submissions.mapNotNull { it.storeAppId }.distinct()
+        val storeRefs = supabase.from("store_apps")
+            .select(columns = Columns.list("id", "luma_submission_id")) {
+                filter { isIn("luma_submission_id", submissions.map { it.id }) }
+            }
+            .decodeList<StoreAppSubmissionRef>()
+        val submissionStoreIds = storeRefs.mapNotNull { ref -> ref.lumaSubmissionId?.let { it to ref.id } }.toMap()
+        val appIds = (submissions.mapNotNull { it.storeAppId } + storeRefs.map { it.id }).distinct()
         val artifacts: Map<String, List<DeveloperPlatformArtifact>> = if (appIds.isEmpty()) emptyMap() else supabase.from("store_app_platforms")
             .select(columns = Columns.list("id", "app_id", "platform", "package_type", "download_url", "file_size_mb", "linux_package_base", "sha256", "artifact_verified_at", "artifact_size_bytes", "repo_url", "listing_metadata")) { filter { isIn("app_id", appIds) } }
             .decodeList<DeveloperPlatformArtifact>()
@@ -77,7 +83,7 @@ class DeveloperRepository(context: Context) {
         val stats: Map<String, DeveloperDownloadStats> = runCatching {
             supabase.postgrest.rpc("get_my_luma_download_stats").decodeList<DeveloperDownloadStats>().associateBy { stat -> stat.appId }
         }.getOrElse { emptyMap() }
-        return DeveloperDashboard(submissions, loadComments(submissions.map { it.id }), loadNotifications(session), artifacts, scans, stats)
+        return DeveloperDashboard(submissions, loadComments(submissions.map { it.id }), loadNotifications(session), artifacts, scans, stats, submissionStoreIds)
     }
 
     suspend fun updateSubmission(submission: DeveloperSubmission, name: String, shortDescription: String, description: String, version: String, versionCode: Long?, changelog: String, repoUrl: String) {
