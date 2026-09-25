@@ -2,6 +2,9 @@ package com.freetime.lumastore
 
 import com.freetime.design.liquidGlassCapsule
 import com.freetime.design.LiquidGlassRoot
+import com.freetime.warn.FreetimeWarn
+import com.freetime.warn.FreetimeWarnFrequency
+import com.freetime.warn.rememberFreetimeWarnState
 
 import android.app.job.JobInfo
 import android.app.job.JobScheduler
@@ -134,6 +137,12 @@ class MainActivity : ComponentActivity() {
             }
 
             LumaStoreTheme(darkTheme = darkTheme, oledMode = oledMode) {
+                val warnState = rememberFreetimeWarnState(
+                    context = this@MainActivity,
+                    appName = getString(R.string.app_name),
+                    versionCode = BuildConfig.VERSION_CODE.toLong(),
+                    frequency = FreetimeWarnFrequency.ONCE_PER_VERSION
+                )
                 LiquidGlassRoot {
                 BoxWithConstraints(
                     modifier = Modifier.fillMaxSize()
@@ -239,6 +248,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 }
+                FreetimeWarn(state = warnState)
                 }
             }
         }
