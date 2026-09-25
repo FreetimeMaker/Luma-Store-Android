@@ -92,12 +92,16 @@ fun FdroidDiscoverScreen(
         }
         result.onSuccess {
             apps = it
-            usingCachedData = repository.enabledSources().isNotEmpty() &&
+            // A normal initial load may intentionally come from the local cache without
+            // contacting any repository. Do not label that as offline just because old
+            // source-health entries are unsuccessful.
+            usingCachedData = refreshKey > 0 &&
+                repository.enabledSources().isNotEmpty() &&
                 repository.enabledSources().none { repository.sourceHealth(it)?.successful == true }
         }.onFailure {
             apps = repository.currentApps()
-            usingCachedData = repository.enabledSources().isNotEmpty() &&
-                repository.enabledSources().none { repository.sourceHealth(it)?.successful == true }
+            // Only show the offline/cache warning after an actual network refresh failed.
+            usingCachedData = refreshKey > 0 && apps.isNotEmpty()
         }
         loading = false
     }
