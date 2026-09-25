@@ -55,7 +55,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:scheme="https"
-                    android:host="luma-store.free-time.me"
+                    android:host="luma.free-time.me"
                     android:pathPrefix="/" />
             </intent-filter>
             <intent-filter>
