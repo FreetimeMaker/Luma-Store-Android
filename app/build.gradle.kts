@@ -14,8 +14,8 @@ android {
         applicationId = "com.freetime.lumastore"
         minSdk = 24
         targetSdk = 37
-        versionCode = 24
-        versionName = "4.3.3"
+        versionCode = 25
+        versionName = "4.3.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
