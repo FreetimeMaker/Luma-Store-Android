@@ -437,7 +437,7 @@ private fun AddPlatformArtifactEditor(
     var packageType by remember(submission.id, platform) { mutableStateOf(if (platform == "Android") "apk" else if (platform == "Windows") "exe" else "deb") }
     var downloadUrl by remember(submission.id) { mutableStateOf("") }
     var repoUrl by remember(submission.id) { mutableStateOf("") }
-    val types = when (platform) { "Android" -> listOf("apk"); "Windows" -> listOf("exe", "msi"); else -> listOf("deb", "rpm") }
+    val types = when (platform) { "Android" -> listOf("apk"); "Windows" -> listOf("exe", "msi"); else -> listOf("deb", "rpm", "appimage") }
 
     if (!expanded) {
         OutlinedButton(onClick = { expanded = true }) { Text(stringResource(R.string.add_platform_artifact)) }
