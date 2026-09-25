@@ -361,38 +361,57 @@ class AppRepository(context: Context) {
         if (activeSources.isEmpty()) return@runCatching emptyList<StoreApp>().also { memoryApps = it }
 
         val variants = mutableListOf<StoreApp>()
+        val cachedBySource = loadCachedApps().groupBy { it.sourceName }
         var successfulSources = 0
+
         activeSources.forEach { source ->
             runCatching { loadSource(source) }
                 .onSuccess { loaded ->
-                    successfulSources++
-                    variants += loaded
-                    saveSourceHealth(source, SourceHealth(true, loaded.size, System.currentTimeMillis()))
+                    if (loaded.isNotEmpty()) {
+                        successfulSources++
+                        variants += loaded
+                        saveSourceHealth(source, SourceHealth(true, loaded.size, System.currentTimeMillis()))
+                    } else {
+                        val cachedForSource = cachedBySource[source.name].orEmpty()
+                        variants += cachedForSource
+                        saveSourceHealth(
+                            source,
+                            SourceHealth(
+                                successful = cachedForSource.isNotEmpty(),
+                                appCount = cachedForSource.size,
+                                checkedAt = System.currentTimeMillis(),
+                                message = if (cachedForSource.isNotEmpty()) "Empty response; using cached apps" else "Empty response"
+                            )
+                        )
+                    }
                 }
                 .onFailure { error ->
-                    saveSourceHealth(source, SourceHealth(false, 0, System.currentTimeMillis(), error.message))
+                    val cachedForSource = cachedBySource[source.name].orEmpty()
+                    variants += cachedForSource
+                    saveSourceHealth(
+                        source,
+                        SourceHealth(
+                            successful = cachedForSource.isNotEmpty(),
+                            appCount = cachedForSource.size,
+                            checkedAt = System.currentTimeMillis(),
+                            message = error.message
+                        )
+                    )
                 }
         }
 
-        if (successfulSources == 0) {
-            val cached = loadCachedApps()
-            check(cached.isNotEmpty()) { appContext.getString(R.string.no_source_cache_available) }
-            return@runCatching cached.also { memoryApps = it }
+        if (successfulSources == 0 && variants.isEmpty()) {
+            check(cachedBySource.isNotEmpty()) { appContext.getString(R.string.no_source_cache_available) }
+            return@runCatching cachedBySource.values.flatten().also { memoryApps = it }
         }
 
         variants
             .groupBy { it.id to it.sourceName }
             .mapNotNull { (_, entries) -> entries.maxByOrNull { it.versionCode } }
             .sortedWith(compareBy<StoreApp> { it.name.lowercase() }.thenBy { it.sourceName.lowercase() })
-            .let { refreshed ->
-                if (refreshed.isEmpty()) {
-                    val cached = loadCachedApps()
-                    if (cached.isNotEmpty()) return@runCatching cached.also { memoryApps = it }
-                }
-                refreshed.also {
-                    memoryApps = it
-                    if (it.isNotEmpty()) saveCache(it)
-                }
+            .also {
+                memoryApps = it
+                if (it.isNotEmpty()) saveCache(it)
             }
     }
 
