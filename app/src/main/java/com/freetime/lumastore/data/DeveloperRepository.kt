@@ -8,6 +8,7 @@ import io.github.jan.supabase.auth.providers.Gitlab
 import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.coroutines.flow.Flow
@@ -66,14 +67,16 @@ class DeveloperRepository(context: Context) {
         val submissions = loadSubmissions(session)
         if (submissions.isEmpty()) return DeveloperDashboard(emptyList(), emptyList(), loadNotifications(session))
         val appIds = submissions.mapNotNull { it.storeAppId }.distinct()
-        val artifacts = if (appIds.isEmpty()) emptyList() else supabase.from("store_app_platforms")
+        val artifacts: Map<String, List<DeveloperPlatformArtifact>> = if (appIds.isEmpty()) emptyMap() else supabase.from("store_app_platforms")
             .select(columns = Columns.list("id", "app_id", "platform", "package_type", "download_url", "file_size_mb", "linux_package_base", "sha256", "artifact_verified_at", "artifact_size_bytes", "repo_url", "listing_metadata")) { filter { isIn("app_id", appIds) } }
             .decodeList<DeveloperPlatformArtifact>()
             .groupBy { it.appId }
         val scans = supabase.from("luma_security_scans")
             .select(columns = Columns.list("id", "submission_id", "status", "risk_level", "provider", "malicious_count", "suspicious_count", "harmless_count", "undetected_count", "virus_total_permalink", "error_message", "scanned_at")) { filter { isIn("submission_id", submissions.map { it.id }) }; order("created_at", Order.DESCENDING) }
             .decodeList<DeveloperSecurityScan>().groupBy { it.submissionId }.mapValues { it.value.first() }
-        val stats = runCatching { supabase.postgrest.rpc("get_my_luma_download_stats").decodeList<DeveloperDownloadStats>() }.getOrDefault(emptyList()).associateBy { it.appId }
+        val stats: Map<String, DeveloperDownloadStats> = runCatching {
+            supabase.postgrest.rpc("get_my_luma_download_stats").decodeList<DeveloperDownloadStats>().associateBy { stat -> stat.appId }
+        }.getOrElse { emptyMap() }
         return DeveloperDashboard(submissions, loadComments(submissions.map { it.id }), loadNotifications(session), artifacts, scans, stats)
     }
 
