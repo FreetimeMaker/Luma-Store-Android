@@ -11,6 +11,7 @@ import java.net.URL
 import java.nio.charset.StandardCharsets
 
 data class AppRatingSummary(val average: Double, val count: Int)
+data class PublicAppReview(val rating: Int, val reviewText: String, val updatedAt: String?)
 data class MyAppRating(val rating: Int?, val reviewText: String?, val updatedAt: String?)
 data class AccountRating(val appId: String, val packageName: String?, val appName: String, val rating: Int, val reviewText: String?, val updatedAt: String?)
 data class FavoriteApp(val appId: String, val packageName: String?, val appName: String, val iconUrl: String?, val createdAt: String?)
@@ -23,6 +24,22 @@ object LumaStoreApi {
     suspend fun ratings(identifier: String): AppRatingSummary {
         val json = request("GET", "/apps/${encode(identifier)}/ratings")
         return AppRatingSummary(json.optDouble("average", 0.0), json.optInt("count", 0))
+    }
+
+    suspend fun publicReviews(identifier: String, sort: String = "newest"): List<PublicAppReview> {
+        val array = requestArray("GET", "/apps/${encode(identifier)}/reviews?sort=${encode(sort)}")
+        return buildList {
+            for (index in 0 until array.length()) {
+                val row = array.optJSONObject(index) ?: continue
+                val text = row.optString("review_text").trim()
+                if (text.isBlank()) continue
+                add(PublicAppReview(
+                    rating = row.optInt("rating").coerceIn(1, 5),
+                    reviewText = text,
+                    updatedAt = row.optString("updated_at").takeIf { it.isNotBlank() }
+                ))
+            }
+        }
     }
 
     suspend fun myRating(identifier: String): MyAppRating {
