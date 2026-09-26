@@ -10,6 +10,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -29,9 +30,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import com.freetime.lumastore.data.DeveloperRepository
 import com.freetime.lumastore.data.DeveloperSession
 import com.freetime.lumastore.data.AccountRating
@@ -40,7 +43,7 @@ import com.freetime.lumastore.data.FavoriteApp
 import kotlinx.coroutines.launch
 
 @Composable
-fun AccountScreen(repository: DeveloperRepository) {
+fun AccountScreen(repository: DeveloperRepository, onOpenApp: (String) -> Unit = {}) {
     var session by remember { mutableStateOf<DeveloperSession?>(null) }
     var loading by remember { mutableStateOf(true) }
     var working by remember { mutableStateOf(false) }
@@ -137,11 +140,21 @@ fun AccountScreen(repository: DeveloperRepository) {
                     colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                 ) {
                     Row(
-                        Modifier.fillMaxWidth().padding(16.dp),
+                        Modifier.fillMaxWidth().padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text(favorite.appName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                        AsyncImage(
+                            model = favorite.iconUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Column(Modifier.weight(1f)) {
+                            Text(favorite.appName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            favorite.packageName?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        }
+                        TextButton(onClick = { onOpenApp(favorite.packageName ?: favorite.appId) }) { Text(stringResource(R.string.open_details)) }
                         TextButton(onClick = { favoritePendingDelete = favorite }) { Text(stringResource(R.string.remove_favorite)) }
                     }
                 }
