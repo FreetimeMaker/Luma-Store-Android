@@ -20,6 +20,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
@@ -38,11 +42,8 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -59,6 +60,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -234,27 +237,27 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    NavigationBar(
+                    Row(
                         modifier = Modifier
-                            .align(if (wideWindow) androidx.compose.ui.Alignment.CenterStart else androidx.compose.ui.Alignment.BottomCenter)
-                            .then(if (wideWindow) Modifier.width(88.dp).padding(start = 12.dp) else Modifier.fillMaxWidth())
-
-                            .padding(horizontal = navigationHorizontalPadding)
+                            .align(if (wideWindow) Alignment.CenterStart else Alignment.BottomCenter)
+                            .then(
+                                if (wideWindow) Modifier.width(92.dp).padding(start = 12.dp)
+                                else Modifier.fillMaxWidth().padding(horizontal = 12.dp)
+                            )
                             .navigationBarsPadding()
-                            .padding(bottom = 14.dp)
-                            .heightIn(min = 68.dp)
-                            .liquidGlassCapsule(interactive = false),
-                        containerColor = Color.Transparent,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                        tonalElevation = 0.dp,
-                        windowInsets = WindowInsets(0, 0, 0, 0)
+                            .padding(bottom = 12.dp)
+                            .heightIn(min = 64.dp)
+                            .liquidGlassCapsule(interactive = false)
+                            .padding(horizontal = 6.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        FdroidNavigationItem(screen == MainScreen.DISCOVER, { screen = MainScreen.DISCOVER }, stringResource(R.string.discover)) { Icon(Icons.Filled.Explore, contentDescription = stringResource(R.string.discover)) }
-                        FdroidNavigationItem(screen == MainScreen.SEARCH, { screen = MainScreen.SEARCH }, stringResource(R.string.search)) { Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.search)) }
-                        FdroidNavigationItem(screen == MainScreen.MY_APPS, { screen = MainScreen.MY_APPS }, stringResource(R.string.my_apps), availableUpdateCount) { Icon(Icons.Filled.Apps, contentDescription = stringResource(R.string.my_apps)) }
-                        FdroidNavigationItem(screen == MainScreen.SOURCES, { screen = MainScreen.SOURCES }, stringResource(R.string.sources)) { Icon(Icons.Filled.Storage, contentDescription = stringResource(R.string.sources)) }
-                        FdroidNavigationItem(screen == MainScreen.DEVELOPER, { screen = MainScreen.DEVELOPER }, stringResource(R.string.developer)) { Icon(Icons.Filled.Code, contentDescription = stringResource(R.string.developer)) }
-                        FdroidNavigationItem(screen == MainScreen.ACCOUNT, { screen = MainScreen.ACCOUNT }, stringResource(R.string.account)) { Icon(Icons.Filled.AccountCircle, contentDescription = stringResource(R.string.account)) }
+                        FdroidNavigationItem(screen == MainScreen.DISCOVER, { screen = MainScreen.DISCOVER }, stringResource(R.string.discover)) { Icon(Icons.Filled.Explore, contentDescription = null) }
+                        FdroidNavigationItem(screen == MainScreen.SEARCH, { screen = MainScreen.SEARCH }, stringResource(R.string.search)) { Icon(Icons.Filled.Search, contentDescription = null) }
+                        FdroidNavigationItem(screen == MainScreen.MY_APPS, { screen = MainScreen.MY_APPS }, stringResource(R.string.my_apps), availableUpdateCount) { Icon(Icons.Filled.Apps, contentDescription = null) }
+                        FdroidNavigationItem(screen == MainScreen.SOURCES, { screen = MainScreen.SOURCES }, stringResource(R.string.sources)) { Icon(Icons.Filled.Storage, contentDescription = null) }
+                        FdroidNavigationItem(screen == MainScreen.DEVELOPER, { screen = MainScreen.DEVELOPER }, stringResource(R.string.developer)) { Icon(Icons.Filled.Code, contentDescription = null) }
+                        FdroidNavigationItem(screen == MainScreen.ACCOUNT, { screen = MainScreen.ACCOUNT }, stringResource(R.string.account)) { Icon(Icons.Filled.AccountCircle, contentDescription = null) }
                     }
                 }
                 }
@@ -272,33 +275,30 @@ class MainActivity : ComponentActivity() {
         badgeCount: Int = 0,
         icon: @Composable () -> Unit
     ) {
-        NavigationBarItem(
-            selected = selected,
-            onClick = onClick,
-            icon = {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 1.dp)
+                .then(if (selected) Modifier.liquidGlassCapsule(interactive = true) else Modifier)
+                .clickable(onClick = onClick)
+                .padding(horizontal = 2.dp, vertical = 7.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 if (badgeCount > 0) {
-                    BadgedBox(badge = { Badge { Text(badgeCount.toString()) } }) { icon() }
+                    BadgedBox(badge = { Badge { Text(badgeCount.toString(), maxLines = 1) } }) { icon() }
                 } else icon()
-            },
-            label = {
                 Text(
-                    label,
+                    text = label,
                     style = MaterialTheme.typography.labelSmall,
                     color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis
                 )
-            },
-            alwaysShowLabel = false,
-            colors = NavigationBarItemDefaults.colors(
-                indicatorColor = Color.Transparent,
-                selectedTextColor = MaterialTheme.colorScheme.primary,
-                selectedIconColor = MaterialTheme.colorScheme.primary,
-                unselectedTextColor = MaterialTheme.colorScheme.onSurface,
-                unselectedIconColor = MaterialTheme.colorScheme.onSurface,
-                disabledIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
-                disabledTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-            )
-        )
+            }
+        }
     }
 
     @Composable
