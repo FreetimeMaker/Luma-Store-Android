@@ -27,9 +27,7 @@ import java.util.Date
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.freetime.lumastore.data.AppRepository
 import com.freetime.lumastore.data.AppSource
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @Composable
 fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChanged: () -> Unit) {
@@ -418,6 +416,8 @@ private fun EditSourceDialog(
     var url by remember(source) { mutableStateOf(source.indexUrl) }
     var error by remember(source) { mutableStateOf<String?>(null) }
     val editFailed = stringResource(R.string.source_edit_failed)
+    val scope = rememberCoroutineScope()
+    var saving by remember(source) { mutableStateOf(false) }
     val dialogShape = RoundedCornerShape(28.dp)
 
     AlertDialog(
@@ -454,11 +454,15 @@ private fun EditSourceDialog(
         },
         confirmButton = {
             TextButton(
-                enabled = name.isNotBlank() && url.isNotBlank(),
+                enabled = name.isNotBlank() && url.isNotBlank() && !saving,
                 onClick = {
-                    repository.updateCustomSource(source, name, url)
-                        .onSuccess { onSaved(source, it) }
-                        .onFailure { error = it.message ?: editFailed }
+                    scope.launch {
+                        saving = true
+                        repository.updateCustomSourceAsync(source, name, url)
+                            .onSuccess { onSaved(source, it) }
+                            .onFailure { error = it.message ?: editFailed }
+                        saving = false
+                    }
                 }
             ) {
                 Text(stringResource(R.string.save))
