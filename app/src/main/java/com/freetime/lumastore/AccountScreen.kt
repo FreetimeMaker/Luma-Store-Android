@@ -5,8 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -92,59 +92,75 @@ fun AccountScreen(repository: DeveloperRepository, onOpenApp: (String) -> Unit =
         }
     }
 
-    Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 24.dp),
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(stringResource(R.string.account), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        if (session == null) {
-            Text(stringResource(R.string.account_description), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        item {
+            Text(stringResource(R.string.account), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         }
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        if (session == null) {
+            item { Text(stringResource(R.string.account_description), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        }
+        error?.let { message ->
+            item { Text(message, color = MaterialTheme.colorScheme.error) }
+        }
 
         if (loading) {
-            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-        } else if (session == null) {
-            Button(
-                onClick = {
-                    scope.launch {
-                        working = true
-                        error = null
-                        runCatching { repository.signInWithGoogle() }
-                            .onFailure {
-                                error = it.message ?: "Google sign in failed."
-                                working = false
-                            }
-                    }
-                },
-                enabled = !working,
-                modifier = Modifier.fillMaxWidth()
-            ) { Text(stringResource(R.string.sign_in_google)) }
-        } else {
-            Text(stringResource(R.string.signed_in_as), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Text(session?.email ?: session?.userId.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            OutlinedButton(
-                onClick = {
-                    scope.launch {
-                        working = true
-                        error = null
-                        runCatching { repository.signOut() }
-                            .onFailure {
-                                error = it.message ?: "Sign out failed."
-                                working = false
-                            }
-                    }
-                },
-                enabled = !working,
-                modifier = Modifier.fillMaxWidth()
-            ) { Text(stringResource(R.string.sign_out)) }
-
-            Spacer(Modifier.height(8.dp))
-            Text(stringResource(R.string.favorites_count, favorites.size), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-            if (favorites.isEmpty()) {
-                Text(stringResource(R.string.no_favorites), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                    CircularProgressIndicator()
+                }
             }
-            favorites.forEach { favorite ->
+        } else if (session == null) {
+            item {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            working = true
+                            error = null
+                            runCatching { repository.signInWithGoogle() }
+                                .onFailure {
+                                    error = it.message ?: "Google sign in failed."
+                                    working = false
+                                }
+                        }
+                    },
+                    enabled = !working,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text(stringResource(R.string.sign_in_google)) }
+            }
+        } else {
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.signed_in_as), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text(session?.email ?: session?.userId.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedButton(
+                        onClick = {
+                            scope.launch {
+                                working = true
+                                error = null
+                                runCatching { repository.signOut() }
+                                    .onFailure {
+                                        error = it.message ?: "Sign out failed."
+                                        working = false
+                                    }
+                            }
+                        },
+                        enabled = !working,
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text(stringResource(R.string.sign_out)) }
+                }
+            }
+
+            item {
+                Text(stringResource(R.string.favorites_count, favorites.size), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            }
+            if (favorites.isEmpty()) {
+                item { Text(stringResource(R.string.no_favorites), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            }
+            items(favorites, key = { it.appId }) { favorite ->
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
@@ -164,18 +180,21 @@ fun AccountScreen(repository: DeveloperRepository, onOpenApp: (String) -> Unit =
                             Text(favorite.appName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                             favorite.packageName?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                         }
-                        TextButton(onClick = { onOpenApp(favorite.packageName ?: favorite.appId) }) { Text(stringResource(R.string.open_details)) }
-                        TextButton(onClick = { favoritePendingDelete = favorite }) { Text(stringResource(R.string.remove_favorite)) }
+                        Column(horizontalAlignment = Alignment.End) {
+                            TextButton(onClick = { onOpenApp(favorite.packageName ?: favorite.appId) }) { Text(stringResource(R.string.open_details)) }
+                            TextButton(onClick = { favoritePendingDelete = favorite }) { Text(stringResource(R.string.remove_favorite)) }
+                        }
                     }
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
-            Text(stringResource(R.string.my_reviews_count, reviews.size), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-            if (reviews.isEmpty()) {
-                Text(stringResource(R.string.no_reviews), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            item {
+                Text(stringResource(R.string.my_reviews_count, reviews.size), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             }
-            reviews.forEach { review ->
+            if (reviews.isEmpty()) {
+                item { Text(stringResource(R.string.no_reviews), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            }
+            items(reviews, key = { it.appId }) { review ->
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
