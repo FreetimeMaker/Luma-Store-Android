@@ -122,6 +122,8 @@ fun AppDetailsScreen(
     val actionShape = RoundedCornerShape(50)
     var favorite by remember(app.id) { mutableStateOf(false) }
     var favoriteSignedIn by remember(app.id) { mutableStateOf(false) }
+    var favoriteWorking by remember(app.id) { mutableStateOf(false) }
+    var favoriteError by remember(app.id) { mutableStateOf<String?>(null) }
     val favoriteScope = rememberCoroutineScope()
 
     LaunchedEffect(app.id) {
@@ -158,15 +160,23 @@ fun AppDetailsScreen(
                 actions = {
                     TextButton(
                         onClick = {
-                            if (favoriteSignedIn) {
+                            if (favoriteSignedIn && !favoriteWorking) {
+                                val previous = favorite
+                                favorite = !previous
+                                favoriteWorking = true
+                                favoriteError = null
                                 favoriteScope.launch {
                                     runCatching {
-                                        if (favorite) LumaStoreApi.removeFavorite(app.id) else LumaStoreApi.addFavorite(app.id)
-                                    }.onSuccess { favorite = !favorite }
+                                        if (previous) LumaStoreApi.removeFavorite(app.id) else LumaStoreApi.addFavorite(app.id)
+                                    }.onFailure {
+                                        favorite = previous
+                                        favoriteError = it.message
+                                    }
+                                    favoriteWorking = false
                                 }
                             }
                         },
-                        enabled = favoriteSignedIn
+                        enabled = favoriteSignedIn && !favoriteWorking
                     ) {
                         Icon(
                             imageVector = if (favorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
@@ -191,6 +201,15 @@ fun AppDetailsScreen(
                     bottom = innerPadding.calculateBottomPadding()
                 )
         ) {
+            favoriteError?.let {
+                Text(
+                    text = it,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
+
             AppDetailsHeader(
                 app = app,
                 variants = variants,
