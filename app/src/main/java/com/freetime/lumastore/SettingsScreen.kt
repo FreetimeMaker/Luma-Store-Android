@@ -188,7 +188,10 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
                 placeholder = { Text(stringResource(R.string.source_name_placeholder)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent)
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.72f),
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.58f)
+                        )
             )
             Spacer(Modifier.height(10.dp))
             OutlinedTextField(
@@ -398,8 +401,10 @@ private fun EditSourceDialog(
         onDismissRequest = onDismiss,
         modifier = Modifier,
         shape = dialogShape,
-        containerColor = Color.Transparent,
-        tonalElevation = 0.dp,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+        tonalElevation = 6.dp,
+        titleContentColor = MaterialTheme.colorScheme.onSurface,
+        textContentColor = MaterialTheme.colorScheme.onSurface,
         title = { Text(stringResource(R.string.edit_source)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
