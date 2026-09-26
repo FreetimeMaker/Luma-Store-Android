@@ -316,6 +316,11 @@
     <string name="signed_in_as">Signed in as</string>
     <string name="ratings">Ratings</string>
     <string name="my_reviews">My reviews</string>
+    <string name="favorites">Favorites</string>
+    <string name="no_favorites">You have not favorited any apps yet.</string>
+    <string name="add_favorite">Add to favorites</string>
+    <string name="remove_favorite">Remove from favorites</string>
+    <string name="favorites_sign_in">Sign in to sync favorites with your account.</string>
     <string name="no_reviews">You have not reviewed any apps yet.</string>
     <string name="review_optional">Review (optional)</string>
     <string name="save_review">Save review</string>
