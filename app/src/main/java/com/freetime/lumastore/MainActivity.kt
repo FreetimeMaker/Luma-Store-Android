@@ -101,6 +101,7 @@ class MainActivity : ComponentActivity() {
             val revision = installedAppsRevision.intValue
             val currentSourcesRevision = sourcesRevision.intValue
             val deepLinkedAppId = deepLinkedAppId(intent.data)
+            var accountRequestedAppId by rememberSaveable { mutableStateOf<String?>(null) }
             var screen by rememberSaveable {
                 mutableStateOf(
                     if (intent.getBooleanExtra(SystemNotificationManager.EXTRA_OPEN_DEVELOPER, false)) {
@@ -187,7 +188,7 @@ class MainActivity : ComponentActivity() {
                                 key(currentSourcesRevision) {
                                     FdroidSearchScreen(
                                         repository = repository,
-                                        initialAppId = deepLinkedAppId,
+                                        initialAppId = accountRequestedAppId ?: deepLinkedAppId,
                                         installedVersionCode = { installedVersionCode(it) },
                                         installedVersionName = { installedVersionName(it) },
                                         openInstalledApp = { openInstalledApp(it) },
@@ -239,7 +240,14 @@ class MainActivity : ComponentActivity() {
 
                         if (accountMounted) {
                             PersistentScreen(visible = screen == MainScreen.ACCOUNT) {
-                                AccountScreen(repository = developerRepository)
+                                AccountScreen(
+                                    repository = developerRepository,
+                                    onOpenApp = { appId ->
+                                        accountRequestedAppId = appId
+                                        searchMounted = true
+                                        screen = MainScreen.SEARCH
+                                    }
+                                )
                             }
                         }
                     }
