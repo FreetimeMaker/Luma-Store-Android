@@ -10,6 +10,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -47,12 +48,21 @@ fun AccountScreen(repository: DeveloperRepository) {
     var reviews by remember { mutableStateOf<List<AccountRating>>(emptyList()) }
     var editingReview by remember { mutableStateOf<AccountRating?>(null) }
     var editText by remember { mutableStateOf("") }
+    var editRating by remember { mutableStateOf(0) }
+    var reviewPendingDelete by remember { mutableStateOf<AccountRating?>(null) }
+    var favoritePendingDelete by remember { mutableStateOf<FavoriteApp?>(null) }
     var favorites by remember { mutableStateOf<List<FavoriteApp>>(emptyList()) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         runCatching { repository.savedSession() }
-            .onSuccess { session = it }
+            .onSuccess {
+                session = it
+                if (it != null) {
+                    runCatching { LumaStoreApi.myRatings() }.onSuccess { ratings -> reviews = ratings }.onFailure { failure -> error = failure.message }
+                    runCatching { LumaStoreApi.myFavorites() }.onSuccess { saved -> favorites = saved }.onFailure { failure -> error = failure.message }
+                }
+            }
             .onFailure { error = it.message }
         loading = false
         repository.sessionFlow().collect {
@@ -117,7 +127,7 @@ fun AccountScreen(repository: DeveloperRepository) {
             ) { Text(stringResource(R.string.sign_out)) }
 
             Spacer(Modifier.height(8.dp))
-            Text(stringResource(R.string.favorites), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.favorites_count, favorites.size), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             if (favorites.isEmpty()) {
                 Text(stringResource(R.string.no_favorites), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -132,19 +142,13 @@ fun AccountScreen(repository: DeveloperRepository) {
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(favorite.appName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                        TextButton(onClick = {
-                            scope.launch {
-                                runCatching { LumaStoreApi.removeFavorite(favorite.packageName ?: favorite.appId) }
-                                    .onSuccess { favorites = LumaStoreApi.myFavorites() }
-                                    .onFailure { error = it.message }
-                            }
-                        }) { Text(stringResource(R.string.remove_favorite)) }
+                        TextButton(onClick = { favoritePendingDelete = favorite }) { Text(stringResource(R.string.remove_favorite)) }
                     }
                 }
             }
 
             Spacer(Modifier.height(8.dp))
-            Text(stringResource(R.string.my_reviews), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.my_reviews_count, reviews.size), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             if (reviews.isEmpty()) {
                 Text(stringResource(R.string.no_reviews), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -156,8 +160,16 @@ fun AccountScreen(repository: DeveloperRepository) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(review.appName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                         Text("★".repeat(review.rating) + "☆".repeat(5 - review.rating), color = MaterialTheme.colorScheme.primary)
+                        review.updatedAt?.take(10)?.let { Text(stringResource(R.string.review_updated, it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                         review.reviewText?.let { Text(it) }
                         if (editingReview?.appId == review.appId) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                (1..5).forEach { star ->
+                                    TextButton(onClick = { editRating = star }) {
+                                        Text(if (star <= editRating) "★" else "☆", color = MaterialTheme.colorScheme.primary)
+                                    }
+                                }
+                            }
                             OutlinedTextField(
                                 value = editText,
                                 onValueChange = { if (it.length <= 2000) editText = it },
@@ -168,7 +180,7 @@ fun AccountScreen(repository: DeveloperRepository) {
                             Button(
                                 onClick = {
                                     scope.launch {
-                                        runCatching { LumaStoreApi.setMyRating(review.packageName ?: review.appId, review.rating, editText) }
+                                        runCatching { LumaStoreApi.setMyRating(review.packageName ?: review.appId, editRating.coerceIn(1, 5), editText) }
                                             .onSuccess {
                                                 reviews = LumaStoreApi.myRatings()
                                                 editingReview = null
@@ -180,20 +192,55 @@ fun AccountScreen(repository: DeveloperRepository) {
                             ) { Text(stringResource(R.string.save_review)) }
                         }
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                            TextButton(onClick = { editingReview = review; editText = review.reviewText.orEmpty() }) {
+                            TextButton(onClick = { editingReview = review; editText = review.reviewText.orEmpty(); editRating = review.rating }) {
                                 Text(stringResource(R.string.edit_review))
                             }
-                            TextButton(onClick = {
-                                scope.launch {
-                                    runCatching { LumaStoreApi.deleteMyRating(review.packageName ?: review.appId) }
-                                        .onSuccess { reviews = LumaStoreApi.myRatings(); if (editingReview?.appId == review.appId) editingReview = null }
-                                        .onFailure { error = it.message }
-                                }
-                            }) { Text(stringResource(R.string.delete_review)) }
+                            TextButton(onClick = { reviewPendingDelete = review }) { Text(stringResource(R.string.delete_review)) }
                         }
                     }
                 }
             }
         }
     }
+    reviewPendingDelete?.let { review ->
+        AlertDialog(
+            onDismissRequest = { reviewPendingDelete = null },
+            title = { Text(stringResource(R.string.delete_review)) },
+            text = { Text(stringResource(R.string.delete_review_confirmation, review.appName)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    reviewPendingDelete = null
+                    scope.launch {
+                        runCatching { LumaStoreApi.deleteMyRating(review.packageName ?: review.appId) }
+                            .onSuccess {
+                                reviews = LumaStoreApi.myRatings()
+                                if (editingReview?.appId == review.appId) editingReview = null
+                            }
+                            .onFailure { error = it.message }
+                    }
+                }) { Text(stringResource(R.string.delete)) }
+            },
+            dismissButton = { TextButton(onClick = { reviewPendingDelete = null }) { Text(stringResource(R.string.cancel)) } }
+        )
+    }
+
+    favoritePendingDelete?.let { favorite ->
+        AlertDialog(
+            onDismissRequest = { favoritePendingDelete = null },
+            title = { Text(stringResource(R.string.remove_favorite)) },
+            text = { Text(stringResource(R.string.remove_favorite_confirmation, favorite.appName)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    favoritePendingDelete = null
+                    scope.launch {
+                        runCatching { LumaStoreApi.removeFavorite(favorite.packageName ?: favorite.appId) }
+                            .onSuccess { favorites = LumaStoreApi.myFavorites() }
+                            .onFailure { error = it.message }
+                    }
+                }) { Text(stringResource(R.string.remove)) }
+            },
+            dismissButton = { TextButton(onClick = { favoritePendingDelete = null }) { Text(stringResource(R.string.cancel)) } }
+        )
+    }
+
 }
