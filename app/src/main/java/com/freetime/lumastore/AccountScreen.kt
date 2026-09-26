@@ -40,6 +40,8 @@ import com.freetime.lumastore.data.DeveloperSession
 import com.freetime.lumastore.data.AccountRating
 import com.freetime.lumastore.data.LumaStoreApi
 import com.freetime.lumastore.data.FavoriteApp
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
 @Composable
@@ -62,8 +64,12 @@ fun AccountScreen(repository: DeveloperRepository, onOpenApp: (String) -> Unit =
             .onSuccess {
                 session = it
                 if (it != null) {
-                    runCatching { LumaStoreApi.myRatings() }.onSuccess { ratings -> reviews = ratings }.onFailure { failure -> error = failure.message }
-                    runCatching { LumaStoreApi.myFavorites() }.onSuccess { saved -> favorites = saved }.onFailure { failure -> error = failure.message }
+                    coroutineScope {
+                        val ratingsRequest = async { runCatching { LumaStoreApi.myRatings() } }
+                        val favoritesRequest = async { runCatching { LumaStoreApi.myFavorites() } }
+                        ratingsRequest.await().onSuccess { ratings -> reviews = ratings }.onFailure { failure -> error = failure.message }
+                        favoritesRequest.await().onSuccess { saved -> favorites = saved }.onFailure { failure -> error = failure.message }
+                    }
                 }
             }
             .onFailure { error = it.message }
@@ -71,8 +77,12 @@ fun AccountScreen(repository: DeveloperRepository, onOpenApp: (String) -> Unit =
         repository.sessionFlow().collect {
             session = it
             if (it != null) {
-                runCatching { LumaStoreApi.myRatings() }.onSuccess { ratings -> reviews = ratings }.onFailure { error = it.message }
-                runCatching { LumaStoreApi.myFavorites() }.onSuccess { saved -> favorites = saved }.onFailure { error = it.message }
+                coroutineScope {
+                    val ratingsRequest = async { runCatching { LumaStoreApi.myRatings() } }
+                    val favoritesRequest = async { runCatching { LumaStoreApi.myFavorites() } }
+                    ratingsRequest.await().onSuccess { ratings -> reviews = ratings }.onFailure { failure -> error = failure.message }
+                    favoritesRequest.await().onSuccess { saved -> favorites = saved }.onFailure { failure -> error = failure.message }
+                }
             } else {
                 reviews = emptyList()
                 favorites = emptyList()
