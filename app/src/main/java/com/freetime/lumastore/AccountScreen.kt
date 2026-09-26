@@ -35,6 +35,7 @@ import com.freetime.lumastore.data.DeveloperRepository
 import com.freetime.lumastore.data.DeveloperSession
 import com.freetime.lumastore.data.AccountRating
 import com.freetime.lumastore.data.LumaStoreApi
+import com.freetime.lumastore.data.FavoriteApp
 import kotlinx.coroutines.launch
 
 @Composable
@@ -46,6 +47,7 @@ fun AccountScreen(repository: DeveloperRepository) {
     var reviews by remember { mutableStateOf<List<AccountRating>>(emptyList()) }
     var editingReview by remember { mutableStateOf<AccountRating?>(null) }
     var editText by remember { mutableStateOf("") }
+    var favorites by remember { mutableStateOf<List<FavoriteApp>>(emptyList()) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
@@ -57,8 +59,10 @@ fun AccountScreen(repository: DeveloperRepository) {
             session = it
             if (it != null) {
                 runCatching { LumaStoreApi.myRatings() }.onSuccess { ratings -> reviews = ratings }.onFailure { error = it.message }
+                runCatching { LumaStoreApi.myFavorites() }.onSuccess { saved -> favorites = saved }.onFailure { error = it.message }
             } else {
                 reviews = emptyList()
+                favorites = emptyList()
             }
             loading = false
             working = false
@@ -111,6 +115,33 @@ fun AccountScreen(repository: DeveloperRepository) {
                 enabled = !working,
                 modifier = Modifier.fillMaxWidth()
             ) { Text(stringResource(R.string.sign_out)) }
+
+            Spacer(Modifier.height(8.dp))
+            Text(stringResource(R.string.favorites), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            if (favorites.isEmpty()) {
+                Text(stringResource(R.string.no_favorites), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            favorites.forEach { favorite ->
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(favorite.appName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                        TextButton(onClick = {
+                            scope.launch {
+                                runCatching { LumaStoreApi.removeFavorite(favorite.packageName ?: favorite.appId) }
+                                    .onSuccess { favorites = LumaStoreApi.myFavorites() }
+                                    .onFailure { error = it.message }
+                            }
+                        }) { Text(stringResource(R.string.remove_favorite)) }
+                    }
+                }
+            }
 
             Spacer(Modifier.height(8.dp))
             Text(stringResource(R.string.my_reviews), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
