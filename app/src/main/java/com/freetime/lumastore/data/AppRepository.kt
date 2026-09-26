@@ -2,6 +2,8 @@ package com.freetime.lumastore.data
 
 import android.content.Context
 import com.freetime.lumastore.R
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -263,13 +265,33 @@ class AppRepository(context: Context) {
         }
         val root = JSONObject(raw.trimStart('\uFEFF', ' ', '\n', '\r', '\t'))
         val repo = root.optJSONObject("repo")
-        return sequenceOf(
-            repo?.optString("name"),
-            repo?.optJSONObject("name")?.optString("en-US"),
-            repo?.optJSONObject("name")?.keys()?.asSequence()?.firstOrNull()?.let { repo.optJSONObject("name")?.optString(it) }
-        ).filterNotNull().map { it.trim() }.firstOrNull { it.isNotBlank() }
-            ?: URL(indexUrl).host
+        val nameValue = repo?.opt("name")
+        val metadataName = when (nameValue) {
+            is String -> nameValue.trim().takeIf { it.isNotBlank() }
+            is JSONObject -> {
+                val locale = Locale.getDefault()
+                val preferred = listOf(locale.toLanguageTag(), locale.language, "en-US", "en")
+                    .filter { it.isNotBlank() }
+                    .distinct()
+                preferred.firstNotNullOfOrNull { key ->
+                    nameValue.optString(key).trim().takeIf { it.isNotBlank() }
+                } ?: nameValue.keys().asSequence()
+                    .mapNotNull { key -> nameValue.optString(key).trim().takeIf { it.isNotBlank() } }
+                    .firstOrNull()
+            }
+            else -> null
+        }
+        return metadataName ?: URL(indexUrl).host
     }
+
+    suspend fun addCustomSourceAsync(name: String, repositoryUrl: String): Result<AppSource> =
+        withContext(Dispatchers.IO) { addCustomSource(name, repositoryUrl) }
+
+    suspend fun updateCustomSourceAsync(source: AppSource, name: String, repositoryUrl: String): Result<AppSource> =
+        withContext(Dispatchers.IO) { updateCustomSource(source, name, repositoryUrl) }
+
+    suspend fun importRepositoryAsync(value: String, fallbackName: String = appContext.getString(R.string.imported_repository)): Result<AppSource> =
+        withContext(Dispatchers.IO) { importRepository(value, fallbackName) }
 
     fun importRepository(value: String, fallbackName: String = appContext.getString(R.string.imported_repository)): Result<AppSource> = runCatching {
         val raw = value.trim()
@@ -429,6 +451,45 @@ class AppRepository(context: Context) {
                 memoryApps = it
                 if (it.isNotEmpty()) saveCache(it)
             }
+    }
+
+    suspend fun refreshSource(source: AppSource): Result<List<StoreApp>> = withContext(Dispatchers.IO) {
+        runCatching {
+            val cachedAll = loadCachedApps()
+            val cachedForSource = cachedAll.filter { it.sourceName == source.name }
+            val loaded = runCatching { loadSource(source) }.getOrElse { error ->
+                saveSourceHealth(
+                    source,
+                    SourceHealth(
+                        successful = false,
+                        appCount = cachedForSource.size,
+                        checkedAt = System.currentTimeMillis(),
+                        message = error.message
+                    )
+                )
+                throw error
+            }
+            if (loaded.isEmpty()) {
+                saveSourceHealth(
+                    source,
+                    SourceHealth(
+                        successful = false,
+                        appCount = cachedForSource.size,
+                        checkedAt = System.currentTimeMillis(),
+                        message = "Empty response"
+                    )
+                )
+                error("Repository returned no apps")
+            }
+            val merged = (cachedAll.filterNot { it.sourceName == source.name } + loaded)
+                .groupBy { it.id to it.sourceName }
+                .mapNotNull { (_, entries) -> entries.maxByOrNull { it.versionCode } }
+                .sortedWith(compareBy<StoreApp> { it.name.lowercase() }.thenBy { it.sourceName.lowercase() })
+            saveSourceHealth(source, SourceHealth(true, loaded.size, System.currentTimeMillis()))
+            memoryApps = merged
+            saveCache(merged)
+            loaded
+        }
     }
 
     private fun loadSource(source: AppSource): List<StoreApp> = when (source.type) {
