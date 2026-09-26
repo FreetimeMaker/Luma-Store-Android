@@ -302,16 +302,24 @@ fun AppDetailsScreen(
                         contentPadding = PaddingValues(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(similarApps, key = { it.id }) { similar ->
+                        items(similarApps.take(if (wideDetails) 8 else 6), key = { it.id }) { similar ->
                             ElevatedCard(
                                 onClick = { onSimilarAppSelected(similar) },
-                                modifier = Modifier.width(180.dp),
+                                modifier = Modifier.width(if (wideDetails) 220.dp else 188.dp),
                                 colors = CardDefaults.elevatedCardColors(containerColor = Color.Transparent),
                                 elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
                             ) {
-                                Column(Modifier.padding(12.dp)) {
-                                    Text(similar.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    Text(similar.summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                Row(
+                                    Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    DetailsAppIcon(similar, if (wideDetails) 52 else 46)
+                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                        Text(similar.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Text(similar.summary.ifBlank { similar.id }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                        Text(similar.sourceName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    }
                                 }
                             }
                         }
