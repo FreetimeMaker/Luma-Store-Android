@@ -339,5 +339,6 @@
     <string name="review_updated">Updated %1$s</string>
     <string name="delete_review_confirmation">Delete your review for %1$s?</string>
     <string name="remove_favorite_confirmation">Remove %1$s from your favorites?</string>
+    <string name="open_details">Details</string>
     <string name="delete">Delete</string>
 </resources>
