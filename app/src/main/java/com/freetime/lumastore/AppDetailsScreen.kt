@@ -698,22 +698,29 @@ private fun AppRatingSection(identifier: String) {
     var average by remember(identifier) { mutableStateOf(0.0) }
     var count by remember(identifier) { mutableStateOf(0) }
     var myRating by remember(identifier) { mutableStateOf<Int?>(null) }
+    var reviewText by remember(identifier) { mutableStateOf("") }
     var signedIn by remember(identifier) { mutableStateOf(false) }
     var error by remember(identifier) { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
+    fun refreshSummary() {
+        scope.launch {
+            runCatching { LumaStoreApi.ratings(identifier) }.onSuccess { average = it.average; count = it.count }
+        }
+    }
+
     LaunchedEffect(identifier) {
         runCatching { LumaStoreApi.ratings(identifier) }.onSuccess { average = it.average; count = it.count }
         supabase.auth.awaitInitialization()
-        supabase.auth.sessionStatus.collect { status ->
-            val session = supabase.auth.currentSessionOrNull()
-            signedIn = session != null
+        supabase.auth.sessionStatus.collect {
+            signedIn = supabase.auth.currentSessionOrNull() != null
             if (signedIn) {
                 runCatching { LumaStoreApi.myRating(identifier) }
-                    .onSuccess { myRating = it.rating; error = null }
+                    .onSuccess { myRating = it.rating; reviewText = it.reviewText.orEmpty(); error = null }
                     .onFailure { error = it.message }
             } else {
                 myRating = null
+                reviewText = ""
             }
         }
     }
@@ -734,19 +741,44 @@ private fun AppRatingSection(identifier: String) {
                             imageVector = if (value <= (myRating ?: 0)) Icons.Filled.Star else Icons.Outlined.Star,
                             contentDescription = value.toString(),
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(36.dp).clickable {
-                                scope.launch {
-                                    error = null
-                                    runCatching { LumaStoreApi.setMyRating(identifier, value) }
-                                        .onSuccess {
-                                            myRating = it.rating
-                                            runCatching { LumaStoreApi.ratings(identifier) }.onSuccess { summary -> average = summary.average; count = summary.count }
-                                        }
-                                        .onFailure { error = it.message }
-                                }
-                            }
+                            modifier = Modifier.size(36.dp).clickable { myRating = value }
                         )
                     }
+                }
+                OutlinedTextField(
+                    value = reviewText,
+                    onValueChange = { if (it.length <= 2000) reviewText = it },
+                    label = { Text(stringResource(R.string.review_optional)) },
+                    supportingText = { Text("${reviewText.length}/2000") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    maxLines = 6
+                )
+                Button(
+                    onClick = {
+                        val rating = myRating ?: return@Button
+                        scope.launch {
+                            error = null
+                            runCatching { LumaStoreApi.setMyRating(identifier, rating, reviewText) }
+                                .onSuccess { myRating = it.rating; reviewText = it.reviewText.orEmpty(); refreshSummary() }
+                                .onFailure { error = it.message }
+                        }
+                    },
+                    enabled = myRating != null,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text(stringResource(R.string.save_review)) }
+                if (myRating != null) {
+                    TextButton(
+                        onClick = {
+                            scope.launch {
+                                error = null
+                                runCatching { LumaStoreApi.deleteMyRating(identifier) }
+                                    .onSuccess { myRating = null; reviewText = ""; refreshSummary() }
+                                    .onFailure { error = it.message }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text(stringResource(R.string.delete_review)) }
                 }
             } else Text(stringResource(R.string.rating_sign_in), color = MaterialTheme.colorScheme.onSurfaceVariant)
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
