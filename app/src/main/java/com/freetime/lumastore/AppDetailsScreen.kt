@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
@@ -117,6 +118,17 @@ fun AppDetailsScreen(
     val scrollState = rememberScrollState()
     val glassShape = RoundedCornerShape(20.dp)
     val actionShape = RoundedCornerShape(50)
+    var favorite by remember(app.id) { mutableStateOf(false) }
+    var favoriteSignedIn by remember(app.id) { mutableStateOf(false) }
+    val favoriteScope = rememberCoroutineScope()
+
+    LaunchedEffect(app.id) {
+        supabase.auth.awaitInitialization()
+        supabase.auth.sessionStatus.collect {
+            favoriteSignedIn = supabase.auth.currentSessionOrNull() != null
+            favorite = if (favoriteSignedIn) runCatching { LumaStoreApi.isFavorite(app.id) }.getOrDefault(false) else false
+        }
+    }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
     val wideDetails = maxWidth >= 840.dp
@@ -139,6 +151,26 @@ fun AppDetailsScreen(
                 navigationIcon = {
                     TextButton(onClick = onBack) {
                         Text(stringResource(R.string.symbol_back_chevron), style = MaterialTheme.typography.headlineSmall)
+                    }
+                },
+                actions = {
+                    TextButton(
+                        onClick = {
+                            if (favoriteSignedIn) {
+                                favoriteScope.launch {
+                                    runCatching {
+                                        if (favorite) LumaStoreApi.removeFavorite(app.id) else LumaStoreApi.addFavorite(app.id)
+                                    }.onSuccess { favorite = !favorite }
+                                }
+                            }
+                        },
+                        enabled = favoriteSignedIn
+                    ) {
+                        Icon(
+                            imageVector = if (favorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                            contentDescription = stringResource(if (favorite) R.string.remove_favorite else R.string.add_favorite),
+                            tint = if (favorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 },
                 scrollBehavior = scrollBehavior,
