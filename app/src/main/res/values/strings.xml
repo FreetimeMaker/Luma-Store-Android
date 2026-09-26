@@ -315,6 +315,12 @@
     <string name="account_description">Sign in with Google to use your Luma Store account.</string>
     <string name="signed_in_as">Signed in as</string>
     <string name="ratings">Ratings</string>
+    <string name="my_reviews">My reviews</string>
+    <string name="no_reviews">You have not reviewed any apps yet.</string>
+    <string name="review_optional">Review (optional)</string>
+    <string name="save_review">Save review</string>
+    <string name="delete_review">Delete review</string>
+    <string name="edit_review">Edit review</string>
     <string name="rating_summary">%1$.1f / 5 · %2$d ratings</string>
     <string name="your_rating">Your rating</string>
     <string name="rating_sign_in">Sign in with Google in Account to rate this app.</string>
