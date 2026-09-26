@@ -253,6 +253,24 @@ class AppRepository(context: Context) {
     fun cacheAgeMillis(): Long? = cacheTimestamp().takeIf { it > 0 }?.let { System.currentTimeMillis() - it }
 
 
+    private fun repositoryDisplayName(indexUrl: String): String {
+        val raw = runCatching { httpGet(indexUrl) }.getOrElse { firstError ->
+            if (indexUrl.endsWith("index-v2.json", true)) {
+                httpGet(indexUrl.substringBeforeLast('/') + "/index-v1.json")
+            } else {
+                throw firstError
+            }
+        }
+        val root = JSONObject(raw.trimStart('\uFEFF', ' ', '\n', '\r', '\t'))
+        val repo = root.optJSONObject("repo")
+        return sequenceOf(
+            repo?.optString("name"),
+            repo?.optJSONObject("name")?.optString("en-US"),
+            repo?.optJSONObject("name")?.keys()?.asSequence()?.firstOrNull()?.let { repo.optJSONObject("name")?.optString(it) }
+        ).filterNotNull().map { it.trim() }.firstOrNull { it.isNotBlank() }
+            ?: URL(indexUrl).host
+    }
+
     fun importRepository(value: String, fallbackName: String = appContext.getString(R.string.imported_repository)): Result<AppSource> = runCatching {
         val raw = value.trim()
         require(raw.isNotBlank()) { appContext.getString(R.string.repository_url_required) }
@@ -262,22 +280,20 @@ class AppRepository(context: Context) {
             raw.startsWith("https://", true) || raw.startsWith("http://", true) -> raw.substringBefore("#")
             else -> throw IllegalArgumentException(appContext.getString(R.string.repository_import_invalid))
         }
-        val host = runCatching { URL(candidate).host }.getOrNull().orEmpty()
-        val name = fallbackName.takeIf { it.isNotBlank() } ?: host.ifBlank { appContext.getString(R.string.imported_repository) }
-        addCustomSource(name, candidate).getOrElse { error ->
+        addCustomSource(fallbackName, candidate).getOrElse { error ->
             val normalized = normalizeFdroidUrl(candidate)
             sources.firstOrNull { it.indexUrl.equals(normalized, true) } ?: throw error
         }
     }
 
     fun addCustomSource(name: String, repositoryUrl: String): Result<AppSource> = runCatching {
-        val cleanName = name.trim()
-        require(cleanName.isNotBlank()) { appContext.getString(R.string.source_name_required) }
         val indexUrl = normalizeFdroidUrl(repositoryUrl)
         val parsed = URL(indexUrl)
         require(parsed.protocol == "https" || parsed.protocol == "http") {
             appContext.getString(R.string.repository_url_invalid_scheme)
         }
+        val cleanName = repositoryDisplayName(indexUrl).ifBlank { name.trim() }
+        require(cleanName.isNotBlank()) { appContext.getString(R.string.source_name_required) }
         require(sources.none { it.name.equals(cleanName, true) }) { appContext.getString(R.string.source_name_exists) }
         require(sources.none { it.indexUrl.equals(indexUrl, true) }) { appContext.getString(R.string.repository_already_added) }
         AppSource(cleanName, indexUrl, SourceType.FDROID_V1, custom = true).also {
@@ -288,13 +304,13 @@ class AppRepository(context: Context) {
 
     fun updateCustomSource(source: AppSource, name: String, repositoryUrl: String): Result<AppSource> = runCatching {
         require(source.custom) { appContext.getString(R.string.only_custom_sources_editable) }
-        val cleanName = name.trim()
-        require(cleanName.isNotBlank()) { appContext.getString(R.string.source_name_required) }
         val indexUrl = normalizeFdroidUrl(repositoryUrl)
         val parsed = URL(indexUrl)
         require(parsed.protocol == "https" || parsed.protocol == "http") {
             appContext.getString(R.string.repository_url_invalid_scheme)
         }
+        val cleanName = repositoryDisplayName(indexUrl).ifBlank { name.trim() }
+        require(cleanName.isNotBlank()) { appContext.getString(R.string.source_name_required) }
         val others = sources.filterNot { it.name == source.name && it.indexUrl == source.indexUrl }
         require(others.none { it.name.equals(cleanName, true) }) { appContext.getString(R.string.source_name_exists) }
         require(others.none { it.indexUrl.equals(indexUrl, true) }) { appContext.getString(R.string.repository_already_added) }
