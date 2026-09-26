@@ -27,6 +27,9 @@ import java.util.Date
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.freetime.lumastore.data.AppRepository
 import com.freetime.lumastore.data.AppSource
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChanged: () -> Unit) {
@@ -41,6 +44,8 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
     var dataSaver by remember { mutableStateOf(repository.dataSaverEnabled()) }
     var oledMode by remember { mutableStateOf(repository.oledModeEnabled()) }
     val sourceAddFailed = stringResource(R.string.source_add_failed)
+    val scope = rememberCoroutineScope()
+    var refreshingSourceName by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     var transferMessage by remember { mutableStateOf<String?>(null) }
     var pendingExport by remember { mutableStateOf<String?>(null) }
@@ -131,6 +136,20 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
                     editable = repository.isCustomSource(source),
                     onEnabledChange = { checked -> applySourceState(source, checked) },
                     onEdit = { editingSource = source },
+                    refreshing = refreshingSourceName == source.name,
+                    onRefresh = {
+                        scope.launch {
+                            refreshingSourceName = source.name
+                            repository.refreshSource(source)
+                                .onSuccess {
+                                    transferMessage = context.getString(R.string.source_refresh_success, source.name)
+                                    onSourcesChanged()
+                                }
+                                .onFailure { addSourceError = it.message ?: context.getString(R.string.source_refresh_failed) }
+                            refreshingSourceName = null
+                            refreshSources()
+                        }
+                    },
                     onRemove = {
                         if (repository.removeCustomSource(source)) {
                             enabledStates.remove(source.name)
@@ -210,16 +229,18 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
             Spacer(Modifier.height(12.dp))
             Button(
                 onClick = {
-                    repository.addCustomSource(sourceName, sourceUrl)
-                        .onSuccess { source ->
-                            sourceName = ""
-                            sourceUrl = ""
-                            addSourceError = null
-                            enabledStates[source.name] = true
-                            refreshSources()
-                            onSourcesChanged()
-                        }
-                        .onFailure { addSourceError = it.message ?: sourceAddFailed }
+                    scope.launch {
+                        repository.addCustomSourceAsync(sourceName, sourceUrl)
+                            .onSuccess { source ->
+                                sourceName = ""
+                                sourceUrl = ""
+                                addSourceError = null
+                                enabledStates[source.name] = true
+                                refreshSources()
+                                onSourcesChanged()
+                            }
+                            .onFailure { addSourceError = it.message ?: sourceAddFailed }
+                    }
                 },
                 enabled = sourceName.isNotBlank() && sourceUrl.isNotBlank(),
                 modifier = Modifier.fillMaxWidth()
@@ -263,16 +284,18 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
                 ) { Text(stringResource(R.string.scan_qr_code)) }
                 Button(
                     onClick = {
-                        repository.importRepository(repositoryImportValue)
-                            .onSuccess { source ->
-                                repositoryImportValue = ""
-                                repositoryImportPreview = null
-                                addSourceError = null
-                                enabledStates[source.name] = repository.isSourceEnabled(source)
-                                refreshSources()
-                                onSourcesChanged()
-                            }
-                            .onFailure { addSourceError = it.message ?: sourceAddFailed }
+                        scope.launch {
+                            repository.importRepositoryAsync(repositoryImportValue)
+                                .onSuccess { source ->
+                                    repositoryImportValue = ""
+                                    repositoryImportPreview = null
+                                    addSourceError = null
+                                    enabledStates[source.name] = repository.isSourceEnabled(source)
+                                    refreshSources()
+                                    onSourcesChanged()
+                                }
+                                .onFailure { addSourceError = it.message ?: sourceAddFailed }
+                        }
                     },
                     enabled = repositoryImportValue.isNotBlank(),
                     modifier = Modifier.weight(1f)
@@ -456,6 +479,8 @@ private fun SourceCard(
     editable: Boolean,
     onEnabledChange: (Boolean) -> Unit,
     onEdit: () -> Unit,
+    refreshing: Boolean,
+    onRefresh: () -> Unit,
     onRemove: () -> Unit
 ) {
     val shape = RoundedCornerShape(20.dp)
@@ -498,6 +523,15 @@ private fun SourceCard(
                     }
                 }
                 Switch(enabled, onEnabledChange)
+            }
+            Row(Modifier.align(Alignment.End), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                TextButton(onClick = onRefresh, enabled = enabled && !refreshing) {
+                    if (refreshing) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(6.dp))
+                    }
+                    Text(stringResource(R.string.retry_source))
+                }
             }
             if (editable || removable) {
                 Row(Modifier.align(Alignment.End), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
