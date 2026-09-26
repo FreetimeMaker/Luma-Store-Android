@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets
 data class AppRatingSummary(val average: Double, val count: Int)
 data class MyAppRating(val rating: Int?, val reviewText: String?, val updatedAt: String?)
 data class AccountRating(val appId: String, val packageName: String?, val appName: String, val rating: Int, val reviewText: String?, val updatedAt: String?)
+data class FavoriteApp(val appId: String, val packageName: String?, val appName: String, val iconUrl: String?, val createdAt: String?)
 
 object LumaStoreApi {
     private const val BASE_URL = "https://api.free-time.me/v2/lumastore"
@@ -43,6 +44,34 @@ object LumaStoreApi {
                 val row = array.optJSONObject(index) ?: continue
                 val app = row.optJSONObject("app")
                 add(AccountRating(row.optString("app_id"), app?.optString("package_name")?.takeIf { it.isNotBlank() }, app?.optString("name")?.takeIf { it.isNotBlank() } ?: row.optString("app_id"), row.optInt("rating"), row.optString("review_text").takeIf { it.isNotBlank() }, row.optString("updated_at").takeIf { it.isNotBlank() }))
+            }
+        }
+    }
+
+    suspend fun isFavorite(identifier: String): Boolean =
+        request("GET", "/apps/${encode(identifier)}/favorite/me", authenticated = true).optBoolean("favorite", false)
+
+    suspend fun addFavorite(identifier: String) {
+        request("PUT", "/apps/${encode(identifier)}/favorite/me", authenticated = true)
+    }
+
+    suspend fun removeFavorite(identifier: String) {
+        request("DELETE", "/apps/${encode(identifier)}/favorite/me", authenticated = true, allowEmpty = true)
+    }
+
+    suspend fun myFavorites(): List<FavoriteApp> {
+        val array = requestArray("GET", "/favorites/me", authenticated = true)
+        return buildList {
+            for (index in 0 until array.length()) {
+                val row = array.optJSONObject(index) ?: continue
+                val app = row.optJSONObject("app")
+                add(FavoriteApp(
+                    appId = row.optString("app_id"),
+                    packageName = app?.optString("package_name")?.takeIf { it.isNotBlank() },
+                    appName = app?.optString("name")?.takeIf { it.isNotBlank() } ?: row.optString("app_id"),
+                    iconUrl = app?.optString("icon_url")?.takeIf { it.isNotBlank() },
+                    createdAt = row.optString("created_at").takeIf { it.isNotBlank() }
+                ))
             }
         }
     }
