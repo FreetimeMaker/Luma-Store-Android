@@ -253,6 +253,7 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
                                 .setPrompt(context.getString(R.string.scan_qr_code))
                                 .setBeepEnabled(false)
                                 .setOrientationLocked(true)
+                                .setCaptureActivity(PortraitCaptureActivity::class.java)
                         )
                     },
                     modifier = Modifier.weight(1f)
