@@ -86,6 +86,7 @@ import coil3.compose.SubcomposeAsyncImage
 import coil3.compose.SubcomposeAsyncImageContent
 import com.freetime.lumastore.data.StoreApp
 import com.freetime.lumastore.data.LumaStoreApi
+import com.freetime.lumastore.data.PublicAppReview
 import com.freetime.lumastore.data.supabase
 import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.launch
@@ -734,16 +735,25 @@ private fun AppRatingSection(identifier: String) {
     var reviewText by remember(identifier) { mutableStateOf("") }
     var signedIn by remember(identifier) { mutableStateOf(false) }
     var error by remember(identifier) { mutableStateOf<String?>(null) }
+    var publicReviews by remember(identifier) { mutableStateOf<List<PublicAppReview>>(emptyList()) }
+    var reviewsLoading by remember(identifier) { mutableStateOf(true) }
+    var reviewSort by remember(identifier) { mutableStateOf("newest") }
     val scope = rememberCoroutineScope()
 
     fun refreshSummary() {
         scope.launch {
             runCatching { LumaStoreApi.ratings(identifier) }.onSuccess { average = it.average; count = it.count }
+            runCatching { LumaStoreApi.publicReviews(identifier, reviewSort) }.onSuccess { publicReviews = it }
         }
     }
 
     LaunchedEffect(identifier) {
         runCatching { LumaStoreApi.ratings(identifier) }.onSuccess { average = it.average; count = it.count }
+        reviewsLoading = true
+        runCatching { LumaStoreApi.publicReviews(identifier, reviewSort) }
+            .onSuccess { publicReviews = it }
+            .onFailure { error = it.message }
+        reviewsLoading = false
         supabase.auth.awaitInitialization()
         supabase.auth.sessionStatus.collect {
             signedIn = supabase.auth.currentSessionOrNull() != null
@@ -814,6 +824,50 @@ private fun AppRatingSection(identifier: String) {
                     ) { Text(stringResource(R.string.delete_review)) }
                 }
             } else Text(stringResource(R.string.rating_sign_in), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            HorizontalDivider()
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.community_reviews), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                FilterChip(selected = reviewSort == "newest", onClick = {
+                    reviewSort = "newest"
+                    scope.launch {
+                        reviewsLoading = true
+                        runCatching { LumaStoreApi.publicReviews(identifier, "newest") }.onSuccess { publicReviews = it }.onFailure { error = it.message }
+                        reviewsLoading = false
+                    }
+                }, label = { Text(stringResource(R.string.newest)) })
+                FilterChip(selected = reviewSort == "highest", onClick = {
+                    reviewSort = "highest"
+                    scope.launch {
+                        reviewsLoading = true
+                        runCatching { LumaStoreApi.publicReviews(identifier, "highest") }.onSuccess { publicReviews = it }.onFailure { error = it.message }
+                        reviewsLoading = false
+                    }
+                }, label = { Text(stringResource(R.string.highest_rated)) })
+            }
+            if (reviewsLoading) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            } else if (publicReviews.isEmpty()) {
+                Text(stringResource(R.string.no_public_reviews), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                publicReviews.forEach { review ->
+                    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                            (1..5).forEach { value ->
+                                Icon(
+                                    imageVector = if (value <= review.rating) Icons.Filled.Star else Icons.Outlined.Star,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                        Text(review.reviewText)
+                        review.updatedAt?.take(10)?.let {
+                            Text(stringResource(R.string.review_updated, it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         }
     }
