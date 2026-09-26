@@ -2,6 +2,11 @@ package com.freetime.lumastore
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -10,6 +15,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -24,6 +33,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.freetime.lumastore.data.DeveloperRepository
 import com.freetime.lumastore.data.DeveloperSession
+import com.freetime.lumastore.data.AccountRating
+import com.freetime.lumastore.data.LumaStoreApi
 import kotlinx.coroutines.launch
 
 @Composable
@@ -32,6 +43,9 @@ fun AccountScreen(repository: DeveloperRepository) {
     var loading by remember { mutableStateOf(true) }
     var working by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var reviews by remember { mutableStateOf<List<AccountRating>>(emptyList()) }
+    var editingReview by remember { mutableStateOf<AccountRating?>(null) }
+    var editText by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
@@ -41,17 +55,24 @@ fun AccountScreen(repository: DeveloperRepository) {
         loading = false
         repository.sessionFlow().collect {
             session = it
+            if (it != null) {
+                runCatching { LumaStoreApi.myRatings() }.onSuccess { ratings -> reviews = ratings }.onFailure { error = it.message }
+            } else {
+                reviews = emptyList()
+            }
             loading = false
             working = false
         }
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 24.dp),
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text(stringResource(R.string.account), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        Text(stringResource(R.string.account_description), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (session == null) {
+            Text(stringResource(R.string.account_description), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
         if (loading) {
@@ -90,6 +111,58 @@ fun AccountScreen(repository: DeveloperRepository) {
                 enabled = !working,
                 modifier = Modifier.fillMaxWidth()
             ) { Text(stringResource(R.string.sign_out)) }
+
+            Spacer(Modifier.height(8.dp))
+            Text(stringResource(R.string.my_reviews), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            if (reviews.isEmpty()) {
+                Text(stringResource(R.string.no_reviews), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            reviews.forEach { review ->
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+                ) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(review.appName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text("★".repeat(review.rating) + "☆".repeat(5 - review.rating), color = MaterialTheme.colorScheme.primary)
+                        review.reviewText?.let { Text(it) }
+                        if (editingReview?.appId == review.appId) {
+                            OutlinedTextField(
+                                value = editText,
+                                onValueChange = { if (it.length <= 2000) editText = it },
+                                label = { Text(stringResource(R.string.review_optional)) },
+                                supportingText = { Text("${editText.length}/2000") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Button(
+                                onClick = {
+                                    scope.launch {
+                                        runCatching { LumaStoreApi.setMyRating(review.packageName ?: review.appId, review.rating, editText) }
+                                            .onSuccess {
+                                                reviews = LumaStoreApi.myRatings()
+                                                editingReview = null
+                                            }
+                                            .onFailure { error = it.message }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text(stringResource(R.string.save_review)) }
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            TextButton(onClick = { editingReview = review; editText = review.reviewText.orEmpty() }) {
+                                Text(stringResource(R.string.edit_review))
+                            }
+                            TextButton(onClick = {
+                                scope.launch {
+                                    runCatching { LumaStoreApi.deleteMyRating(review.packageName ?: review.appId) }
+                                        .onSuccess { reviews = LumaStoreApi.myRatings(); if (editingReview?.appId == review.appId) editingReview = null }
+                                        .onFailure { error = it.message }
+                                }
+                            }) { Text(stringResource(R.string.delete_review)) }
+                        }
+                    }
+                }
+            }
         }
     }
 }
