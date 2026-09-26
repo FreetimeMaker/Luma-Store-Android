@@ -217,17 +217,27 @@ class AppRepository(context: Context) {
     }
 
     fun similarApps(app: StoreApp, limit: Int = 8): List<StoreApp> {
-        val categories = app.categories.map { it.lowercase() }.toSet()
+        val categories = app.categories.map { it.trim().lowercase() }.filter { it.isNotBlank() }.toSet()
+        val developer = app.authorName?.trim()?.lowercase().orEmpty()
         return currentApps()
+            .asSequence()
             .filter { it.id != app.id }
             .groupBy { it.id }
             .mapNotNull { (id, variants) -> preferredVariant(id, variants) }
             .map { candidate ->
-                val overlap = candidate.categories.count { it.lowercase() in categories }
-                candidate to overlap
+                val candidateCategories = candidate.categories.map { it.trim().lowercase() }.toSet()
+                val categoryOverlap = candidateCategories.count { it in categories }
+                val sameDeveloper = developer.isNotBlank() && candidate.authorName?.trim()?.lowercase() == developer
+                val sameSource = candidate.sourceName == app.sourceName
+                val score = categoryOverlap * 100 + (if (sameDeveloper) 35 else 0) + (if (sameSource) 5 else 0)
+                candidate to score
             }
-            .filter { it.second > 0 }
-            .sortedWith(compareByDescending<Pair<StoreApp, Int>> { it.second }.thenBy { it.first.name.lowercase() })
+            .filter { (_, score) -> score > 0 }
+            .sortedWith(
+                compareByDescending<Pair<StoreApp, Int>> { it.second }
+                    .thenByDescending { it.first.lastUpdatedTimestamp ?: 0L }
+                    .thenBy { it.first.name.lowercase() }
+            )
             .take(limit)
             .map { it.first }
     }
