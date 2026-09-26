@@ -17,6 +17,11 @@ import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -58,6 +63,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
@@ -155,7 +161,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize()
                 ) {
                 val wideWindow = maxWidth >= 840.dp
-                val navigationHorizontalPadding = 18.dp
+                val compactNavigation = maxWidth < 430.dp
                 Box(Modifier.fillMaxSize()) {
                     Box(
                         Modifier.fillMaxSize().then(
@@ -238,27 +244,45 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    Row(
-                        modifier = Modifier
-                            .align(if (wideWindow) Alignment.CenterStart else Alignment.BottomCenter)
-                            .then(
-                                if (wideWindow) Modifier.width(92.dp).padding(start = 12.dp)
-                                else Modifier.fillMaxWidth().padding(horizontal = 12.dp)
-                            )
-                            .navigationBarsPadding()
-                            .padding(bottom = 12.dp)
-                            .heightIn(min = 64.dp)
-                            .liquidGlassCapsule(interactive = false)
-                            .padding(horizontal = 6.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        FdroidNavigationItem(screen == MainScreen.DISCOVER, { screen = MainScreen.DISCOVER }, stringResource(R.string.discover)) { Icon(Icons.Filled.Explore, contentDescription = null) }
-                        FdroidNavigationItem(screen == MainScreen.SEARCH, { screen = MainScreen.SEARCH }, stringResource(R.string.search)) { Icon(Icons.Filled.Search, contentDescription = null) }
-                        FdroidNavigationItem(screen == MainScreen.MY_APPS, { screen = MainScreen.MY_APPS }, stringResource(R.string.my_apps), availableUpdateCount) { Icon(Icons.Filled.Apps, contentDescription = null) }
-                        FdroidNavigationItem(screen == MainScreen.SOURCES, { screen = MainScreen.SOURCES }, stringResource(R.string.sources)) { Icon(Icons.Filled.Storage, contentDescription = null) }
-                        FdroidNavigationItem(screen == MainScreen.DEVELOPER, { screen = MainScreen.DEVELOPER }, stringResource(R.string.developer)) { Icon(Icons.Filled.Code, contentDescription = null) }
-                        FdroidNavigationItem(screen == MainScreen.ACCOUNT, { screen = MainScreen.ACCOUNT }, stringResource(R.string.account)) { Icon(Icons.Filled.AccountCircle, contentDescription = null) }
+                    if (wideWindow) {
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.CenterStart)
+                                .width(96.dp)
+                                .padding(start = 12.dp)
+                                .liquidGlassCapsule(interactive = false)
+                                .padding(horizontal = 7.dp, vertical = 10.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            FdroidRailItem(screen == MainScreen.DISCOVER, { screen = MainScreen.DISCOVER }, stringResource(R.string.discover)) { Icon(Icons.Filled.Explore, contentDescription = null) }
+                            FdroidRailItem(screen == MainScreen.SEARCH, { screen = MainScreen.SEARCH }, stringResource(R.string.search)) { Icon(Icons.Filled.Search, contentDescription = null) }
+                            FdroidRailItem(screen == MainScreen.MY_APPS, { screen = MainScreen.MY_APPS }, stringResource(R.string.my_apps), availableUpdateCount) { Icon(Icons.Filled.Apps, contentDescription = null) }
+                            FdroidRailItem(screen == MainScreen.SOURCES, { screen = MainScreen.SOURCES }, stringResource(R.string.sources)) { Icon(Icons.Filled.Storage, contentDescription = null) }
+                            FdroidRailItem(screen == MainScreen.DEVELOPER, { screen = MainScreen.DEVELOPER }, stringResource(R.string.developer)) { Icon(Icons.Filled.Code, contentDescription = null) }
+                            FdroidRailItem(screen == MainScreen.ACCOUNT, { screen = MainScreen.ACCOUNT }, stringResource(R.string.account)) { Icon(Icons.Filled.AccountCircle, contentDescription = null) }
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .padding(horizontal = if (compactNavigation) 8.dp else 14.dp)
+                                .navigationBarsPadding()
+                                .padding(bottom = 12.dp)
+                                .heightIn(min = 62.dp)
+                                .liquidGlassCapsule(interactive = false)
+                                .padding(horizontal = 5.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            FdroidNavigationItem(screen == MainScreen.DISCOVER, { screen = MainScreen.DISCOVER }, stringResource(R.string.discover), compact = compactNavigation) { Icon(Icons.Filled.Explore, contentDescription = null) }
+                            FdroidNavigationItem(screen == MainScreen.SEARCH, { screen = MainScreen.SEARCH }, stringResource(R.string.search), compact = compactNavigation) { Icon(Icons.Filled.Search, contentDescription = null) }
+                            FdroidNavigationItem(screen == MainScreen.MY_APPS, { screen = MainScreen.MY_APPS }, stringResource(R.string.my_apps), availableUpdateCount, compactNavigation) { Icon(Icons.Filled.Apps, contentDescription = null) }
+                            FdroidNavigationItem(screen == MainScreen.SOURCES, { screen = MainScreen.SOURCES }, stringResource(R.string.sources), compact = compactNavigation) { Icon(Icons.Filled.Storage, contentDescription = null) }
+                            FdroidNavigationItem(screen == MainScreen.DEVELOPER, { screen = MainScreen.DEVELOPER }, stringResource(R.string.developer), compact = compactNavigation) { Icon(Icons.Filled.Code, contentDescription = null) }
+                            FdroidNavigationItem(screen == MainScreen.ACCOUNT, { screen = MainScreen.ACCOUNT }, stringResource(R.string.account), compact = compactNavigation) { Icon(Icons.Filled.AccountCircle, contentDescription = null) }
+                        }
                     }
                 }
                 }
@@ -274,31 +298,77 @@ class MainActivity : ComponentActivity() {
         onClick: () -> Unit,
         label: String,
         badgeCount: Int = 0,
+        compact: Boolean = false,
         icon: @Composable () -> Unit
     ) {
+        val emphasis by animateFloatAsState(if (selected) 1f else 0.82f, label = "navEmphasis")
         Box(
             modifier = Modifier
                 .weight(1f)
                 .padding(horizontal = 1.dp)
+                .animateContentSize()
                 .then(if (selected) Modifier.liquidGlassCapsule(interactive = true) else Modifier)
                 .clickable(onClick = onClick)
-                .padding(horizontal = 2.dp, vertical = 7.dp),
+                .padding(horizontal = if (compact) 1.dp else 3.dp, vertical = 7.dp),
             contentAlignment = Alignment.Center
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(
+                modifier = Modifier.alpha(emphasis),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
                 if (badgeCount > 0) {
                     BadgedBox(badge = { Badge { Text(badgeCount.toString(), maxLines = 1) } }) { icon() }
                 } else icon()
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                    maxLines = 1,
-                    softWrap = false,
-                    overflow = TextOverflow.Ellipsis
-                )
+                AnimatedVisibility(
+                    visible = !compact || selected,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
+        }
+    }
+
+    @Composable
+    private fun FdroidRailItem(
+        selected: Boolean,
+        onClick: () -> Unit,
+        label: String,
+        badgeCount: Int = 0,
+        icon: @Composable () -> Unit
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .animateContentSize()
+                .then(if (selected) Modifier.liquidGlassCapsule(interactive = true) else Modifier)
+                .clickable(onClick = onClick)
+                .padding(horizontal = 5.dp, vertical = 9.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            if (badgeCount > 0) {
+                BadgedBox(badge = { Badge { Text(badgeCount.toString(), maxLines = 1) } }) { icon() }
+            } else icon()
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 
