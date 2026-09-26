@@ -161,7 +161,6 @@
     <string name="source_health_ok">%1$d apps • last sync %2$s</string>
     <string name="source_health_error">Sync failed • %1$s</string>
     <string name="update_all">Update all</string>
-    <string name="favorites">Favorites</string>
     <string name="recently_updated">Recently updated</string>
     <string name="new_apps">New apps</string>
     <string name="share">Share</string>
@@ -194,8 +193,6 @@
     <string name="version_history">Version history</string>
     <string name="version_history_read_only">Older versions are shown for reference only and cannot be installed from Luma Store.</string>
     <string name="no_version_history">No older version metadata is available from this source.</string>
-    <string name="add_favorite">Add to favorites</string>
-    <string name="remove_favorite">Remove from favorites</string>
     <string name="ignore_update">Ignore this update</string>
     <string name="stop_ignoring_update">Stop ignoring this update</string>
     <string name="lock_to_source">Always use this source</string>
