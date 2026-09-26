@@ -330,6 +330,10 @@
     <string name="your_rating">Your rating</string>
     <string name="rating_sign_in">Sign in with Google in Account to rate this app.</string>
     <string name="rating_saved">Rating saved</string>
+    <string name="community_reviews">Community reviews</string>
+    <string name="newest">Newest</string>
+    <string name="highest_rated">Highest rated</string>
+    <string name="no_public_reviews">No written reviews yet.</string>
     <string name="favorites_count">Favorites (%1$d)</string>
     <string name="my_reviews_count">My reviews (%1$d)</string>
     <string name="review_updated">Updated %1$s</string>
