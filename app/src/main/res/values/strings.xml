@@ -341,4 +341,10 @@
     <string name="remove_favorite_confirmation">Remove %1$s from your favorites?</string>
     <string name="open_details">Details</string>
     <string name="delete">Delete</string>
+    <string name="recently_viewed">Recently viewed</string>
+    <string name="discover_filters">Browse and sort</string>
+    <string name="sort_updated">Recently updated</string>
+    <string name="sort_downloads">Most downloaded</string>
+    <string name="all_developers">All developers</string>
+    <string name="all_licenses">All licenses</string>
 </resources>
