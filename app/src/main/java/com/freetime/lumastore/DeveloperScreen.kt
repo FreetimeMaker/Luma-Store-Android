@@ -163,6 +163,8 @@ fun DeveloperScreen(
     if (developerPage == "profile") {
         DeveloperProfileEditor(
             initial = profile,
+            session = current,
+            repository = repository,
             onBack = { developerPage = "overview" },
             onSave = { name, bio, website, github, gitlab, avatar ->
                 scope.launch {
@@ -360,19 +362,45 @@ fun DeveloperScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DeveloperProfileEditor(initial: DeveloperProfileSettings?, onBack: () -> Unit, onSave: (String, String, String, String, String, String) -> Unit) {
+private fun DeveloperProfileEditor(initial: DeveloperProfileSettings?, session: DeveloperSession, repository: DeveloperRepository, onBack: () -> Unit, onSave: (String, String, String, String, String, String) -> Unit) {
     var name by remember(initial) { mutableStateOf(initial?.displayName.orEmpty()) }
     var bio by remember(initial) { mutableStateOf(initial?.bio.orEmpty()) }
     var website by remember(initial) { mutableStateOf(initial?.websiteUrl.orEmpty()) }
     var github by remember(initial) { mutableStateOf(initial?.githubUrl.orEmpty()) }
     var gitlab by remember(initial) { mutableStateOf(initial?.gitlabUrl.orEmpty()) }
     var avatar by remember(initial) { mutableStateOf(initial?.avatarUrl.orEmpty()) }
+    var avatarUploading by remember { mutableStateOf(false) }
+    var avatarError by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) scope.launch {
+            avatarUploading = true
+            avatarError = null
+            runCatching {
+                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: error("Unable to read image")
+                require(bytes.size <= 5 * 1024 * 1024) { "Profile image must be 5 MB or smaller." }
+                val mime = context.contentResolver.getType(uri).orEmpty()
+                val extension = when (mime) {
+                    "image/png" -> "png"
+                    "image/webp" -> "webp"
+                    else -> "jpg"
+                }
+                repository.uploadAvatar(session, bytes, extension)
+            }.onSuccess { avatar = it }.onFailure { avatarError = it.message }
+            avatarUploading = false
+        }
+    }
     Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.developer_profile)) }, navigationIcon = { TextButton(onClick = onBack) { Text(stringResource(R.string.back)) } }) }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(vertical = 16.dp)) {
             item {
                 if (avatar.isNotBlank()) AsyncImage(model = avatar, contentDescription = null, modifier = Modifier.size(96.dp).clip(MaterialTheme.shapes.extraLarge), contentScale = ContentScale.Crop)
                 OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.developer_name)) }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(bio, { bio = it }, label = { Text(stringResource(R.string.developer_bio)) }, modifier = Modifier.fillMaxWidth(), minLines = 3)
+                OutlinedButton(onClick = { avatarPicker.launch("image/*") }, enabled = !avatarUploading, modifier = Modifier.fillMaxWidth()) {
+                    if (avatarUploading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) else Text("Choose profile image")
+                }
+                avatarError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 OutlinedTextField(avatar, { avatar = it }, label = { Text(stringResource(R.string.profile_image_url)) }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(website, { website = it }, label = { Text(stringResource(R.string.website)) }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(github, { github = it }, label = { Text("GitHub") }, modifier = Modifier.fillMaxWidth())
