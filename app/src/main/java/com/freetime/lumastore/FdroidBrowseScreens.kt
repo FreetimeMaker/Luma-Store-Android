@@ -27,6 +27,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -617,7 +619,8 @@ fun FdroidSearchScreen(
                         }
                     }
                 }
-            } else if (results.isEmpty()) {
+            }
+            if (query.isNotBlank() && results.isEmpty()) {
                 item("no_results") {
                     Box(
                         modifier = Modifier.fillMaxWidth().padding(32.dp),
@@ -626,7 +629,7 @@ fun FdroidSearchScreen(
                         Text(stringResource(R.string.no_apps_found))
                     }
                 }
-            } else {
+            } else if (query.isNotBlank()) {
                 items(results, key = { it.id }) { app ->
                     BrowseAppRow(app = app, onClick = { selectedAppId = app.id })
                     HorizontalDivider(modifier = Modifier.padding(start = 92.dp))
