@@ -1,0 +1,50 @@
+repository: https://github.com/FreetimeMaker/Luma-Store-Android
+release_source: ./Luma-Store-v4.3.8.apk
+pubkey: npub1hx5j7arrace3dxc8jaw6uks0h0ezg304x5qtgx8yqs94gkws9qzqhcf9fk
+name: Luma Store
+summary: Discover, install and update apps from Luma Store and optional repositories.
+
+description: |
+  Discover apps with Luma Store, an Android app store that brings the Luma Store catalog and optional F-Droid repositories together.
+
+  BROWSE AND SEARCH
+  Explore apps by category or search by name, description and package name. Open an app's details to see its version, source and available information.
+
+  INSTALL AND UPDATE
+  Download APKs and confirm installation through Android's installer. Compare catalog versions with installed apps, install available updates or open apps already on your device.
+
+  CHOOSE YOUR SOURCES
+  The Luma Store catalog is enabled by default. Enable optional sources such as Freetime F-Droid, F-Droid and IzzyOnDroid in the Sources tab. You can also add, edit and remove custom repository URLs using the supported index-v1.json format.
+
+  App availability and metadata depend on the enabled repositories. Previously loaded catalog information is cached for later browsing.
+
+  DEVELOPER AREA
+  Sign in with GitHub or GitLab to view submissions associated with your account, review feedback and notifications. Mark notifications as read and follow the status of your existing submissions.
+
+  REQUIREMENTS
+  Android 7.0 or newer. An internet connection is needed to refresh catalogs, download apps and use developer services. Android may ask you to allow Luma Store to install apps.
+
+  PROJECT STATUS
+  Luma Store is under active development. Creating new submissions inside the Android app is not currently implemented.
+
+  Feedback and bug reports:
+  https://github.com/FreetimeMaker/Luma-Store-New/issues
+
+tags:
+  - app-store
+  - f-droid
+
+license: GPL-3.0
+website: https://luma.free-time.me/
+
+images:
+  - ./fastlane/metadata/android/en-US/images/phoneScreenshots/1.png
+  - ./fastlane/metadata/android/en-US/images/phoneScreenshots/2.png
+  - ./fastlane/metadata/android/en-US/images/phoneScreenshots/3.png
+  - ./fastlane/metadata/android/en-US/images/phoneScreenshots/4.png
+  - ./fastlane/metadata/android/en-US/images/phoneScreenshots/5.png
+
+metadata_sources:
+  - fastlane
+
+release_notes: ./fastlane/metadata/android/en-US/changelogs/default.txt
