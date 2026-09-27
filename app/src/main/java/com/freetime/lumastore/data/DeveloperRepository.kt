@@ -34,6 +34,8 @@ import java.util.TimeZone
 @Serializable data class DeveloperPlatformArtifact(val id: String, @SerialName("app_id") val appId: String, val platform: String, @SerialName("package_type") val packageType: String? = null, @SerialName("download_url") val downloadUrl: String? = null, @SerialName("file_size_mb") val fileSizeMb: Double? = null, @SerialName("linux_package_base") val linuxPackageBase: String? = null, val sha256: String? = null, @SerialName("artifact_verified_at") val artifactVerifiedAt: String? = null, @SerialName("artifact_size_bytes") val artifactSizeBytes: Long? = null, @SerialName("repo_url") val repoUrl: String? = null, @SerialName("listing_metadata") val listingMetadata: JsonElement? = null)
 @Serializable data class DeveloperSecurityScan(val id: String, @SerialName("submission_id") val submissionId: String, val status: String, @SerialName("risk_level") val riskLevel: String, val provider: String? = null, @SerialName("malicious_count") val maliciousCount: Int? = null, @SerialName("suspicious_count") val suspiciousCount: Int? = null, @SerialName("harmless_count") val harmlessCount: Int? = null, @SerialName("undetected_count") val undetectedCount: Int? = null, @SerialName("virus_total_permalink") val virusTotalPermalink: String? = null, @SerialName("error_message") val errorMessage: String? = null, @SerialName("scanned_at") val scannedAt: String? = null)
 @Serializable data class DeveloperDownloadStats(@SerialName("app_id") val appId: String, val total: Long = 0, val today: Long = 0, @SerialName("this_month") val thisMonth: Long = 0, @SerialName("this_year") val thisYear: Long = 0)
+@Serializable data class DeveloperProfileSettings(@SerialName("developer_id") val developerId: String, @SerialName("display_name") val displayName: String? = null, val bio: String? = null, @SerialName("website_url") val websiteUrl: String? = null, @SerialName("github_url") val githubUrl: String? = null, @SerialName("gitlab_url") val gitlabUrl: String? = null, @SerialName("avatar_url") val avatarUrl: String? = null, val verified: Boolean = false)
+@Serializable data class DeveloperFundingSettings(@SerialName("developer_id") val developerId: String, @SerialName("donate_url") val donateUrl: String? = null, val liberapay: String? = null, val opencollective: String? = null, @SerialName("crypto_addresses") val cryptoAddresses: JsonObject = JsonObject(emptyMap()))
 @Serializable private data class DeveloperProfileRef(@SerialName("developer_id") val developerId: String)
 @Serializable private data class StoreAppSubmissionRef(val id: String? = null, @SerialName("luma_submission_id") val lumaSubmissionId: String? = null)
 data class DeveloperDashboard(val submissions: List<DeveloperSubmission>, val comments: List<DeveloperComment>, val notifications: List<DeveloperNotification>, val artifacts: Map<String, List<DeveloperPlatformArtifact>> = emptyMap(), val scans: Map<String, DeveloperSecurityScan> = emptyMap(), val downloadStats: Map<String, DeveloperDownloadStats> = emptyMap(), val submissionStoreIds: Map<String, String> = emptyMap())
@@ -54,6 +56,41 @@ class DeveloperRepository(context: Context) {
     suspend fun signInWithGitLab() { supabase.auth.signInWith(Gitlab, redirectUrl = OAUTH_REDIRECT_URL) }
     suspend fun currentSession(): DeveloperSession? = supabase.auth.currentSessionOrNull()?.toDeveloperSession()
     suspend fun signOut() { supabase.auth.signOut() }
+
+    suspend fun loadProfile(session: DeveloperSession): DeveloperProfileSettings? =
+        supabase.from("luma_developer_profiles")
+            .select { filter { eq("developer_id", session.userId) }; limit(1) }
+            .decodeList<DeveloperProfileSettings>().firstOrNull()
+
+    suspend fun saveProfile(session: DeveloperSession, displayName: String, bio: String, websiteUrl: String, githubUrl: String, gitlabUrl: String, avatarUrl: String) {
+        supabase.from("luma_developer_profiles").upsert({
+            set("developer_id", session.userId)
+            set("display_name", displayName.trim())
+            set("bio", bio.trim().ifBlank { null })
+            set("website_url", websiteUrl.trim().ifBlank { null })
+            set("github_url", githubUrl.trim().ifBlank { null })
+            set("gitlab_url", gitlabUrl.trim().ifBlank { null })
+            set("avatar_url", avatarUrl.trim().ifBlank { null })
+        }, onConflict = "developer_id")
+    }
+
+    suspend fun loadFunding(session: DeveloperSession): DeveloperFundingSettings? =
+        supabase.from("luma_developer_funding")
+            .select { filter { eq("developer_id", session.userId) }; limit(1) }
+            .decodeList<DeveloperFundingSettings>().firstOrNull()
+
+    suspend fun saveFunding(session: DeveloperSession, donateUrl: String, liberapay: String, openCollective: String, cryptoAddresses: Map<String, String>) {
+        val cleaned = JsonObject(cryptoAddresses.filterValues { it.isNotBlank() }.mapValues { JsonPrimitive(it.value.trim()) })
+        supabase.from("luma_developer_funding").upsert({
+            set("developer_id", session.userId)
+            set("donate_url", donateUrl.trim().ifBlank { null })
+            set("liberapay", liberapay.trim().ifBlank { null })
+            set("opencollective", openCollective.trim().ifBlank { null })
+            set("crypto_addresses", cleaned)
+            set("bitcoin", cryptoAddresses["bitcoin::Bitcoin"]?.trim()?.ifBlank { null })
+            set("litecoin", cryptoAddresses["litecoin::Litecoin"]?.trim()?.ifBlank { null })
+        }, onConflict = "developer_id")
+    }
 
     suspend fun isDeveloper(session: DeveloperSession): Boolean =
         runCatching {
