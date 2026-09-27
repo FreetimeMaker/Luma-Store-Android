@@ -1,7 +1,8 @@
 package com.freetime.lumastore
 
-import com.freetime.design.liquidGlassCapsule
-import com.freetime.design.LiquidGlassRoot
+import com.freetime.design.FloatingBottomNavigationBar
+import com.freetime.design.FloatingBottomNavigationGlassRoot
+import com.freetime.design.FloatingBottomNavigationItem
 import com.freetime.warn.FreetimeWarn
 import com.freetime.warn.FreetimeWarnFrequency
 import com.freetime.warn.rememberFreetimeWarnState
@@ -157,7 +158,7 @@ class MainActivity : ComponentActivity() {
                     versionCode = packageManager.getPackageInfo(packageName, 0).longVersionCode,
                     frequency = FreetimeWarnFrequency.ONCE_PER_VERSION
                 )
-                LiquidGlassRoot {
+                FloatingBottomNavigationGlassRoot {
                 BoxWithConstraints(
                     modifier = Modifier.fillMaxSize()
                 ) {
@@ -258,7 +259,6 @@ class MainActivity : ComponentActivity() {
                                 .align(Alignment.CenterStart)
                                 .width(96.dp)
                                 .padding(start = 12.dp)
-                                .liquidGlassCapsule(interactive = false)
                                 .padding(horizontal = 7.dp, vertical = 10.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(5.dp)
@@ -271,26 +271,37 @@ class MainActivity : ComponentActivity() {
                             FdroidRailItem(screen == MainScreen.ACCOUNT, { screen = MainScreen.ACCOUNT }, stringResource(R.string.account)) { Icon(Icons.Filled.AccountCircle, contentDescription = null) }
                         }
                     } else {
-                        Row(
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .fillMaxWidth()
-                                .padding(horizontal = if (compactNavigation) 8.dp else 14.dp)
-                                .navigationBarsPadding()
-                                .padding(bottom = 12.dp)
-                                .heightIn(min = 62.dp)
-                                .liquidGlassCapsule(interactive = false)
-                                .padding(horizontal = 5.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            FdroidNavigationItem(screen == MainScreen.DISCOVER, { screen = MainScreen.DISCOVER }, stringResource(R.string.discover), compact = compactNavigation) { Icon(Icons.Filled.Explore, contentDescription = null) }
-                            FdroidNavigationItem(screen == MainScreen.SEARCH, { screen = MainScreen.SEARCH }, stringResource(R.string.search), compact = compactNavigation) { Icon(Icons.Filled.Search, contentDescription = null) }
-                            FdroidNavigationItem(screen == MainScreen.MY_APPS, { screen = MainScreen.MY_APPS }, stringResource(R.string.my_apps), availableUpdateCount, compactNavigation) { Icon(Icons.Filled.Apps, contentDescription = null) }
-                            FdroidNavigationItem(screen == MainScreen.SOURCES, { screen = MainScreen.SOURCES }, stringResource(R.string.sources), compact = compactNavigation) { Icon(Icons.Filled.Storage, contentDescription = null) }
-                            FdroidNavigationItem(screen == MainScreen.DEVELOPER, { screen = MainScreen.DEVELOPER }, stringResource(R.string.developer), compact = compactNavigation) { Icon(Icons.Filled.Code, contentDescription = null) }
-                            FdroidNavigationItem(screen == MainScreen.ACCOUNT, { screen = MainScreen.ACCOUNT }, stringResource(R.string.account), compact = compactNavigation) { Icon(Icons.Filled.AccountCircle, contentDescription = null) }
-                        }
+                        val primaryScreens = listOf(
+                            MainScreen.DISCOVER,
+                            MainScreen.MY_APPS,
+                            MainScreen.SOURCES,
+                            MainScreen.DEVELOPER,
+                            MainScreen.ACCOUNT
+                        )
+                        val navItems = listOf(
+                            FloatingBottomNavigationItem(stringResource(R.string.discover)) { Icon(Icons.Filled.Explore, contentDescription = null) },
+                            FloatingBottomNavigationItem(stringResource(R.string.my_apps)) {
+                                if (availableUpdateCount > 0) {
+                                    BadgedBox(badge = { Badge { Text(availableUpdateCount.toString(), maxLines = 1) } }) {
+                                        Icon(Icons.Filled.Apps, contentDescription = null)
+                                    }
+                                } else Icon(Icons.Filled.Apps, contentDescription = null)
+                            },
+                            FloatingBottomNavigationItem(stringResource(R.string.sources)) { Icon(Icons.Filled.Storage, contentDescription = null) },
+                            FloatingBottomNavigationItem(stringResource(R.string.developer)) { Icon(Icons.Filled.Code, contentDescription = null) },
+                            FloatingBottomNavigationItem(stringResource(R.string.account)) { Icon(Icons.Filled.AccountCircle, contentDescription = null) }
+                        )
+                        FloatingBottomNavigationBar(
+                            items = navItems,
+                            selectedItemIndex = primaryScreens.indexOf(screen).coerceAtLeast(0),
+                            onItemSelected = { index -> screen = primaryScreens[index] },
+                            searchItem = FloatingBottomNavigationItem(stringResource(R.string.search)) {
+                                Icon(Icons.Filled.Search, contentDescription = null)
+                            },
+                            searchSelected = screen == MainScreen.SEARCH,
+                            onSearchSelected = { screen = MainScreen.SEARCH },
+                            modifier = Modifier.align(Alignment.BottomCenter)
+                        )
                     }
                 }
                 }
@@ -315,7 +326,6 @@ class MainActivity : ComponentActivity() {
                 .weight(1f)
                 .padding(horizontal = 1.dp)
                 .animateContentSize()
-                .then(if (selected) Modifier.liquidGlassCapsule(interactive = true) else Modifier)
                 .clickable(onClick = onClick)
                 .padding(horizontal = if (compact) 1.dp else 3.dp, vertical = 7.dp),
             contentAlignment = Alignment.Center
@@ -359,7 +369,6 @@ class MainActivity : ComponentActivity() {
             modifier = Modifier
                 .fillMaxWidth()
                 .animateContentSize()
-                .then(if (selected) Modifier.liquidGlassCapsule(interactive = true) else Modifier)
                 .clickable(onClick = onClick)
                 .padding(horizontal = 5.dp, vertical = 9.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
