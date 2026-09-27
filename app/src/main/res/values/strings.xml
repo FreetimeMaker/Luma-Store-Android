@@ -355,4 +355,5 @@
     <string name="metric_month">This month</string>
     <string name="developer_pending_apps">%1$d apps need attention</string>
     <string name="rating_compact">★ %1$.1f (%2$d)</string>
+    <string name="ratings_count">%1$d ratings</string>
 </resources>
