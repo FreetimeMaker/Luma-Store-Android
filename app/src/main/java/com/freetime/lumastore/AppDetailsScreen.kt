@@ -129,13 +129,14 @@ fun AppDetailsScreen(
     var favoriteError by remember(app.id) { mutableStateOf<String?>(null) }
     val favoriteScope = rememberCoroutineScope()
     var headerRating by remember(app.id) { mutableStateOf<com.freetime.lumastore.data.AppRatingSummary?>(null) }
-    var developerFunding by remember(app.developerId) { mutableStateOf<com.freetime.lumastore.data.DeveloperFunding?>(null) }
+    var developerProfile by remember(app.developerId) { mutableStateOf<com.freetime.lumastore.data.PublicDeveloperProfile?>(null) }
+    val developerFunding = developerProfile?.funding
 
     LaunchedEffect(app.id) {
         headerRating = runCatching { LumaStoreApi.ratings(app.id) }.getOrNull()
     }
     LaunchedEffect(app.developerId) {
-        developerFunding = app.developerId?.let { runCatching { LumaStoreApi.developerProfile(it).funding }.getOrNull() }
+        developerProfile = app.developerId?.let { runCatching { LumaStoreApi.developerProfile(it) }.getOrNull() }
     }
 
     LaunchedEffect(app.id) {
@@ -467,7 +468,15 @@ fun AppDetailsScreen(
 
             if (!app.authorName.isNullOrBlank() || !app.authorEmail.isNullOrBlank() || !app.authorWebsite.isNullOrBlank()) {
                 DetailsExpandableSection(stringResource(R.string.developer_contact)) {
-                    app.authorName?.let { DetailValueRow(stringResource(R.string.author), it) }
+                    developerProfile?.let { developer ->
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            AsyncImage(model = developer.avatarUrl, contentDescription = developer.displayName, modifier = Modifier.size(52.dp).clip(MaterialTheme.shapes.large), contentScale = ContentScale.Crop)
+                            Column(Modifier.weight(1f)) {
+                                Text(developer.displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                                if (developer.verified) Text("Verified developer", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    } ?: app.authorName?.let { DetailValueRow(stringResource(R.string.author), it) }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Center,
