@@ -53,6 +53,7 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -365,28 +366,23 @@ class MainActivity : ComponentActivity() {
         badgeCount: Int = 0,
         icon: @Composable () -> Unit
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .animateContentSize()
-                .clickable(onClick = onClick)
-                .padding(horizontal = 5.dp, vertical = 9.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(3.dp)
-        ) {
-            if (badgeCount > 0) {
-                BadgedBox(badge = { Badge { Text(badgeCount.toString(), maxLines = 1) } }) { icon() }
-            } else icon()
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                maxLines = 1,
-                softWrap = false,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
+        NavigationRailItem(
+            selected = selected,
+            onClick = onClick,
+            icon = {
+                if (badgeCount > 0) {
+                    BadgedBox(badge = { Badge { Text(badgeCount.toString(), maxLines = 1) } }) { icon() }
+                } else icon()
+            },
+            label = {
+                Text(
+                    text = label,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            },
+            alwaysShowLabel = true
+        )
     }
 
     @Composable
