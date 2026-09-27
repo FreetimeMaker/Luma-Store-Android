@@ -20,6 +20,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.core.content.ContextCompat
 import com.freetime.lumastore.data.*
@@ -47,6 +50,9 @@ fun DeveloperScreen(
     var authLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var loggingIn by remember { mutableStateOf(false) }
+    var developerPage by remember { mutableStateOf("overview") }
+    var profile by remember { mutableStateOf<DeveloperProfileSettings?>(null) }
+    var funding by remember { mutableStateOf<DeveloperFundingSettings?>(null) }
     val scope = rememberCoroutineScope()
     val developerLoadError = stringResource(R.string.developer_data_load_failed)
     val authLoadError = stringResource(R.string.supabase_sign_in_load_failed)
@@ -67,6 +73,8 @@ fun DeveloperScreen(
         runCatching { repository.loadDashboard(current) }
             .onSuccess {
                 dashboard = it
+                profile = runCatching { repository.loadProfile(current) }.getOrNull()
+                funding = runCatching { repository.loadFunding(current) }.getOrNull()
                 systemNotifications.showNewNotifications(it.notifications)
             }
             .onFailure { error = it.message ?: developerLoadError }
@@ -151,6 +159,36 @@ fun DeveloperScreen(
     }
 
     val current = session ?: return
+    if (developerPage == "profile") {
+        DeveloperProfileEditor(
+            initial = profile,
+            onBack = { developerPage = "overview" },
+            onSave = { name, bio, website, github, gitlab, avatar ->
+                scope.launch {
+                    runCatching { repository.saveProfile(current, name, bio, website, github, gitlab, avatar) }
+                        .onFailure { error = it.message }
+                    profile = runCatching { repository.loadProfile(current) }.getOrNull()
+                    developerPage = "overview"
+                }
+            }
+        )
+        return
+    }
+    if (developerPage == "funding") {
+        DeveloperFundingEditor(
+            initial = funding,
+            onBack = { developerPage = "overview" },
+            onSave = { donate, liberapay, collective, crypto ->
+                scope.launch {
+                    runCatching { repository.saveFunding(current, donate, liberapay, collective, crypto) }
+                        .onFailure { error = it.message }
+                    funding = runCatching { repository.loadFunding(current) }.getOrNull()
+                    developerPage = "overview"
+                }
+            }
+        )
+        return
+    }
     val data = dashboard
     val unread = data?.notifications?.count { it.readAt == null } ?: 0
     val comments = data?.comments?.groupBy { it.submissionId }.orEmpty()
@@ -175,8 +213,22 @@ fun DeveloperScreen(
             }
         }
         item {
-            Text(stringResource(R.string.developer_area), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Text(current.email ?: current.userId, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                AsyncImage(
+                    model = profile?.avatarUrl,
+                    contentDescription = profile?.displayName,
+                    modifier = Modifier.size(72.dp).clip(MaterialTheme.shapes.extraLarge),
+                    contentScale = ContentScale.Crop
+                )
+                Column(Modifier.weight(1f)) {
+                    Text(profile?.displayName?.takeIf { it.isNotBlank() } ?: stringResource(R.string.developer_area), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                    Text(current.email ?: current.userId, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { developerPage = "profile" }) { Text(stringResource(R.string.developer_profile)) }
+                OutlinedButton(onClick = { developerPage = "funding" }) { Text(stringResource(R.string.developer_funding)) }
+            }
             data?.let { dashboardData ->
                 val totalDownloads = dashboardData.downloadStats.values.sumOf { stats -> stats.total }
                 val downloadsToday = dashboardData.downloadStats.values.sumOf { stats -> stats.today }
@@ -241,6 +293,7 @@ fun DeveloperScreen(
             item {
                 HorizontalDivider(Modifier.padding(vertical = 6.dp))
                 Text(stringResource(R.string.my_apps), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.app_specific_analytics), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (data.submissions.isEmpty()) {
                 item { Text(stringResource(R.string.no_account_apps), color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -292,6 +345,59 @@ fun DeveloperScreen(
             }
         }
         item { Spacer(Modifier.height(88.dp)) }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DeveloperProfileEditor(initial: DeveloperProfileSettings?, onBack: () -> Unit, onSave: (String, String, String, String, String, String) -> Unit) {
+    var name by remember(initial) { mutableStateOf(initial?.displayName.orEmpty()) }
+    var bio by remember(initial) { mutableStateOf(initial?.bio.orEmpty()) }
+    var website by remember(initial) { mutableStateOf(initial?.websiteUrl.orEmpty()) }
+    var github by remember(initial) { mutableStateOf(initial?.githubUrl.orEmpty()) }
+    var gitlab by remember(initial) { mutableStateOf(initial?.gitlabUrl.orEmpty()) }
+    var avatar by remember(initial) { mutableStateOf(initial?.avatarUrl.orEmpty()) }
+    Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.developer_profile)) }, navigationIcon = { TextButton(onClick = onBack) { Text(stringResource(R.string.back)) } }) }) { padding ->
+        LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(vertical = 16.dp)) {
+            item {
+                if (avatar.isNotBlank()) AsyncImage(model = avatar, contentDescription = null, modifier = Modifier.size(96.dp).clip(MaterialTheme.shapes.extraLarge), contentScale = ContentScale.Crop)
+                OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.developer_name)) }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(bio, { bio = it }, label = { Text(stringResource(R.string.developer_bio)) }, modifier = Modifier.fillMaxWidth(), minLines = 3)
+                OutlinedTextField(avatar, { avatar = it }, label = { Text(stringResource(R.string.profile_image_url)) }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(website, { website = it }, label = { Text(stringResource(R.string.website)) }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(github, { github = it }, label = { Text("GitHub") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(gitlab, { gitlab = it }, label = { Text("GitLab") }, modifier = Modifier.fillMaxWidth())
+                Button(onClick = { onSave(name, bio, website, github, gitlab, avatar) }, enabled = name.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.save)) }
+            }
+        }
+    }
+}
+
+private val developerCryptoOptions = listOf(
+    "bitcoin::Bitcoin", "ethereum::Ethereum", "tether::Ethereum (ERC-20)", "tether::TRON (TRC-20)", "tether::BNB Smart Chain (BEP-20)", "tether::Solana", "tether::Polygon", "tether::Avalanche C-Chain", "tether::Arbitrum", "tether::Optimism",
+    "usdc::Ethereum (ERC-20)", "usdc::Solana", "usdc::Base", "usdc::Arbitrum", "usdc::Optimism", "usdc::Polygon", "usdc::Avalanche C-Chain", "bnb::BNB Smart Chain (BEP-20)", "solana::Solana", "cardano::Cardano", "dogecoin::Dogecoin", "tron::TRON", "polkadot::Polkadot", "avalanche::Avalanche C-Chain", "avalanche::Avalanche P-Chain", "chainlink::Ethereum (ERC-20)", "chainlink::BNB Smart Chain (BEP-20)", "chainlink::Polygon", "chainlink::Arbitrum", "chainlink::Optimism", "polygon::Polygon", "polygon::Ethereum (ERC-20)", "litecoin::Litecoin", "bitcoin_cash::Bitcoin Cash", "stellar::Stellar", "monero::Monero", "toncoin::TON", "shiba_inu::Ethereum (ERC-20)", "shiba_inu::Shibarium"
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DeveloperFundingEditor(initial: DeveloperFundingSettings?, onBack: () -> Unit, onSave: (String, String, String, Map<String, String>) -> Unit) {
+    var donate by remember(initial) { mutableStateOf(initial?.donateUrl.orEmpty()) }
+    var liberapay by remember(initial) { mutableStateOf(initial?.liberapay.orEmpty()) }
+    var collective by remember(initial) { mutableStateOf(initial?.opencollective.orEmpty()) }
+    val crypto = remember(initial) { mutableStateMapOf<String, String>().apply { initial?.cryptoAddresses?.forEach { (k, v) -> put(k, v.jsonPrimitive.contentOrNull.orEmpty()) } } }
+    Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.developer_funding)) }, navigationIcon = { TextButton(onClick = onBack) { Text(stringResource(R.string.back)) } }) }) { padding ->
+        LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(vertical = 16.dp)) {
+            item {
+                OutlinedTextField(donate, { donate = it }, label = { Text(stringResource(R.string.donation_url)) }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(liberapay, { liberapay = it }, label = { Text(stringResource(R.string.liberapay)) }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(collective, { collective = it }, label = { Text(stringResource(R.string.open_collective)) }, modifier = Modifier.fillMaxWidth())
+                Text(stringResource(R.string.crypto_wallets), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            }
+            items(developerCryptoOptions, key = { it }) { key ->
+                OutlinedTextField(crypto[key].orEmpty(), { crypto[key] = it }, label = { Text(key.replace("::", " · ")) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            }
+            item { Button(onClick = { onSave(donate, liberapay, collective, crypto.toMap()) }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.save)) } }
+        }
     }
 }
 
