@@ -1,5 +1,10 @@
 package com.freetime.lumastore
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -17,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -66,6 +72,16 @@ fun DeveloperAppsScreen(developerName: String, apps: List<StoreApp>, onBack: () 
                                 if (profile.verified) Text(stringResource(R.string.verified_developer), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                                 profile.bio?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                 Text(stringResource(R.string.developer_app_count, profile.apps.size), style = MaterialTheme.typography.labelMedium)
+                                profile.funding?.let { funding ->
+                                    if (!funding.donateUrl.isNullOrBlank() || !funding.liberapay.isNullOrBlank() || !funding.openCollective.isNullOrBlank() || funding.cryptoAddresses.isNotEmpty()) {
+                                        Spacer(Modifier.height(6.dp))
+                                        Text(stringResource(R.string.support_developer), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                                        funding.donateUrl?.let { DeveloperFundingLink(stringResource(R.string.donation_url), it) }
+                                        funding.liberapay?.let { DeveloperFundingLink("Liberapay", it) }
+                                        funding.openCollective?.let { DeveloperFundingLink("OpenCollective", it) }
+                                        funding.cryptoAddresses.forEach { (method, address) -> DeveloperCryptoFunding(method, address) }
+                                    }
+                                }
                             }
                         }
                     }
@@ -86,6 +102,28 @@ fun DeveloperAppsScreen(developerName: String, apps: List<StoreApp>, onBack: () 
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun DeveloperFundingLink(label: String, url: String) {
+    val context = LocalContext.current
+    AssistChip(onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } }, label = { Text(label) })
+}
+
+@Composable
+private fun DeveloperCryptoFunding(method: String, address: String) {
+    val context = LocalContext.current
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(method.substringBefore("::").replace('_', ' ').replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.labelLarge)
+            method.substringAfter("::", "").takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            Text(address, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        TextButton(onClick = {
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            clipboard.setPrimaryClip(ClipData.newPlainText(method, address))
+        }) { Text(stringResource(R.string.copy)) }
     }
 }
 
