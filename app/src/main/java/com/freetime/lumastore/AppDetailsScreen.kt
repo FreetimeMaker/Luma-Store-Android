@@ -119,8 +119,8 @@ fun AppDetailsScreen(
     val topAppBarState = rememberTopAppBarState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(topAppBarState)
     val scrollState = rememberScrollState()
-    val glassShape = RoundedCornerShape(20.dp)
-    val actionShape = RoundedCornerShape(50)
+    val glassShape = MaterialTheme.shapes.large
+    val actionShape = MaterialTheme.shapes.extraLarge
     var favorite by remember(app.id) { mutableStateOf(false) }
     var favoriteSignedIn by remember(app.id) { mutableStateOf(false) }
     var favoriteWorking by remember(app.id) { mutableStateOf(false) }
@@ -638,7 +638,7 @@ private fun ExpandableDescription(app: StoreApp) {
 private fun DetailsExpandableSection(title: String, content: @Composable ColumnScope.() -> Unit) {
     var expanded by rememberSaveable(title) { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        val shape = RoundedCornerShape(20.dp)
+        val shape = MaterialTheme.shapes.large
         ElevatedCard(
             modifier = Modifier.fillMaxWidth(),
             shape = shape,
