@@ -134,6 +134,28 @@ fun FdroidDiscoverScreen(
     val gameApps = remember(selectedApps) {
         selectedApps.filter { app -> app.categories.any { it.contains("game", true) } }.take(12)
     }
+    val trendingApps = remember(selectedApps) {
+        selectedApps
+            .filter { (it.downloadCount ?: 0L) > 0L }
+            .sortedWith(
+                compareByDescending<StoreApp> { it.downloadCount ?: 0L }
+                    .thenByDescending { it.lastUpdatedTimestamp ?: 0L }
+            )
+            .take(12)
+    }
+    val recommendedApps = remember(selectedApps) {
+        selectedApps
+            .sortedWith(
+                compareByDescending<StoreApp> {
+                    var score = 0L
+                    if (it.antiFeatures.isEmpty()) score += 1_000_000L
+                    if (!it.closedSource) score += 500_000L
+                    score + (it.downloadCount ?: 0L).coerceAtMost(250_000L) +
+                        ((it.lastUpdatedTimestamp ?: 0L) / 100_000_000L)
+                }
+            )
+            .take(12)
+    }
     val categories = remember(selectedApps) {
         selectedApps.flatMap { it.categories }.distinct().sortedBy { it.lowercase() }
     }
@@ -272,6 +294,26 @@ fun FdroidDiscoverScreen(
                         DiscoverCarousel(
                             title = stringResource(R.string.discover_apps),
                             apps = shownApps.take(12),
+                            onAppTap = { openFromDiscover(it) }
+                        )
+                    }
+                }
+
+                if (recommendedApps.isNotEmpty()) {
+                    item("recommended_apps") {
+                        DiscoverCarousel(
+                            title = stringResource(R.string.recommended_for_you),
+                            apps = recommendedApps,
+                            onAppTap = { openFromDiscover(it) }
+                        )
+                    }
+                }
+
+                if (trendingApps.isNotEmpty()) {
+                    item("trending_apps") {
+                        DiscoverCarousel(
+                            title = stringResource(R.string.trending_apps),
+                            apps = trendingApps,
                             onAppTap = { openFromDiscover(it) }
                         )
                     }
@@ -559,6 +601,12 @@ private fun DiscoverCarousel(
     }
 }
 
+private fun formatCompactCount(value: Long): String = when {
+    value >= 1_000_000L -> "${value / 1_000_000L}M+"
+    value >= 1_000L -> "${value / 1_000L}K+"
+    else -> value.toString()
+}
+
 @Composable
 private fun BrowseAppRow(app: StoreApp, onClick: () -> Unit) {
     Surface(
@@ -587,13 +635,23 @@ private fun BrowseAppRow(app: StoreApp, onClick: () -> Unit) {
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(Modifier.height(3.dp))
-                Text(
-                    stringResource(R.string.app_version_source, app.version, app.sourceName),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(R.string.app_version_source, app.version, app.sourceName),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    app.downloadCount?.takeIf { it > 0 }?.let { downloads ->
+                        Text(
+                            stringResource(R.string.download_count_compact, formatCompactCount(downloads)),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
             }
         }
     }
