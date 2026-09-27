@@ -80,7 +80,9 @@ class DeveloperRepository(context: Context) {
         val safeExtension = extension.lowercase().takeIf { it in setOf("jpg", "jpeg", "png", "webp") } ?: "jpg"
         val path = "${session.userId}/avatar.$safeExtension"
         val bucket = supabase.storage["developer-avatars"]
-        bucket.upload(path, bytes, upsert = true)
+        bucket.upload(path, bytes) {
+            upsert = true
+        }
         return bucket.publicUrl(path)
     }
 
