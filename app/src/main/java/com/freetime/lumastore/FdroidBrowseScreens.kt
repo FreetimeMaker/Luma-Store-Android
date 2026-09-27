@@ -97,6 +97,7 @@ fun FdroidDiscoverScreen(
     var selectedLicense by remember { mutableStateOf<String?>(null) }
     var sortMode by remember { mutableStateOf("updated") }
     var ratingSummaries by remember { mutableStateOf<Map<String, AppRatingSummary>>(emptyMap()) }
+    var openCollection by remember { mutableStateOf<Pair<String, List<StoreApp>>?>(null) }
 
     LaunchedEffect(refreshKey) {
         if (apps.isEmpty()) loading = true
@@ -259,7 +260,8 @@ fun FdroidDiscoverScreen(
                         DiscoverCarousel(
                             title = stringResource(R.string.recently_viewed),
                             apps = recentApps,
-                            onAppTap = { openFromDiscover(it) }
+                            onAppTap = { openFromDiscover(it) },
+                            onShowAll = { openCollection = context.getString(R.string.recently_viewed) to recentApps }
                         )
                     }
                 }
@@ -323,7 +325,8 @@ fun FdroidDiscoverScreen(
                         DiscoverCarousel(
                             title = stringResource(R.string.recommended_for_you),
                             apps = recommendedApps,
-                            onAppTap = { openFromDiscover(it) }
+                            onAppTap = { openFromDiscover(it) },
+                            onShowAll = { openCollection = context.getString(R.string.recommended_for_you) to recommendedApps }
                         )
                     }
                 }
@@ -333,7 +336,8 @@ fun FdroidDiscoverScreen(
                         DiscoverCarousel(
                             title = stringResource(R.string.trending_apps),
                             apps = trendingApps,
-                            onAppTap = { openFromDiscover(it) }
+                            onAppTap = { openFromDiscover(it) },
+                            onShowAll = { openCollection = context.getString(R.string.trending_apps) to trendingApps }
                         )
                     }
                 }
@@ -343,7 +347,8 @@ fun FdroidDiscoverScreen(
                         DiscoverCarousel(
                             title = stringResource(R.string.new_apps),
                             apps = newestApps,
-                            onAppTap = { openFromDiscover(it) }
+                            onAppTap = { openFromDiscover(it) },
+                            onShowAll = { openCollection = context.getString(R.string.new_apps) to newestApps }
                         )
                     }
                 }
@@ -353,7 +358,8 @@ fun FdroidDiscoverScreen(
                         DiscoverCarousel(
                             title = stringResource(R.string.recently_updated),
                             apps = recentlyUpdatedApps,
-                            onAppTap = { openFromDiscover(it) }
+                            onAppTap = { openFromDiscover(it) },
+                            onShowAll = { openCollection = context.getString(R.string.recently_updated) to recentlyUpdatedApps }
                         )
                     }
                 }
@@ -364,7 +370,8 @@ fun FdroidDiscoverScreen(
                         DiscoverCarousel(
                             title = stringResource(R.string.privacy_collection),
                             apps = privacyApps,
-                            onAppTap = { openFromDiscover(it) }
+                            onAppTap = { openFromDiscover(it) },
+                            onShowAll = { openCollection = context.getString(R.string.privacy_collection) to privacyApps }
                         )
                     }
                 }
@@ -374,7 +381,8 @@ fun FdroidDiscoverScreen(
                         DiscoverCarousel(
                             title = stringResource(R.string.games_collection),
                             apps = gameApps,
-                            onAppTap = { openFromDiscover(it) }
+                            onAppTap = { openFromDiscover(it) },
+                            onShowAll = { openCollection = context.getString(R.string.games_collection) to gameApps }
                         )
                     }
                 }
@@ -431,6 +439,19 @@ fun FdroidDiscoverScreen(
             }
         }
         }
+    }
+
+    openCollection?.let { collection ->
+        CollectionScreen(
+            title = collection.first,
+            apps = collection.second,
+            ratings = ratingSummaries,
+            onBack = { openCollection = null },
+            onAppSelected = {
+                openCollection = null
+                openFromDiscover(it)
+            }
+        )
     }
 
     FdroidDetailsHost(
@@ -628,6 +649,36 @@ fun FdroidSearchScreen(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CollectionScreen(
+    title: String,
+    apps: List<StoreApp>,
+    ratings: Map<String, AppRatingSummary>,
+    onBack: () -> Unit,
+    onAppSelected: (StoreApp) -> Unit
+) {
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            TopAppBar(
+                title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                navigationIcon = { TextButton(onClick = onBack) { Text(stringResource(R.string.symbol_back_chevron), style = MaterialTheme.typography.headlineSmall) } }
+            )
+        }
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(bottom = 96.dp)
+        ) {
+            items(apps, key = { it.id }) { app ->
+                BrowseAppRow(app = app, rating = ratings[app.id], onClick = { onAppSelected(app) })
+                HorizontalDivider(modifier = Modifier.padding(start = 92.dp))
+            }
+        }
+    }
+}
+
 @Composable
 private fun SkeletonAppRow() {
     Row(
@@ -648,16 +699,17 @@ private fun SkeletonAppRow() {
 private fun DiscoverCarousel(
     title: String,
     apps: List<StoreApp>,
-    onAppTap: (StoreApp) -> Unit
+    onAppTap: (StoreApp) -> Unit,
+    onShowAll: (() -> Unit)? = null
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(
-            title,
-            style = MaterialTheme.typography.titleMedium,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(title, style = MaterialTheme.typography.titleMedium, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            onShowAll?.let { TextButton(onClick = it) { Text(stringResource(R.string.show_all)) } }
+        }
         LazyRow(
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
