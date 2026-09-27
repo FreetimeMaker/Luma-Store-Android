@@ -15,11 +15,41 @@ data class PublicAppReview(val rating: Int, val reviewText: String, val updatedA
 data class MyAppRating(val rating: Int?, val reviewText: String?, val updatedAt: String?)
 data class AccountRating(val appId: String, val packageName: String?, val appName: String, val rating: Int, val reviewText: String?, val updatedAt: String?)
 data class FavoriteApp(val appId: String, val packageName: String?, val appName: String, val iconUrl: String?, val createdAt: String?)
+data class DeveloperProfileApp(val id: String, val packageName: String?, val name: String, val iconUrl: String?, val summary: String?)
+data class PublicDeveloperProfile(val developerId: String, val displayName: String, val bio: String?, val websiteUrl: String?, val githubUrl: String?, val gitlabUrl: String?, val avatarUrl: String?, val verified: Boolean, val apps: List<DeveloperProfileApp>)
 
 object LumaStoreApi {
     private const val BASE_URL = "https://api.free-time.me/v2/lumastore"
 
     suspend fun appDetails(identifier: String): JSONObject = request("GET", "/apps/${encode(identifier)}")
+
+    suspend fun developerProfile(identifier: String): PublicDeveloperProfile {
+        val json = request("GET", "/developers/" + encode(identifier))
+        val rows = json.optJSONArray("apps") ?: JSONArray()
+        val apps = buildList {
+            for (index in 0 until rows.length()) {
+                val app = rows.optJSONObject(index) ?: continue
+                add(DeveloperProfileApp(
+                    id = app.optString("id"),
+                    packageName = app.optString("package_name").takeIf { it.isNotBlank() },
+                    name = app.optString("name").ifBlank { app.optString("id") },
+                    iconUrl = app.optString("icon_url").takeIf { it.isNotBlank() },
+                    summary = app.optString("short_description").takeIf { it.isNotBlank() }
+                ))
+            }
+        }
+        return PublicDeveloperProfile(
+            developerId = json.optString("developer_id"),
+            displayName = json.optString("display_name").ifBlank { "Developer" },
+            bio = json.optString("bio").takeIf { it.isNotBlank() },
+            websiteUrl = json.optString("website_url").takeIf { it.isNotBlank() },
+            githubUrl = json.optString("github_url").takeIf { it.isNotBlank() },
+            gitlabUrl = json.optString("gitlab_url").takeIf { it.isNotBlank() },
+            avatarUrl = json.optString("avatar_url").takeIf { it.isNotBlank() },
+            verified = json.optBoolean("verified", false),
+            apps = apps
+        )
+    }
 
     suspend fun ratings(identifier: String): AppRatingSummary {
         val json = request("GET", "/apps/${encode(identifier)}/ratings")
