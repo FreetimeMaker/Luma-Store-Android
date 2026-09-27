@@ -368,4 +368,7 @@
     <string name="profile_image_url">Profile image URL</string>
     <string name="app_specific_analytics">App-specific analytics</string>
     <string name="crypto_wallets">Crypto wallets</string>
+    <string name="support_developer">Support developer</string>
+    <string name="donation_url">Donation URL</string>
+    <string name="copy">Copy</string>
 </resources>
