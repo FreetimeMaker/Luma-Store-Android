@@ -57,6 +57,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -126,6 +127,11 @@ fun AppDetailsScreen(
     var favoriteWorking by remember(app.id) { mutableStateOf(false) }
     var favoriteError by remember(app.id) { mutableStateOf<String?>(null) }
     val favoriteScope = rememberCoroutineScope()
+    var headerRating by remember(app.id) { mutableStateOf<com.freetime.lumastore.data.AppRatingSummary?>(null) }
+
+    LaunchedEffect(app.id) {
+        headerRating = runCatching { LumaStoreApi.ratings(app.id) }.getOrNull()
+    }
 
     LaunchedEffect(app.id) {
         supabase.auth.awaitInitialization()
@@ -222,6 +228,7 @@ fun AppDetailsScreen(
                 onAction = onAction,
                 onSourceSelected = onSourceSelected,
                 onDeveloperSelected = onDeveloperSelected,
+                rating = headerRating,
                 actionShape = actionShape
             )
 
@@ -544,6 +551,7 @@ private fun AppDetailsHeader(
     onAction: () -> Unit,
     onSourceSelected: (StoreApp) -> Unit,
     onDeveloperSelected: (String) -> Unit,
+    rating: com.freetime.lumastore.data.AppRatingSummary?,
     actionShape: androidx.compose.ui.graphics.Shape
 ) {
     Column(
@@ -575,6 +583,32 @@ private fun AppDetailsHeader(
     }
     if (app.summary.isNotBlank()) Text(app.summary, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
     }
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        rating?.takeIf { it.count > 0 }?.let {
+            DetailMetric(
+                value = String.format("%.1f ★", it.average),
+                label = stringResource(R.string.ratings_count, it.count),
+                modifier = Modifier.weight(1f)
+            )
+        }
+        app.downloadCount?.let {
+            DetailMetric(
+                value = formatCompactMetric(it),
+                label = stringResource(R.string.downloads),
+                modifier = Modifier.weight(1f)
+            )
+        }
+        app.lastUpdatedTimestamp?.let {
+            DetailMetric(
+                value = formatRelativeAge(it),
+                label = stringResource(R.string.last_updated),
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
     if (app.categories.isNotEmpty()) {
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 16.dp)) {
             items(app.categories, key = { it }) { category -> AssistChip(onClick = {}, label = { Text(category) }) }
@@ -598,18 +632,38 @@ private fun AppDetailsHeader(
             if (progress > 0) LinearProgressIndicator(progress = { progress / 100f }, modifier = Modifier.fillMaxWidth()) else LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         }
     } else if (showAction) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp)
-                
-                .clickable(onClick = onAction)
-                .padding(horizontal = 20.dp, vertical = 14.dp),
-            contentAlignment = Alignment.Center
+        Button(
+            onClick = onAction,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+            shape = actionShape
         ) {
-            Text(actionLabel, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+            Text(actionLabel, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         }
     }
+}
+
+@Composable
+private fun DetailMetric(value: String, label: String, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainer
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+private fun formatCompactMetric(value: Long): String = when {
+    value >= 1_000_000L -> "${value / 1_000_000L}M+"
+    value >= 1_000L -> "${value / 1_000L}K+"
+    else -> value.toString()
 }
 
 @Composable
