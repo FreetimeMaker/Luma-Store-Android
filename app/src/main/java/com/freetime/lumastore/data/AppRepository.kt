@@ -1098,7 +1098,7 @@ class AppRepository(context: Context) {
             put("id", app.id); put("name", app.name); put("summary", app.summary); put("description", app.description)
             put("version", app.version); put("versionCode", app.versionCode); put("iconUrl", app.iconUrl); put("iconUrls", JSONArray(app.iconUrls))
             put("screenshotUrls", JSONArray(app.screenshotUrls)); put("categories", JSONArray(app.categories))
-            put("apkUrl", app.apkUrl); put("sourceName", app.sourceName); put("authorName", app.authorName)
+            put("apkUrl", app.apkUrl); put("sourceName", app.sourceName); put("authorName", app.authorName); put("developerId", app.developerId)
             put("authorEmail", app.authorEmail); put("authorWebsite", app.authorWebsite); put("websiteUrl", app.websiteUrl)
             put("sourceCodeUrl", app.sourceCodeUrl); put("issueTrackerUrl", app.issueTrackerUrl); put("translationUrl", app.translationUrl)
             put("changelogUrl", app.changelogUrl); put("donationUrls", JSONArray(app.donationUrls)); put("liberapay", app.liberapay)
@@ -1129,7 +1129,7 @@ class AppRepository(context: Context) {
                     jsonStringList(item.optJSONArray("iconUrls")).ifEmpty { listOfNotNull(item.optNullableString("iconUrl")) },
                     jsonStringList(item.optJSONArray("screenshotUrls")),
                     jsonStringList(item.optJSONArray("categories")), item.optString("apkUrl"), item.optString("sourceName"),
-                    item.optNullableString("authorName"), item.optNullableString("authorEmail"), item.optNullableString("authorWebsite"),
+                    item.optNullableString("authorName"), item.optNullableString("developerId"), item.optNullableString("authorEmail"), item.optNullableString("authorWebsite"),
                     item.optNullableString("websiteUrl"), item.optNullableString("sourceCodeUrl"), item.optNullableString("issueTrackerUrl"),
                     item.optNullableString("translationUrl"), item.optNullableString("changelogUrl"), jsonStringList(item.optJSONArray("donationUrls")),
                     item.optNullableString("liberapay"), item.optNullableString("openCollective"), item.optNullableString("bitcoin"),
