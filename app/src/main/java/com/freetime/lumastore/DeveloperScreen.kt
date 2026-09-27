@@ -53,6 +53,7 @@ fun DeveloperScreen(
     var developerPage by remember { mutableStateOf("overview") }
     var profile by remember { mutableStateOf<DeveloperProfileSettings?>(null) }
     var funding by remember { mutableStateOf<DeveloperFundingSettings?>(null) }
+    var analyticsSubmissionId by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val developerLoadError = stringResource(R.string.developer_data_load_failed)
     val authLoadError = stringResource(R.string.supabase_sign_in_load_failed)
@@ -190,6 +191,14 @@ fun DeveloperScreen(
         return
     }
     val data = dashboard
+    analyticsSubmissionId?.let { submissionId ->
+        val submission = data?.submissions?.firstOrNull { it.id == submissionId }
+        if (submission != null) {
+            val storeId = submission.storeAppId ?: data.submissionStoreIds[submission.id]
+            DeveloperAnalyticsScreen(submission, storeId?.let { data.downloadStats[it] }) { analyticsSubmissionId = null }
+            return
+        }
+    }
     val unread = data?.notifications?.count { it.readAt == null } ?: 0
     val comments = data?.comments?.groupBy { it.submissionId }.orEmpty()
 
@@ -305,6 +314,7 @@ fun DeveloperScreen(
                         artifacts = (it.storeAppId ?: data.submissionStoreIds[it.id])?.let { id -> data.artifacts[id] }.orEmpty(),
                         scan = data.scans[it.id],
                         downloadStats = (it.storeAppId ?: data.submissionStoreIds[it.id])?.let { id -> data.downloadStats[id] },
+                        onAnalytics = { analyticsSubmissionId = it.id },
                         onSave = { submission, name, shortDescription, description, version, versionCode, changelog, repoUrl ->
                             scope.launch {
                                 runCatching { repository.updateSubmission(submission, name, shortDescription, description, version, versionCode, changelog, repoUrl) }
@@ -401,6 +411,23 @@ private fun DeveloperFundingEditor(initial: DeveloperFundingSettings?, onBack: (
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DeveloperAnalyticsScreen(submission: DeveloperSubmission, stats: DeveloperDownloadStats?, onBack: () -> Unit) {
+    Scaffold(topBar = { TopAppBar(title = { Text(submission.name) }, navigationIcon = { TextButton(onClick = onBack) { Text(stringResource(R.string.back)) } }) }) { padding ->
+        LazyColumn(Modifier.fillMaxSize().padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item { Text("Analytics", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold) }
+            if (stats == null) item { Text("No download analytics available yet.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            else {
+                item { DeveloperMetricCard("Today", stats.today.toString(), Modifier.fillMaxWidth()) }
+                item { DeveloperMetricCard("This month", stats.thisMonth.toString(), Modifier.fillMaxWidth()) }
+                item { DeveloperMetricCard("This year", stats.thisYear.toString(), Modifier.fillMaxWidth()) }
+                item { DeveloperMetricCard("Total", stats.total.toString(), Modifier.fillMaxWidth()) }
+            }
+        }
+    }
+}
+
 @Composable
 private fun DeveloperMetricCard(label: String, value: String, modifier: Modifier = Modifier) {
     Card(
@@ -443,6 +470,7 @@ private fun SubmissionCard(
     artifacts: List<DeveloperPlatformArtifact>,
     scan: DeveloperSecurityScan?,
     downloadStats: DeveloperDownloadStats?,
+    onAnalytics: (DeveloperSubmission) -> Unit,
     onSave: (DeveloperSubmission, String, String, String, String, Long?, String, String) -> Unit,
     onArtifactAdd: (DeveloperSubmission, String, String, String, String) -> Unit,
     onArtifactRemove: (DeveloperSubmission, String, String) -> Unit,
