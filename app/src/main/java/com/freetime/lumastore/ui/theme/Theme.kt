@@ -91,7 +91,7 @@ fun LumaStoreTheme(
             else -> ThemeMode.LIGHT
         },
         dynamicColor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
-        liquidGlassEnabled = true
+        floatingBottomNavigationGlassEnabled = true
     ) {
         MaterialExpressiveTheme(
             colorScheme = colorScheme,
