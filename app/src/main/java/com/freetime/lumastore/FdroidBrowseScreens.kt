@@ -2,6 +2,7 @@ package com.freetime.lumastore
 
 
 import android.content.Intent
+import android.content.Context
 
 import android.os.Build
 
@@ -84,6 +85,12 @@ fun FdroidDiscoverScreen(
     var selectedAppId by remember { mutableStateOf<String?>(null) }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     var usingCachedData by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val recentPreferences = remember(context) { context.getSharedPreferences("luma_recent_apps", Context.MODE_PRIVATE) }
+    var recentIds by remember { mutableStateOf(recentPreferences.getString("ids", "").orEmpty().split("\n").filter { it.isNotBlank() }) }
+    var selectedDeveloper by remember { mutableStateOf<String?>(null) }
+    var selectedLicense by remember { mutableStateOf<String?>(null) }
+    var sortMode by remember { mutableStateOf("updated") }
 
     LaunchedEffect(refreshKey) {
         if (apps.isEmpty()) loading = true
@@ -130,9 +137,32 @@ fun FdroidDiscoverScreen(
     val categories = remember(selectedApps) {
         selectedApps.flatMap { it.categories }.distinct().sortedBy { it.lowercase() }
     }
-    val shownApps = remember(selectedApps, selectedCategory) {
-        val category = selectedCategory
-        if (category == null) selectedApps else selectedApps.filter { category in it.categories }
+    val developers = remember(selectedApps) { selectedApps.mapNotNull { it.authorName?.takeIf(String::isNotBlank) }.distinct().sorted() }
+    val licenses = remember(selectedApps) { selectedApps.mapNotNull { it.license?.takeIf(String::isNotBlank) }.distinct().sorted() }
+    val recentApps = remember(selectedApps, recentIds) {
+        recentIds.mapNotNull { id -> selectedApps.firstOrNull { it.id == id } }.take(10)
+    }
+    val shownApps = remember(selectedApps, selectedCategory, selectedDeveloper, selectedLicense, sortMode) {
+        selectedApps
+            .asSequence()
+            .filter { selectedCategory == null || selectedCategory in it.categories }
+            .filter { selectedDeveloper == null || it.authorName == selectedDeveloper }
+            .filter { selectedLicense == null || it.license == selectedLicense }
+            .sortedWith(
+                when (sortMode) {
+                    "new" -> compareByDescending<StoreApp> { it.addedTimestamp ?: 0L }
+                    "downloads" -> compareByDescending<StoreApp> { it.downloadCount ?: 0L }
+                    "name" -> compareBy { it.name.lowercase() }
+                    else -> compareByDescending<StoreApp> { it.lastUpdatedTimestamp ?: 0L }
+                }
+            )
+            .toList()
+    }
+
+    fun openFromDiscover(app: StoreApp) {
+        selectedAppId = app.id
+        recentIds = (listOf(app.id) + recentIds.filterNot { it == app.id }).take(10)
+        recentPreferences.edit().putString("ids", recentIds.joinToString("\n")).apply()
     }
 
 
@@ -183,12 +213,66 @@ fun FdroidDiscoverScreen(
                     }
                 }
 
+                if (recentApps.isNotEmpty()) {
+                    item("recently_viewed") {
+                        DiscoverCarousel(
+                            title = stringResource(R.string.recently_viewed),
+                            apps = recentApps,
+                            onAppTap = { openFromDiscover(it) }
+                        )
+                    }
+                }
+
+                item("discover_filters") {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(
+                            stringResource(R.string.discover_filters),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            contentPadding = PaddingValues(horizontal = 16.dp)
+                        ) {
+                            item {
+                                AssistChip(
+                                    onClick = { sortMode = if (sortMode == "updated") "downloads" else "updated" },
+                                    label = { Text(if (sortMode == "downloads") stringResource(R.string.sort_downloads) else stringResource(R.string.sort_updated)) }
+                                )
+                            }
+                            if (developers.isNotEmpty()) {
+                                item {
+                                    AssistChip(
+                                        onClick = {
+                                            val index = developers.indexOf(selectedDeveloper)
+                                            selectedDeveloper = if (index < 0) developers.first() else developers.getOrNull(index + 1)
+                                        },
+                                        label = { Text(selectedDeveloper ?: stringResource(R.string.all_developers)) }
+                                    )
+                                }
+                            }
+                            if (licenses.isNotEmpty()) {
+                                item {
+                                    AssistChip(
+                                        onClick = {
+                                            val index = licenses.indexOf(selectedLicense)
+                                            selectedLicense = if (index < 0) licenses.first() else licenses.getOrNull(index + 1)
+                                        },
+                                        label = { Text(selectedLicense ?: stringResource(R.string.all_licenses)) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 if (shownApps.isNotEmpty()) {
                     item("discover_carousel") {
                         DiscoverCarousel(
                             title = stringResource(R.string.discover_apps),
                             apps = shownApps.take(12),
-                            onAppTap = { selectedAppId = it.id }
+                            onAppTap = { openFromDiscover(it) }
                         )
                     }
                 }
@@ -198,7 +282,7 @@ fun FdroidDiscoverScreen(
                         DiscoverCarousel(
                             title = stringResource(R.string.new_apps),
                             apps = newestApps,
-                            onAppTap = { selectedAppId = it.id }
+                            onAppTap = { openFromDiscover(it) }
                         )
                     }
                 }
@@ -208,7 +292,7 @@ fun FdroidDiscoverScreen(
                         DiscoverCarousel(
                             title = stringResource(R.string.recently_updated),
                             apps = recentlyUpdatedApps,
-                            onAppTap = { selectedAppId = it.id }
+                            onAppTap = { openFromDiscover(it) }
                         )
                     }
                 }
@@ -219,7 +303,7 @@ fun FdroidDiscoverScreen(
                         DiscoverCarousel(
                             title = stringResource(R.string.privacy_collection),
                             apps = privacyApps,
-                            onAppTap = { selectedAppId = it.id }
+                            onAppTap = { openFromDiscover(it) }
                         )
                     }
                 }
@@ -229,7 +313,7 @@ fun FdroidDiscoverScreen(
                         DiscoverCarousel(
                             title = stringResource(R.string.games_collection),
                             apps = gameApps,
-                            onAppTap = { selectedAppId = it.id }
+                            onAppTap = { openFromDiscover(it) }
                         )
                     }
                 }
@@ -280,7 +364,7 @@ fun FdroidDiscoverScreen(
                 }
 
                 items(shownApps, key = { it.id }) { app ->
-                    BrowseAppRow(app = app, onClick = { selectedAppId = app.id })
+                    BrowseAppRow(app = app, onClick = { openFromDiscover(app) })
                     HorizontalDivider(modifier = Modifier.padding(start = 92.dp))
                 }
             }
