@@ -361,4 +361,11 @@
     <string name="verified_developer">Verified developer</string>
     <string name="developer_app_count">%1$d published apps</string>
     <string name="show_all">Show all</string>
+    <string name="developer_profile">Profile</string>
+    <string name="developer_funding">Funding</string>
+    <string name="developer_name">Developer name</string>
+    <string name="developer_bio">Bio</string>
+    <string name="profile_image_url">Profile image URL</string>
+    <string name="app_specific_analytics">App-specific analytics</string>
+    <string name="crypto_wallets">Crypto wallets</string>
 </resources>
