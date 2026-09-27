@@ -359,4 +359,6 @@
     <string name="sort_new">Newest</string>
     <string name="sort_name">Name</string>
     <string name="all_categories">All categories</string>
+    <string name="verified_developer">Verified developer</string>
+    <string name="developer_app_count">%1$d published apps</string>
 </resources>
