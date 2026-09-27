@@ -461,6 +461,10 @@ fun FdroidSearchScreen(
     var apps by remember(repository) { mutableStateOf(repository.currentApps()) }
     var query by remember { mutableStateOf("") }
     var selectedAppId by remember(initialAppId) { mutableStateOf(initialAppId) }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
+    var selectedDeveloper by remember { mutableStateOf<String?>(null) }
+    var selectedLicense by remember { mutableStateOf<String?>(null) }
+    var sortMode by remember { mutableStateOf("name") }
 
     LaunchedEffect(Unit) {
         if (apps.isEmpty()) {
@@ -477,15 +481,31 @@ fun FdroidSearchScreen(
     val categories = remember(selectedApps) {
         selectedApps.flatMap { it.categories }.distinct().sortedBy { it.lowercase() }
     }
-    val results = remember(selectedApps, query) {
+    val searchDevelopers = remember(selectedApps) { selectedApps.mapNotNull { it.authorName?.takeIf(String::isNotBlank) }.distinct().sorted() }
+    val searchLicenses = remember(selectedApps) { selectedApps.mapNotNull { it.license?.takeIf(String::isNotBlank) }.distinct().sorted() }
+    val results = remember(selectedApps, query, selectedCategory, selectedDeveloper, selectedLicense, sortMode) {
         if (query.isBlank()) emptyList()
-        else selectedApps.filter { app ->
-            app.name.contains(query, true) ||
-                app.summary.contains(query, true) ||
-                app.description.contains(query, true) ||
-                app.id.contains(query, true) ||
-                app.categories.any { it.contains(query, true) }
-        }
+        else selectedApps.asSequence()
+            .filter { app ->
+                app.name.contains(query, true) ||
+                    app.summary.contains(query, true) ||
+                    app.description.contains(query, true) ||
+                    app.id.contains(query, true) ||
+                    app.categories.any { it.contains(query, true) } ||
+                    app.authorName?.contains(query, true) == true
+            }
+            .filter { selectedCategory == null || selectedCategory in it.categories }
+            .filter { selectedDeveloper == null || it.authorName == selectedDeveloper }
+            .filter { selectedLicense == null || it.license == selectedLicense }
+            .sortedWith(
+                when (sortMode) {
+                    "downloads" -> compareByDescending<StoreApp> { it.downloadCount ?: 0L }
+                    "updated" -> compareByDescending<StoreApp> { it.lastUpdatedTimestamp ?: 0L }
+                    "new" -> compareByDescending<StoreApp> { it.addedTimestamp ?: 0L }
+                    else -> compareBy { it.name.lowercase() }
+                }
+            )
+            .toList()
     }
     val matchingCategories = remember(categories, query) {
         if (query.isBlank()) categories else categories.filter { it.contains(query, true) }
@@ -532,6 +552,48 @@ fun FdroidSearchScreen(
                                 .padding(horizontal = 16.dp, vertical = 14.dp)
                         )
                         HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
+                    }
+                }
+            } else {
+                item("search_filters") {
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        item {
+                            AssistChip(
+                                onClick = { sortMode = when (sortMode) { "name" -> "downloads"; "downloads" -> "updated"; "updated" -> "new"; else -> "name" } },
+                                label = { Text(stringResource(when (sortMode) { "downloads" -> R.string.sort_downloads; "updated" -> R.string.sort_updated; "new" -> R.string.sort_new; else -> R.string.sort_name })) }
+                            )
+                        }
+                        item {
+                            AssistChip(
+                                onClick = {
+                                    val values = categories
+                                    val index = values.indexOf(selectedCategory)
+                                    selectedCategory = if (index < 0) values.firstOrNull() else values.getOrNull(index + 1)
+                                },
+                                label = { Text(selectedCategory ?: stringResource(R.string.all_categories)) }
+                            )
+                        }
+                        if (searchDevelopers.isNotEmpty()) item {
+                            AssistChip(
+                                onClick = {
+                                    val index = searchDevelopers.indexOf(selectedDeveloper)
+                                    selectedDeveloper = if (index < 0) searchDevelopers.first() else searchDevelopers.getOrNull(index + 1)
+                                },
+                                label = { Text(selectedDeveloper ?: stringResource(R.string.all_developers)) }
+                            )
+                        }
+                        if (searchLicenses.isNotEmpty()) item {
+                            AssistChip(
+                                onClick = {
+                                    val index = searchLicenses.indexOf(selectedLicense)
+                                    selectedLicense = if (index < 0) searchLicenses.first() else searchLicenses.getOrNull(index + 1)
+                                },
+                                label = { Text(selectedLicense ?: stringResource(R.string.all_licenses)) }
+                            )
+                        }
                     }
                 }
             } else if (results.isEmpty()) {
