@@ -11,6 +11,7 @@ import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
+import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.SerialName
@@ -74,6 +75,14 @@ class DeveloperRepository(context: Context) {
     suspend fun signInWithGitLab() { supabase.auth.signInWith(Gitlab, redirectUrl = OAUTH_REDIRECT_URL) }
     suspend fun currentSession(): DeveloperSession? = supabase.auth.currentSessionOrNull()?.toDeveloperSession()
     suspend fun signOut() { supabase.auth.signOut() }
+
+    suspend fun uploadAvatar(session: DeveloperSession, bytes: ByteArray, extension: String): String {
+        val safeExtension = extension.lowercase().takeIf { it in setOf("jpg", "jpeg", "png", "webp") } ?: "jpg"
+        val path = "${session.userId}/avatar.$safeExtension"
+        val bucket = supabase.storage["developer-avatars"]
+        bucket.upload(path, bytes, upsert = true)
+        return bucket.publicUrl(path)
+    }
 
     suspend fun loadProfile(session: DeveloperSession): DeveloperProfileSettings? =
         supabase.from("luma_developer_profiles")
