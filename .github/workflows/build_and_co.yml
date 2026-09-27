@@ -145,3 +145,37 @@ jobs:
             Luma-Store-v${{ steps.versioncheck.outputs.version }}.apk
           draft: false
           generate_release_notes: true
+
+      - name: Install Go for Zapstore
+        if: steps.versioncheck.outputs.create_tag == 'true'
+        uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          cache: false
+
+      - name: Install Zapstore publisher
+        if: steps.versioncheck.outputs.create_tag == 'true'
+        run: go install github.com/zapstore/zsp@latest
+
+      - name: Publish to Zapstore
+        if: steps.versioncheck.outputs.create_tag == 'true'
+        env:
+          SIGN_WITH: ${{ secrets.ZAPSTORE_SIGN_WITH }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.versioncheck.outputs.version }}
+          SIGNED_APK: ${{ steps.sign_apk.outputs.signed_apk }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${SIGN_WITH:-}" ]; then
+            echo "Missing ZAPSTORE_SIGN_WITH repository secret." >&2
+            exit 1
+          fi
+
+          # Keep zapstore.yaml reusable for future versions while publishing
+          # the exact signed APK produced by this workflow.
+          cp zapstore.yaml zapstore-ci.yaml
+          sed -i -E "s|^release_source:.*$|release_source: ./${SIGNED_APK}|" zapstore-ci.yaml
+
+          zsp publish --check zapstore-ci.yaml
+          zsp publish --quiet --commit "$GITHUB_SHA" zapstore-ci.yaml
