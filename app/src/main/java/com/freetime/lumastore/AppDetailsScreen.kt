@@ -128,9 +128,13 @@ fun AppDetailsScreen(
     var favoriteError by remember(app.id) { mutableStateOf<String?>(null) }
     val favoriteScope = rememberCoroutineScope()
     var headerRating by remember(app.id) { mutableStateOf<com.freetime.lumastore.data.AppRatingSummary?>(null) }
+    var developerFunding by remember(app.developerId) { mutableStateOf<com.freetime.lumastore.data.DeveloperFunding?>(null) }
 
     LaunchedEffect(app.id) {
         headerRating = runCatching { LumaStoreApi.ratings(app.id) }.getOrNull()
+    }
+    LaunchedEffect(app.developerId) {
+        developerFunding = app.developerId?.let { runCatching { LumaStoreApi.developerProfile(it).funding }.getOrNull() }
     }
 
     LaunchedEffect(app.id) {
@@ -393,7 +397,8 @@ fun AppDetailsScreen(
                 !app.liberapay.isNullOrBlank() ||
                 !app.openCollective.isNullOrBlank() ||
                 !app.bitcoin.isNullOrBlank() ||
-                !app.litecoin.isNullOrBlank()
+                !app.litecoin.isNullOrBlank() ||
+                developerFunding != null
             ) {
                 ElevatedCard(
                     modifier = Modifier
@@ -425,7 +430,18 @@ fun AppDetailsScreen(
                             DetailActionItem(stringResource(R.string.open_collective), Icons.Filled.Groups) { onOpenUri(url) } } }
                         app.bitcoin?.let { value -> item("bitcoin") { DetailActionItem(stringResource(R.string.bitcoin), Icons.Filled.CurrencyBitcoin) { onOpenUri(cryptoUri("bitcoin", value)) } } }
                         app.litecoin?.let { value -> item("litecoin") { DetailActionItem(stringResource(R.string.litecoin), Icons.Filled.AttachMoney) { onOpenUri(cryptoUri("litecoin", value)) } } }
+                        developerFunding?.donateUrl?.let { value -> item("developer_donate") { DetailActionItem(stringResource(R.string.donation_link), Icons.Filled.Favorite) { onOpenUri(value) } } }
+                        developerFunding?.liberapay?.let { value -> item("developer_liberapay") { DetailActionItem(stringResource(R.string.liberapay), Icons.Filled.Paid) { onOpenUri(value) } } }
+                        developerFunding?.openCollective?.let { value -> item("developer_opencollective") { DetailActionItem(stringResource(R.string.open_collective), Icons.Filled.Groups) { onOpenUri(value) } } }
                     
+                    }
+                    developerFunding?.cryptoAddresses?.takeIf { it.isNotEmpty() }?.let { addresses ->
+                        HorizontalDivider(Modifier.padding(horizontal = 16.dp))
+                        Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            addresses.forEach { (method, address) ->
+                                DetailCryptoAddress(method = method, address = address)
+                            }
+                        }
                     }
                     Spacer(Modifier.height(8.dp))
                 }
@@ -771,6 +787,22 @@ private fun DetailActionRow(label: String, value: String, icon: ImageVector = Ic
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
         )
+    }
+}
+
+@Composable
+private fun DetailCryptoAddress(method: String, address: String) {
+    val context = LocalContext.current
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(method.substringBefore("::").replace('_', ' ').replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.labelLarge)
+            method.substringAfter("::", "").takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            Text(address, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        TextButton(onClick = {
+            val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            clipboard.setPrimaryClip(android.content.ClipData.newPlainText(method, address))
+        }) { Text(stringResource(R.string.copy)) }
     }
 }
 
