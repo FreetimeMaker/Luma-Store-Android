@@ -16,7 +16,8 @@ data class MyAppRating(val rating: Int?, val reviewText: String?, val updatedAt:
 data class AccountRating(val appId: String, val packageName: String?, val appName: String, val rating: Int, val reviewText: String?, val updatedAt: String?)
 data class FavoriteApp(val appId: String, val packageName: String?, val appName: String, val iconUrl: String?, val createdAt: String?)
 data class DeveloperProfileApp(val id: String, val packageName: String?, val name: String, val iconUrl: String?, val summary: String?)
-data class PublicDeveloperProfile(val developerId: String, val displayName: String, val bio: String?, val websiteUrl: String?, val githubUrl: String?, val gitlabUrl: String?, val avatarUrl: String?, val verified: Boolean, val apps: List<DeveloperProfileApp>)
+data class DeveloperFunding(val donateUrl: String?, val liberapay: String?, val openCollective: String?, val cryptoAddresses: Map<String, String>)
+data class PublicDeveloperProfile(val developerId: String, val displayName: String, val bio: String?, val websiteUrl: String?, val githubUrl: String?, val gitlabUrl: String?, val avatarUrl: String?, val verified: Boolean, val funding: DeveloperFunding?, val apps: List<DeveloperProfileApp>)
 
 object LumaStoreApi {
     private const val BASE_URL = "https://api.free-time.me/v2/lumastore"
@@ -38,6 +39,13 @@ object LumaStoreApi {
                 ))
             }
         }
+        val fundingJson = json.optJSONObject("funding")
+        val cryptoJson = fundingJson?.optJSONObject("crypto_addresses")
+        val crypto = buildMap {
+            cryptoJson?.keys()?.forEach { key ->
+                cryptoJson.optString(key).takeIf { it.isNotBlank() }?.let { put(key, it) }
+            }
+        }
         return PublicDeveloperProfile(
             developerId = json.optString("developer_id"),
             displayName = json.optString("display_name").ifBlank { "Developer" },
@@ -47,6 +55,14 @@ object LumaStoreApi {
             gitlabUrl = json.optString("gitlab_url").takeIf { it.isNotBlank() },
             avatarUrl = json.optString("avatar_url").takeIf { it.isNotBlank() },
             verified = json.optBoolean("verified", false),
+            funding = fundingJson?.let {
+                DeveloperFunding(
+                    donateUrl = it.optString("donate_url").takeIf { value -> value.isNotBlank() },
+                    liberapay = it.optString("liberapay").takeIf { value -> value.isNotBlank() },
+                    openCollective = it.optString("opencollective").takeIf { value -> value.isNotBlank() },
+                    cryptoAddresses = crypto
+                )
+            },
             apps = apps
         )
     }
