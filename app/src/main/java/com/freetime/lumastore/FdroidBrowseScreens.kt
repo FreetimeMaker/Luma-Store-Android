@@ -142,19 +142,19 @@ fun FdroidDiscoverScreen(
     }
 
     val newestApps = remember(selectedApps) {
-        selectedApps.filter { it.addedTimestamp != null }.sortedByDescending { it.addedTimestamp }.take(12)
+        selectedApps.filter { it.addedTimestamp != null }.sortedByDescending { it.addedTimestamp }
     }
     val recentlyUpdatedApps = remember(selectedApps) {
-        selectedApps.filter { it.lastUpdatedTimestamp != null }.sortedByDescending { it.lastUpdatedTimestamp }.take(12)
+        selectedApps.filter { it.lastUpdatedTimestamp != null }.sortedByDescending { it.lastUpdatedTimestamp }
     }
     val privacyApps = remember(selectedApps) {
         selectedApps.filter { app ->
             app.antiFeatures.isEmpty() && !app.closedSource &&
                 app.categories.none { it.contains("tracking", true) }
-        }.take(12)
+        }
     }
     val gameApps = remember(selectedApps) {
-        selectedApps.filter { app -> app.categories.any { it.contains("game", true) } }.take(12)
+        selectedApps.filter { app -> app.categories.any { it.contains("game", true) } }
     }
     val trendingApps = remember(selectedApps) {
         selectedApps
@@ -163,7 +163,6 @@ fun FdroidDiscoverScreen(
                 compareByDescending<StoreApp> { it.downloadCount ?: 0L }
                     .thenByDescending { it.lastUpdatedTimestamp ?: 0L }
             )
-            .take(12)
     }
     val recommendedApps = remember(selectedApps) {
         selectedApps
@@ -176,7 +175,6 @@ fun FdroidDiscoverScreen(
                         ((it.lastUpdatedTimestamp ?: 0L) / 100_000_000L)
                 }
             )
-            .take(12)
     }
     val categories = remember(selectedApps) {
         selectedApps.flatMap { it.categories }.distinct().sortedBy { it.lowercase() }
@@ -261,7 +259,7 @@ fun FdroidDiscoverScreen(
                     item("recently_viewed") {
                         DiscoverCarousel(
                             title = stringResource(R.string.recently_viewed),
-                            apps = recentApps,
+                            apps = recentApps.take(12),
                             onAppTap = { openFromDiscover(it) },
                             onShowAll = { openCollection = context.getString(R.string.recently_viewed) to recentApps }
                         )
@@ -326,7 +324,7 @@ fun FdroidDiscoverScreen(
                     item("recommended_apps") {
                         DiscoverCarousel(
                             title = stringResource(R.string.recommended_for_you),
-                            apps = recommendedApps,
+                            apps = recommendedApps.take(12),
                             onAppTap = { openFromDiscover(it) },
                             onShowAll = { openCollection = context.getString(R.string.recommended_for_you) to recommendedApps }
                         )
@@ -337,7 +335,7 @@ fun FdroidDiscoverScreen(
                     item("trending_apps") {
                         DiscoverCarousel(
                             title = stringResource(R.string.trending_apps),
-                            apps = trendingApps,
+                            apps = trendingApps.take(12),
                             onAppTap = { openFromDiscover(it) },
                             onShowAll = { openCollection = context.getString(R.string.trending_apps) to trendingApps }
                         )
@@ -348,7 +346,7 @@ fun FdroidDiscoverScreen(
                     item("new_apps") {
                         DiscoverCarousel(
                             title = stringResource(R.string.new_apps),
-                            apps = newestApps,
+                            apps = newestApps.take(12),
                             onAppTap = { openFromDiscover(it) },
                             onShowAll = { openCollection = context.getString(R.string.new_apps) to newestApps }
                         )
@@ -359,7 +357,7 @@ fun FdroidDiscoverScreen(
                     item("recently_updated") {
                         DiscoverCarousel(
                             title = stringResource(R.string.recently_updated),
-                            apps = recentlyUpdatedApps,
+                            apps = recentlyUpdatedApps.take(12),
                             onAppTap = { openFromDiscover(it) },
                             onShowAll = { openCollection = context.getString(R.string.recently_updated) to recentlyUpdatedApps }
                         )
@@ -371,7 +369,7 @@ fun FdroidDiscoverScreen(
                     item("privacy_collection") {
                         DiscoverCarousel(
                             title = stringResource(R.string.privacy_collection),
-                            apps = privacyApps,
+                            apps = privacyApps.take(12),
                             onAppTap = { openFromDiscover(it) },
                             onShowAll = { openCollection = context.getString(R.string.privacy_collection) to privacyApps }
                         )
@@ -382,7 +380,7 @@ fun FdroidDiscoverScreen(
                     item("games_collection") {
                         DiscoverCarousel(
                             title = stringResource(R.string.games_collection),
-                            apps = gameApps,
+                            apps = gameApps.take(12),
                             onAppTap = { openFromDiscover(it) },
                             onShowAll = { openCollection = context.getString(R.string.games_collection) to gameApps }
                         )
