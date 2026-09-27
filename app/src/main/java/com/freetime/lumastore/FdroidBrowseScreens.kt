@@ -64,10 +64,15 @@ import coil3.compose.AsyncImage
 import coil3.compose.SubcomposeAsyncImage
 import coil3.compose.SubcomposeAsyncImageContent
 import com.freetime.lumastore.data.AppRepository
+import com.freetime.lumastore.data.AppRatingSummary
+import com.freetime.lumastore.data.LumaStoreApi
 import com.freetime.lumastore.data.StoreApp
 import com.freetime.lumastore.install.ApkInstaller
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 
 @Composable
 fun FdroidDiscoverScreen(
@@ -91,6 +96,7 @@ fun FdroidDiscoverScreen(
     var selectedDeveloper by remember { mutableStateOf<String?>(null) }
     var selectedLicense by remember { mutableStateOf<String?>(null) }
     var sortMode by remember { mutableStateOf("updated") }
+    var ratingSummaries by remember { mutableStateOf<Map<String, AppRatingSummary>>(emptyMap()) }
 
     LaunchedEffect(refreshKey) {
         if (apps.isEmpty()) loading = true
@@ -119,6 +125,19 @@ fun FdroidDiscoverScreen(
             repository.preferredVariant(packageName, variants)
         }.sortedBy { it.name.lowercase() }
     }
+    LaunchedEffect(selectedApps) {
+        val lumaApps = selectedApps.filter { it.sourceName.contains("Luma", ignoreCase = true) }.take(40)
+        if (lumaApps.isNotEmpty()) {
+            ratingSummaries = coroutineScope {
+                lumaApps.map { app ->
+                    async {
+                        runCatching { LumaStoreApi.ratings(app.id) }.getOrNull()?.let { app.id to it }
+                    }
+                }.awaitAll().filterNotNull().toMap()
+            }
+        }
+    }
+
     val newestApps = remember(selectedApps) {
         selectedApps.filter { it.addedTimestamp != null }.sortedByDescending { it.addedTimestamp }.take(12)
     }
@@ -406,7 +425,7 @@ fun FdroidDiscoverScreen(
                 }
 
                 items(shownApps, key = { it.id }) { app ->
-                    BrowseAppRow(app = app, onClick = { openFromDiscover(app) })
+                    BrowseAppRow(app = app, rating = ratingSummaries[app.id], onClick = { openFromDiscover(app) })
                     HorizontalDivider(modifier = Modifier.padding(start = 92.dp))
                 }
             }
@@ -608,7 +627,7 @@ private fun formatCompactCount(value: Long): String = when {
 }
 
 @Composable
-private fun BrowseAppRow(app: StoreApp, onClick: () -> Unit) {
+private fun BrowseAppRow(app: StoreApp, rating: AppRatingSummary? = null, onClick: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         color = Color.Transparent
@@ -647,6 +666,13 @@ private fun BrowseAppRow(app: StoreApp, onClick: () -> Unit) {
                     app.downloadCount?.takeIf { it > 0 }?.let { downloads ->
                         Text(
                             stringResource(R.string.download_count_compact, formatCompactCount(downloads)),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    rating?.takeIf { it.count > 0 }?.let {
+                        Text(
+                            stringResource(R.string.rating_compact, it.average, it.count),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary
                         )
