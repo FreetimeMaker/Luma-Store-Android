@@ -277,7 +277,7 @@ fun DeveloperScreen(
 
 @Composable
 private fun NotificationCard(notification: DeveloperNotification, onMarkRead: (() -> Unit)?) {
-    val shape = RoundedCornerShape(18.dp)
+    val shape = MaterialTheme.shapes.large
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = shape,
@@ -309,7 +309,7 @@ private fun SubmissionCard(
     onPlatformSave: (DeveloperSubmission, String, String, String, String, String, String, String, List<String>) -> Unit,
     onRemove: (DeveloperSubmission) -> Unit
 ) {
-    val shape = RoundedCornerShape(18.dp)
+    val shape = MaterialTheme.shapes.large
     var editing by remember(submission.id, submission.status) { mutableStateOf(false) }
     var name by remember(submission.id) { mutableStateOf(submission.name) }
     var shortDescription by remember(submission.id) { mutableStateOf(submission.shortDescription.orEmpty()) }
