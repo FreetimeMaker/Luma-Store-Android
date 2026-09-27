@@ -81,7 +81,7 @@ class DeveloperRepository(context: Context) {
             .decodeList<DeveloperProfileSettings>().firstOrNull()
 
     suspend fun saveProfile(session: DeveloperSession, displayName: String, bio: String, websiteUrl: String, githubUrl: String, gitlabUrl: String, avatarUrl: String) {
-        supabase.postgrest["luma_developer_profiles"].insert(
+        supabase.from("luma_developer_profiles").upsert(
             DeveloperProfileUpdate(
                 developerId = session.userId,
                 displayName = displayName.trim(),
@@ -90,10 +90,9 @@ class DeveloperRepository(context: Context) {
                 githubUrl = githubUrl.trim().ifBlank { null },
                 gitlabUrl = gitlabUrl.trim().ifBlank { null },
                 avatarUrl = avatarUrl.trim().ifBlank { null }
-            ),
-            upsert = true,
+            )) {
             onConflict = "developer_id"
-        )
+        }
     }
 
     suspend fun loadFunding(session: DeveloperSession): DeveloperFundingSettings? =
@@ -103,7 +102,7 @@ class DeveloperRepository(context: Context) {
 
     suspend fun saveFunding(session: DeveloperSession, donateUrl: String, liberapay: String, openCollective: String, cryptoAddresses: Map<String, String>) {
         val cleaned = JsonObject(cryptoAddresses.filterValues { it.isNotBlank() }.mapValues { JsonPrimitive(it.value.trim()) })
-        supabase.postgrest["luma_developer_funding"].insert(
+        supabase.from("luma_developer_funding").upsert(
             DeveloperFundingUpdate(
                 developerId = session.userId,
                 donateUrl = donateUrl.trim().ifBlank { null },
@@ -112,10 +111,9 @@ class DeveloperRepository(context: Context) {
                 bitcoin = cryptoAddresses["bitcoin::Bitcoin"]?.trim()?.ifBlank { null },
                 litecoin = cryptoAddresses["litecoin::Litecoin"]?.trim()?.ifBlank { null },
                 cryptoAddresses = cleaned
-            ),
-            upsert = true,
+            )) {
             onConflict = "developer_id"
-        )
+        }
     }
 
     suspend fun isDeveloper(session: DeveloperSession): Boolean =
