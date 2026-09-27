@@ -1,10 +1,13 @@
-• Added account-synced favorites with direct access to app details
-• Added editable text reviews, review deletion, dates and community review sorting
-• Added optimistic favorite updates with automatic rollback on errors
-• Improved Account performance with parallel loading and lazy-rendered favorites and reviews
-• Added adaptive Liquid Glass navigation for phones, tablets and wide screens
-• Improved F-Droid repository metadata names and moved repository operations off the UI thread
-• Added per-source repository retry and more resilient partial sync behavior
-• Improved Similar Apps ranking using categories, developers, sources and update recency
-• Improved responsive Similar Apps cards with icons, descriptions and repository information
-• Fixed additional App Details and release-build issues
+• Updated to Freetime-Core 3.0.0 with Material 3 Expressive and Material You
+• Added the new floating Liquid Glass bottom navigation
+• Expanded Discover with trending, recommended, recently viewed, new and updated collections
+• Added advanced app filters, sorting, ratings and download metrics
+• Added full collection views instead of limiting “Show all” to carousel items
+• Added public developer profiles with avatar and verified status
+• Added developer profile and funding management
+• Added developer donation links and supported crypto networks to developer and app details
+• Added app-specific developer analytics for today, month, year and total downloads
+• Added developer profile image selection and Supabase Storage upload
+• Improved App Details with developer information, ratings, downloads and update information
+• Improved developer dashboard metrics and app-specific statistics
+• Fixed Supabase profile, funding and avatar upload compatibility
