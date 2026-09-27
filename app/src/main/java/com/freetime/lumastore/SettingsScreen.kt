@@ -418,7 +418,7 @@ private fun EditSourceDialog(
     val editFailed = stringResource(R.string.source_edit_failed)
     val scope = rememberCoroutineScope()
     var saving by remember(source) { mutableStateOf(false) }
-    val dialogShape = RoundedCornerShape(28.dp)
+    val dialogShape = MaterialTheme.shapes.extraLarge
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -487,7 +487,7 @@ private fun SourceCard(
     onRefresh: () -> Unit,
     onRemove: () -> Unit
 ) {
-    val shape = RoundedCornerShape(20.dp)
+    val shape = MaterialTheme.shapes.large
     Card(
         modifier = Modifier
             .fillMaxWidth()
