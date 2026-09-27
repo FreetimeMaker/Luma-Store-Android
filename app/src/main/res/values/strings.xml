@@ -347,4 +347,7 @@
     <string name="sort_downloads">Most downloaded</string>
     <string name="all_developers">All developers</string>
     <string name="all_licenses">All licenses</string>
+    <string name="recommended_for_you">Recommended for you</string>
+    <string name="trending_apps">Trending</string>
+    <string name="download_count_compact">%1$s downloads</string>
 </resources>
