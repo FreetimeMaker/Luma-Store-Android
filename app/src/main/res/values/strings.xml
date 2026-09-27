@@ -350,4 +350,8 @@
     <string name="recommended_for_you">Recommended for you</string>
     <string name="trending_apps">Trending</string>
     <string name="download_count_compact">%1$s downloads</string>
+    <string name="metric_apps">Apps</string>
+    <string name="metric_today">Today</string>
+    <string name="metric_month">This month</string>
+    <string name="developer_pending_apps">%1$d apps need attention</string>
 </resources>
