@@ -179,12 +179,32 @@ fun DeveloperScreen(
             Text(current.email ?: current.userId, color = MaterialTheme.colorScheme.onSurfaceVariant)
             data?.let { dashboardData ->
                 val totalDownloads = dashboardData.downloadStats.values.sumOf { stats -> stats.total }
+                val downloadsToday = dashboardData.downloadStats.values.sumOf { stats -> stats.today }
+                val downloadsMonth = dashboardData.downloadStats.values.sumOf { stats -> stats.thisMonth }
+                val approvedApps = dashboardData.submissions.count { it.status == "Approved" }
+                val pendingApps = dashboardData.submissions.count { it.status in setOf("Pending", "Changes Requested") }
                 Text(
                     stringResource(R.string.developer_total_downloads, totalDownloads),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary
                 )
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    DeveloperMetricCard(stringResource(R.string.metric_apps), approvedApps.toString(), Modifier.weight(1f))
+                    DeveloperMetricCard(stringResource(R.string.metric_today), downloadsToday.toString(), Modifier.weight(1f))
+                    DeveloperMetricCard(stringResource(R.string.metric_month), downloadsMonth.toString(), Modifier.weight(1f))
+                }
+                if (pendingApps > 0) {
+                    Text(
+                        stringResource(R.string.developer_pending_apps, pendingApps),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.tertiary
+                    )
+                }
             }
             Spacer(Modifier.height(6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -272,6 +292,20 @@ fun DeveloperScreen(
             }
         }
         item { Spacer(Modifier.height(88.dp)) }
+    }
+}
+
+@Composable
+private fun DeveloperMetricCard(label: String, value: String, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+    ) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 
