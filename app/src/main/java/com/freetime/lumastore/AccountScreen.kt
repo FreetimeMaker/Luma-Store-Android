@@ -50,6 +50,9 @@ fun AccountScreen(repository: DeveloperRepository, onOpenApp: (String) -> Unit =
     var loading by remember { mutableStateOf(true) }
     var working by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var accountMessage by remember { mutableStateOf<String?>(null) }
     var reviews by remember { mutableStateOf<List<AccountRating>>(emptyList()) }
     var editingReview by remember { mutableStateOf<AccountRating?>(null) }
     var editText by remember { mutableStateOf("") }
@@ -114,6 +117,18 @@ fun AccountScreen(repository: DeveloperRepository, onOpenApp: (String) -> Unit =
                 }
             }
         } else if (session == null) {
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Luma Store account", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                    Text("Sign in directly with Luma Store. No Google, GitHub or GitLab account is required.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedTextField(email, { email = it }, label = { Text("Email") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(password, { password = it }, label = { Text("Password") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    Button(onClick = { scope.launch { working = true; error = null; accountMessage = null; runCatching { repository.signInWithEmail(email, password) }.onFailure { error = it.message }.also { working = false } } }, enabled = !working && email.isNotBlank() && password.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Sign in") }
+                    OutlinedButton(onClick = { scope.launch { working = true; error = null; accountMessage = null; runCatching { repository.signUpWithEmail(email, password) }.onSuccess { accountMessage = "Account created. Check your email if confirmation is required." }.onFailure { error = it.message }.also { working = false } } }, enabled = !working && email.isNotBlank() && password.length >= 6, modifier = Modifier.fillMaxWidth()) { Text("Create Luma Store account") }
+                    accountMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+                    Text("Or use an external provider", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
             item {
                 Button(
                     onClick = {
