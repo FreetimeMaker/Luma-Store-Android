@@ -11,3 +11,5 @@
 • Improved App Details with developer information, ratings, downloads and update information
 • Improved developer dashboard metrics and app-specific statistics
 • Fixed Supabase profile, funding and avatar upload compatibility
+• Added direct Luma Store email/password accounts without requiring a social login provider
+• Added repository privacy documentation and expanded Linux usage guidance
