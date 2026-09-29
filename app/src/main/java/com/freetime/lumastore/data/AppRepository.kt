@@ -63,7 +63,7 @@ data class StoreApp(
     val versions: List<StoreVersion> = emptyList()
 )
 
-enum class SourceType { FDROID_V1, LUMA_API }
+enum class SourceType { FDROID_V1, LUMA_API, FORGE_RELEASE, DIRECT_APK }
 
 data class SourceHealth(
     val successful: Boolean,
@@ -320,16 +320,17 @@ class AppRepository(context: Context) {
     }
 
     fun addCustomSource(name: String, repositoryUrl: String): Result<AppSource> = runCatching {
-        val indexUrl = normalizeFdroidUrl(repositoryUrl)
+        val sourceType = detectSourceType(repositoryUrl)
+        val indexUrl = normalizeSourceUrl(repositoryUrl, sourceType)
         val parsed = URL(indexUrl)
         require(parsed.protocol == "https" || parsed.protocol == "http") {
             appContext.getString(R.string.repository_url_invalid_scheme)
         }
-        val cleanName = repositoryDisplayName(indexUrl).ifBlank { name.trim() }
+        val cleanName = sourceDisplayName(indexUrl, sourceType).ifBlank { name.trim() }
         require(cleanName.isNotBlank()) { appContext.getString(R.string.source_name_required) }
         require(sources.none { it.name.equals(cleanName, true) }) { appContext.getString(R.string.source_name_exists) }
         require(sources.none { it.indexUrl.equals(indexUrl, true) }) { appContext.getString(R.string.repository_already_added) }
-        AppSource(cleanName, indexUrl, SourceType.FDROID_V1, custom = true).also {
+        AppSource(cleanName, indexUrl, sourceType, custom = true).also {
             saveCustomSources(loadCustomSources() + it)
             setSourceEnabled(it, true)
         }
@@ -337,17 +338,18 @@ class AppRepository(context: Context) {
 
     fun updateCustomSource(source: AppSource, name: String, repositoryUrl: String): Result<AppSource> = runCatching {
         require(source.custom) { appContext.getString(R.string.only_custom_sources_editable) }
-        val indexUrl = normalizeFdroidUrl(repositoryUrl)
+        val sourceType = detectSourceType(repositoryUrl)
+        val indexUrl = normalizeSourceUrl(repositoryUrl, sourceType)
         val parsed = URL(indexUrl)
         require(parsed.protocol == "https" || parsed.protocol == "http") {
             appContext.getString(R.string.repository_url_invalid_scheme)
         }
-        val cleanName = repositoryDisplayName(indexUrl).ifBlank { name.trim() }
+        val cleanName = sourceDisplayName(indexUrl, sourceType).ifBlank { name.trim() }
         require(cleanName.isNotBlank()) { appContext.getString(R.string.source_name_required) }
         val others = sources.filterNot { it.name == source.name && it.indexUrl == source.indexUrl }
         require(others.none { it.name.equals(cleanName, true) }) { appContext.getString(R.string.source_name_exists) }
         require(others.none { it.indexUrl.equals(indexUrl, true) }) { appContext.getString(R.string.repository_already_added) }
-        val updated = source.copy(name = cleanName, indexUrl = indexUrl)
+        val updated = source.copy(name = cleanName, indexUrl = indexUrl, type = sourceType)
         val wasEnabled = isSourceEnabled(source)
         saveCustomSources(loadCustomSources().map { if (it == source) updated else it })
         sourcePreferences.edit().remove(sourcePreferenceKey(source)).apply()
@@ -506,6 +508,8 @@ class AppRepository(context: Context) {
     private fun loadSource(source: AppSource): List<StoreApp> = when (source.type) {
         SourceType.FDROID_V1 -> loadFdroidSource(source)
         SourceType.LUMA_API -> loadLumaApiSource(source)
+        SourceType.FORGE_RELEASE -> loadForgeReleaseSource(source)
+        SourceType.DIRECT_APK -> loadDirectApkSource(source)
     }
 
     private fun loadFdroidSource(source: AppSource): List<StoreApp> {
@@ -1068,7 +1072,8 @@ class AppRepository(context: Context) {
                     val item = array.optJSONObject(i) ?: continue
                     val name = item.optString("name").trim()
                     val indexUrl = item.optString("indexUrl").trim()
-                    if (name.isNotBlank() && indexUrl.isNotBlank()) add(AppSource(name, indexUrl, SourceType.FDROID_V1, custom = true))
+                    val type = runCatching { SourceType.valueOf(item.optString("type", SourceType.FDROID_V1.name)) }.getOrDefault(SourceType.FDROID_V1)
+                    if (name.isNotBlank() && indexUrl.isNotBlank()) add(AppSource(name, indexUrl, type, custom = true))
                 }
             }
         }.getOrDefault(emptyList())
@@ -1076,8 +1081,30 @@ class AppRepository(context: Context) {
 
     private fun saveCustomSources(sources: List<AppSource>) {
         val array = JSONArray()
-        sources.forEach { array.put(JSONObject().put("name", it.name).put("indexUrl", it.indexUrl)) }
+        sources.forEach { array.put(JSONObject().put("name", it.name).put("indexUrl", it.indexUrl).put("type", it.type.name)) }
         sourcePreferences.edit().putString(CUSTOM_SOURCES_KEY, array.toString()).apply()
+    }
+
+    private fun detectSourceType(rawUrl: String): SourceType {
+        val clean = rawUrl.trim()
+        val url = URL(clean)
+        val host = url.host.lowercase()
+        return when {
+            clean.endsWith(".apk", true) -> SourceType.DIRECT_APK
+            host == "github.com" || host == "gitlab.com" || host == "codeberg.org" -> SourceType.FORGE_RELEASE
+            else -> SourceType.FDROID_V1
+        }
+    }
+
+    private fun normalizeSourceUrl(rawUrl: String, type: SourceType): String =
+        if (type == SourceType.FDROID_V1) normalizeFdroidUrl(rawUrl) else rawUrl.trim().substringBefore('#').trimEnd('/')
+
+    private fun sourceDisplayName(url: String, type: SourceType): String {
+        if (type == SourceType.FDROID_V1) return repositoryDisplayName(url)
+        val parsed = URL(url)
+        if (type == SourceType.DIRECT_APK) return parsed.path.substringAfterLast('/').removeSuffix(".apk").ifBlank { parsed.host }
+        val parts = parsed.path.split('/').filter { it.isNotBlank() }
+        return parts.lastOrNull()?.removeSuffix(".git") ?: parsed.host
     }
 
     private fun normalizeFdroidUrl(rawUrl: String): String {
