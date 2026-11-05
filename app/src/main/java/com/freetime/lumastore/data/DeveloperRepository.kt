@@ -13,6 +13,7 @@ import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.storage.storage
+import io.ktor.http.ContentType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.SerialName
@@ -80,13 +81,22 @@ class DeveloperRepository(context: Context) {
     suspend fun signOut() { supabase.auth.signOut() }
 
     suspend fun uploadAvatar(session: DeveloperSession, bytes: ByteArray, extension: String): String {
-        val safeExtension = extension.lowercase().takeIf { it in setOf("jpg", "jpeg", "png", "webp") } ?: "jpg"
+        require(bytes.isNotEmpty() && bytes.size <= 5 * 1024 * 1024) { "Profile image must be between 1 byte and 5 MB." }
+        val imageType = when (extension.lowercase()) {
+            "jpg", "jpeg" -> ContentType.Image.JPEG
+            "png" -> ContentType.Image.PNG
+            "webp" -> ContentType("image", "webp")
+            else -> error("Unsupported profile image format. Choose JPEG, PNG or WebP.")
+        }
+        val safeExtension = if (extension.lowercase() == "jpeg") "jpg" else extension.lowercase()
         val path = "${session.userId}/avatar.$safeExtension"
         val bucket = supabase.storage["developer-avatars"]
         bucket.upload(path, bytes) {
             upsert = true
+            contentType = imageType
         }
-        return bucket.publicUrl(path)
+        // Replacing the same object must invalidate image-loader and public CDN caches.
+        return "${bucket.publicUrl(path)}?v=${System.currentTimeMillis()}"
     }
 
     suspend fun loadProfile(session: DeveloperSession): DeveloperProfileSettings? =

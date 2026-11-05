@@ -1,6 +1,5 @@
 package com.freetime.lumastore
 
-
 import android.Manifest
 import android.content.pm.PackageManager
 import android.content.Intent
@@ -20,6 +19,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import coil3.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.clip
@@ -27,6 +27,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.core.content.ContextCompat
 import com.freetime.lumastore.data.*
 import com.freetime.lumastore.notifications.SystemNotificationManager
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
@@ -39,7 +42,8 @@ import kotlinx.serialization.json.jsonPrimitive
 fun DeveloperScreen(
     repository: DeveloperRepository,
     onBack: () -> Unit,
-    active: Boolean = true
+    active: Boolean = true,
+    bottomNavigationPadding: Dp = 96.dp
 ) {
     val context = LocalContext.current
     val systemNotifications = remember(context) { SystemNotificationManager(context) }
@@ -166,13 +170,11 @@ fun DeveloperScreen(
             session = current,
             repository = repository,
             onBack = { developerPage = "overview" },
+            bottomNavigationPadding = bottomNavigationPadding,
             onSave = { name, bio, website, github, gitlab, avatar ->
-                scope.launch {
-                    runCatching { repository.saveProfile(current, name, bio, website, github, gitlab, avatar) }
-                        .onFailure { error = it.message }
-                    profile = runCatching { repository.loadProfile(current) }.getOrNull()
-                    developerPage = "overview"
-                }
+                repository.saveProfile(current, name, bio, website, github, gitlab, avatar)
+                profile = repository.loadProfile(current)
+                developerPage = "overview"
             }
         )
         return
@@ -181,6 +183,7 @@ fun DeveloperScreen(
         DeveloperFundingEditor(
             initial = funding,
             onBack = { developerPage = "overview" },
+            bottomNavigationPadding = bottomNavigationPadding,
             onSave = { donate, liberapay, collective, crypto ->
                 scope.launch {
                     runCatching { repository.saveFunding(current, donate, liberapay, collective, crypto) }
@@ -362,7 +365,7 @@ fun DeveloperScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DeveloperProfileEditor(initial: DeveloperProfileSettings?, session: DeveloperSession, repository: DeveloperRepository, onBack: () -> Unit, onSave: (String, String, String, String, String, String) -> Unit) {
+private fun DeveloperProfileEditor(initial: DeveloperProfileSettings?, session: DeveloperSession, repository: DeveloperRepository, onBack: () -> Unit, bottomNavigationPadding: Dp, onSave: suspend (String, String, String, String, String, String) -> Unit) {
     var name by remember(initial) { mutableStateOf(initial?.displayName.orEmpty()) }
     var bio by remember(initial) { mutableStateOf(initial?.bio.orEmpty()) }
     var website by remember(initial) { mutableStateOf(initial?.websiteUrl.orEmpty()) }
@@ -371,41 +374,95 @@ private fun DeveloperProfileEditor(initial: DeveloperProfileSettings?, session: 
     var avatar by remember(initial) { mutableStateOf(initial?.avatarUrl.orEmpty()) }
     var avatarUploading by remember { mutableStateOf(false) }
     var avatarError by remember { mutableStateOf<String?>(null) }
+    var saving by remember { mutableStateOf(false) }
+    var saveError by remember { mutableStateOf<String?>(null) }
+    val imageReadError = stringResource(R.string.profile_image_read_failed)
+    val imageSizeError = stringResource(R.string.profile_image_too_large)
+    val imageFormatError = stringResource(R.string.profile_image_unsupported)
+    val uploadError = stringResource(R.string.profile_image_upload_failed)
+    val profileSaveError = stringResource(R.string.profile_save_failed)
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) scope.launch {
             avatarUploading = true
             avatarError = null
-            runCatching {
-                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: error("Unable to read image")
-                require(bytes.size <= 5 * 1024 * 1024) { "Profile image must be 5 MB or smaller." }
-                val mime = context.contentResolver.getType(uri).orEmpty()
-                val extension = when (mime) {
-                    "image/png" -> "png"
-                    "image/webp" -> "webp"
-                    else -> "jpg"
+            try {
+                avatar = withContext(Dispatchers.IO) {
+                    val extension = when (context.contentResolver.getType(uri)) {
+                        "image/jpeg" -> "jpg"
+                        "image/png" -> "png"
+                        "image/webp" -> "webp"
+                        else -> error(imageFormatError)
+                    }
+                    val bytes = context.contentResolver.openInputStream(uri)?.use {
+                        val output = java.io.ByteArrayOutputStream()
+                        val buffer = ByteArray(8192)
+                        while (true) {
+                            val count = it.read(buffer)
+                            if (count == -1) break
+                            require(output.size() + count <= 5 * 1024 * 1024) { imageSizeError }
+                            output.write(buffer, 0, count)
+                        }
+                        output.toByteArray()
+                    } ?: error(imageReadError)
+                    require(bytes.isNotEmpty()) { imageReadError }
+                    repository.uploadAvatar(session, bytes, extension)
                 }
-                repository.uploadAvatar(session, bytes, extension)
-            }.onSuccess { avatar = it }.onFailure { avatarError = it.message }
-            avatarUploading = false
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                avatarError = "$uploadError\n${failure.message.orEmpty()}"
+            } finally {
+                avatarUploading = false
+            }
         }
     }
     Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.developer_profile)) }, navigationIcon = { TextButton(onClick = onBack) { Text(stringResource(R.string.back)) } }) }) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(vertical = 16.dp)) {
+        LazyColumn(
+            Modifier.fillMaxSize().padding(padding).imePadding().padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            // Scaffold already reserves system bars; only add the uncovered overlay height.
+            contentPadding = PaddingValues(
+                top = 16.dp,
+                bottom = 16.dp + (bottomNavigationPadding - padding.calculateBottomPadding()).coerceAtLeast(0.dp)
+            )
+        ) {
             item {
                 if (avatar.isNotBlank()) AsyncImage(model = avatar, contentDescription = null, modifier = Modifier.size(96.dp).clip(MaterialTheme.shapes.extraLarge), contentScale = ContentScale.Crop)
                 OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.developer_name)) }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(bio, { bio = it }, label = { Text(stringResource(R.string.developer_bio)) }, modifier = Modifier.fillMaxWidth(), minLines = 3)
-                OutlinedButton(onClick = { avatarPicker.launch("image/*") }, enabled = !avatarUploading, modifier = Modifier.fillMaxWidth()) {
-                    if (avatarUploading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) else Text("Choose profile image")
+                OutlinedButton(onClick = { avatarPicker.launch("image/*") }, enabled = !avatarUploading && !saving, modifier = Modifier.fillMaxWidth()) {
+                    if (avatarUploading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) else Text(stringResource(R.string.choose_profile_image))
                 }
                 avatarError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                OutlinedTextField(avatar, { avatar = it }, label = { Text(stringResource(R.string.profile_image_url)) }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(avatar, { avatar = it }, label = { Text(stringResource(R.string.profile_image_url)) }, enabled = !avatarUploading && !saving, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(website, { website = it }, label = { Text(stringResource(R.string.website)) }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(github, { github = it }, label = { Text("GitHub") }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(gitlab, { gitlab = it }, label = { Text("GitLab") }, modifier = Modifier.fillMaxWidth())
-                Button(onClick = { onSave(name, bio, website, github, gitlab, avatar) }, enabled = name.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.save)) }
+                saveError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                Button(
+                    onClick = {
+                        saving = true
+                        saveError = null
+                        scope.launch {
+                            try {
+                                onSave(name, bio, website, github, gitlab, avatar)
+                            } catch (cancelled: CancellationException) {
+                                throw cancelled
+                            } catch (failure: Exception) {
+                                saveError = "$profileSaveError\n${failure.message.orEmpty()}"
+                            } finally {
+                                saving = false
+                            }
+                        }
+                    },
+                    enabled = name.isNotBlank() && !avatarUploading && !saving,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (saving) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                    else Text(stringResource(R.string.save))
+                }
             }
         }
     }
@@ -418,13 +475,21 @@ private val developerCryptoOptions = listOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DeveloperFundingEditor(initial: DeveloperFundingSettings?, onBack: () -> Unit, onSave: (String, String, String, Map<String, String>) -> Unit) {
+private fun DeveloperFundingEditor(initial: DeveloperFundingSettings?, onBack: () -> Unit, bottomNavigationPadding: Dp, onSave: (String, String, String, Map<String, String>) -> Unit) {
     var donate by remember(initial) { mutableStateOf(initial?.donateUrl.orEmpty()) }
     var liberapay by remember(initial) { mutableStateOf(initial?.liberapay.orEmpty()) }
     var collective by remember(initial) { mutableStateOf(initial?.opencollective.orEmpty()) }
     val crypto = remember(initial) { mutableStateMapOf<String, String>().apply { initial?.cryptoAddresses?.forEach { (k, v) -> put(k, v.jsonPrimitive.contentOrNull.orEmpty()) } } }
     Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.developer_funding)) }, navigationIcon = { TextButton(onClick = onBack) { Text(stringResource(R.string.back)) } }) }) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(vertical = 16.dp)) {
+        LazyColumn(
+            Modifier.fillMaxSize().padding(padding).imePadding().padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            // Scaffold already reserves system bars; only add the uncovered overlay height.
+            contentPadding = PaddingValues(
+                top = 16.dp,
+                bottom = 16.dp + (bottomNavigationPadding - padding.calculateBottomPadding()).coerceAtLeast(0.dp)
+            )
+        ) {
             item {
                 OutlinedTextField(donate, { donate = it }, label = { Text(stringResource(R.string.donation_url)) }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(liberapay, { liberapay = it }, label = { Text(stringResource(R.string.liberapay)) }, modifier = Modifier.fillMaxWidth())

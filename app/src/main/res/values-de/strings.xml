@@ -1,7 +1,23 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
 <resources>
     <string name="app_name">Luma Store</string>
     <string name="developer">Entwickler</string>
     <string name="settings">Einstellungen</string>
     <string name="search">Suchen</string>
+    <string name="choose_profile_image">Profilbild auswählen</string>
+    <string
+        name="profile_image_read_failed"
+    >Das Profilbild konnte nicht gelesen werden.</string>
+    <string
+        name="profile_image_too_large"
+    >Das Profilbild darf höchstens 5 MB groß sein.</string>
+    <string
+        name="profile_image_unsupported"
+    >Wähle ein JPEG-, PNG- oder WebP-Bild aus.</string>
+    <string
+        name="profile_image_upload_failed"
+    >Das Profilbild konnte nicht hochgeladen werden.</string>
+    <string
+        name="profile_save_failed"
+    >Das Profil konnte nicht gespeichert werden. Deine Änderungen bleiben erhalten.</string>
 </resources>

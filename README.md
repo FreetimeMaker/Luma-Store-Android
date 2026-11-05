@@ -4,6 +4,11 @@
 </div>
 
 <div align="center">
+<h1> Sponsored by </h1>
+[![Sponsor](https://readme.cash/i/jckra8v3p7.svg)](https://readme.cash/c/jckra8v3p7)
+</div>
+
+<div align="center">
 <h1>📸 Screenshots</h1>
 
 <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" alt="Discover"  width="19%">
@@ -14,12 +19,14 @@
 </div>
 
 # Translations
+
 <div align="center">
 
 [![Translations Status](https://translate.codeberg.org/widget/luma-store/luma-store/287x66-grey.png)](https://translate.codeberg.org/engage/luma-store/)
 </div>
 
 # Repository, Build and App Informations
+
 <div align="center">
 
 [![Latest release](https://img.shields.io/github/v/release/FreetimeMaker/Luma-Store-Android?style=for-the-badge)](https://github.com/FreetimeMaker/Luma-Store-Android/releases)

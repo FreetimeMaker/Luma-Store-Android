@@ -6,7 +6,6 @@ import com.freetime.design.FloatingBottomNavigationItem
 import com.freetime.warn.FreetimeWarn
 import com.freetime.warn.FreetimeWarnFrequency
 import com.freetime.warn.rememberFreetimeWarnState
-
 import android.app.job.JobInfo
 import android.app.job.JobScheduler
 import android.content.ComponentName
@@ -72,6 +71,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.freetime.lumastore.data.AppRepository
@@ -164,6 +165,8 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize()
                 ) {
                 val wideWindow = maxWidth >= 840.dp
+                val density = LocalDensity.current
+                var bottomNavigationHeight by remember { mutableStateOf(0.dp) }
                 val compactNavigation = maxWidth < 430.dp
                 Box(Modifier.fillMaxSize()) {
                     Box(
@@ -235,7 +238,8 @@ class MainActivity : ComponentActivity() {
                                 DeveloperScreen(
                                     repository = developerRepository,
                                     onBack = { screen = MainScreen.DISCOVER },
-                                    active = screen == MainScreen.DEVELOPER
+                                    active = screen == MainScreen.DEVELOPER,
+                                    bottomNavigationPadding = if (wideWindow) 0.dp else bottomNavigationHeight
                                 )
                             }
                         }
@@ -301,7 +305,9 @@ class MainActivity : ComponentActivity() {
                             },
                             searchSelected = screen == MainScreen.SEARCH,
                             onSearchSelected = { screen = MainScreen.SEARCH },
-                            modifier = Modifier.align(Alignment.BottomCenter)
+                            modifier = Modifier.align(Alignment.BottomCenter).onSizeChanged {
+                                bottomNavigationHeight = with(density) { it.height.toDp() }
+                            }
                         )
                     }
                 }
