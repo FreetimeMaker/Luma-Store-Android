@@ -12,6 +12,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import android.widget.Toast
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -19,7 +21,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.Dp
 import coil3.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.clip
@@ -27,9 +28,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.core.content.ContextCompat
 import com.freetime.lumastore.data.*
 import com.freetime.lumastore.notifications.SystemNotificationManager
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
@@ -42,8 +40,7 @@ import kotlinx.serialization.json.jsonPrimitive
 fun DeveloperScreen(
     repository: DeveloperRepository,
     onBack: () -> Unit,
-    active: Boolean = true,
-    bottomNavigationPadding: Dp = 96.dp
+    active: Boolean = true
 ) {
     val context = LocalContext.current
     val systemNotifications = remember(context) { SystemNotificationManager(context) }
@@ -52,38 +49,48 @@ fun DeveloperScreen(
     var dashboard by remember { mutableStateOf<DeveloperDashboard?>(null) }
     var loading by remember { mutableStateOf(false) }
     var authLoading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember { mutableStateOf<Int?>(null) }
     var loggingIn by remember { mutableStateOf(false) }
-    var developerPage by remember { mutableStateOf("overview") }
+    var developerPage by rememberSaveable { mutableStateOf("overview") }
     var profile by remember { mutableStateOf<DeveloperProfileSettings?>(null) }
     var funding by remember { mutableStateOf<DeveloperFundingSettings?>(null) }
+    var editorDataReady by remember(session?.userId) { mutableStateOf(false) }
+    var editorDataError by remember(session?.userId) { mutableStateOf<Int?>(null) }
     var analyticsSubmissionId by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    val developerLoadError = stringResource(R.string.developer_data_load_failed)
-    val authLoadError = stringResource(R.string.supabase_sign_in_load_failed)
-    val googleError = stringResource(R.string.google_sign_in_failed)
-    val githubError = stringResource(R.string.github_sign_in_failed)
-    val gitlabError = stringResource(R.string.gitlab_sign_in_failed)
-    val signOutError = stringResource(R.string.sign_out_failed)
-    val notificationError = stringResource(R.string.notification_update_failed)
-    val submissionUpdateError = stringResource(R.string.submission_update_failed)
-    val submissionRemoveError = stringResource(R.string.submission_remove_failed)
-    val platformUpdateError = stringResource(R.string.platform_update_failed)
-    val artifactAddError = stringResource(R.string.artifact_add_failed)
-    val artifactRemoveError = stringResource(R.string.artifact_remove_failed)
+
+    val profileSaved = stringResource(R.string.profile_saved)
+    val fundingSaved = stringResource(R.string.funding_saved)
+
+    suspend fun loadEditorData(current: DeveloperSession) {
+        val loadedProfile = repository.loadProfile(current)
+        val loadedFunding = repository.loadFunding(current)
+        profile = loadedProfile
+        funding = loadedFunding
+        editorDataReady = true
+        editorDataError = null
+    }
 
     suspend fun reload(current: DeveloperSession) {
         loading = true
         error = null
-        runCatching { repository.loadDashboard(current) }
-            .onSuccess {
-                dashboard = it
-                profile = runCatching { repository.loadProfile(current) }.getOrNull()
-                funding = runCatching { repository.loadFunding(current) }.getOrNull()
-                systemNotifications.showNewNotifications(it.notifications)
-            }
-            .onFailure { error = it.message ?: developerLoadError }
-        loading = false
+        try {
+            runCatching { repository.loadDashboard(current) }
+                .onSuccess {
+                    dashboard = it
+                    try {
+                        loadEditorData(current)
+                    } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                        throw cancelled
+                    } catch (failure: Exception) {
+                        editorDataError = developerFailureMessage(failure, R.string.developer_data_load_failed)
+                    }
+                    systemNotifications.showNewNotifications(it.notifications)
+                }
+                .onFailure { error = developerFailureMessage(it, R.string.developer_data_load_failed) }
+        } finally {
+            loading = false
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -93,7 +100,7 @@ fun DeveloperScreen(
                 authLoading = false
             }
             .onFailure {
-                error = it.message ?: authLoadError
+                error = developerFailureMessage(it, R.string.supabase_sign_in_load_failed)
                 authLoading = false
             }
         repository.sessionFlow().collect {
@@ -104,8 +111,20 @@ fun DeveloperScreen(
         }
     }
 
-    LaunchedEffect(session?.accessToken, active) {
-        if (!active) return@LaunchedEffect
+    // A restored editor must load its baseline even while overview polling is paused.
+    LaunchedEffect(session?.userId) {
+        val current = session ?: return@LaunchedEffect
+        try {
+            loadEditorData(current)
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (failure: Exception) {
+            editorDataError = developerFailureMessage(failure, R.string.developer_data_load_failed)
+        }
+    }
+
+    LaunchedEffect(session?.accessToken, active, developerPage) {
+        if (!active || developerPage != "overview") return@LaunchedEffect
         val current = session ?: return@LaunchedEffect
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -131,7 +150,7 @@ fun DeveloperScreen(
         Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(stringResource(R.string.developer_login), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             Text(stringResource(R.string.developer_login_description), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            error?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.error) }
 
             HorizontalDivider()
             Text(stringResource(R.string.developer_sign_in_options), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -141,7 +160,7 @@ fun DeveloperScreen(
                         loggingIn = true
                         error = null
                         runCatching { repository.signInWithGitHub() }
-                            .onFailure { error = it.message ?: githubError; loggingIn = false }
+                            .onFailure { error = developerFailureMessage(it, R.string.github_sign_in_failed); loggingIn = false }
                     }
                 },
                 enabled = !loggingIn,
@@ -153,7 +172,7 @@ fun DeveloperScreen(
                         loggingIn = true
                         error = null
                         runCatching { repository.signInWithGitLab() }
-                            .onFailure { error = it.message ?: gitlabError; loggingIn = false }
+                            .onFailure { error = developerFailureMessage(it, R.string.gitlab_sign_in_failed); loggingIn = false }
                     }
                 },
                 enabled = !loggingIn,
@@ -164,17 +183,34 @@ fun DeveloperScreen(
     }
 
     val current = session ?: return
+    if ((developerPage == "profile" || developerPage == "funding") && !editorDataReady) {
+        Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            TextButton(onClick = { developerPage = "overview" }) { Text(stringResource(R.string.back)) }
+            editorDataError?.let { message ->
+                Text(stringResource(message), color = MaterialTheme.colorScheme.error)
+                OutlinedButton(onClick = {
+                    editorDataError = null
+                    scope.launch {
+                        try { loadEditorData(current) }
+                        catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+                        catch (failure: Exception) { editorDataError = developerFailureMessage(failure, R.string.developer_data_load_failed) }
+                    }
+                }) { Text(stringResource(R.string.editor_retry)) }
+            } ?: CircularProgressIndicator()
+        }
+        return
+    }
     if (developerPage == "profile") {
         DeveloperProfileEditor(
             initial = profile,
             session = current,
             repository = repository,
             onBack = { developerPage = "overview" },
-            bottomNavigationPadding = bottomNavigationPadding,
-            onSave = { name, bio, website, github, gitlab, avatar ->
-                repository.saveProfile(current, name, bio, website, github, gitlab, avatar)
-                profile = repository.loadProfile(current)
+            active = active,
+            onSaved = { savedProfile ->
+                profile = savedProfile
                 developerPage = "overview"
+                Toast.makeText(context, profileSaved, Toast.LENGTH_SHORT).show()
             }
         )
         return
@@ -183,14 +219,13 @@ fun DeveloperScreen(
         DeveloperFundingEditor(
             initial = funding,
             onBack = { developerPage = "overview" },
-            bottomNavigationPadding = bottomNavigationPadding,
-            onSave = { donate, liberapay, collective, crypto ->
-                scope.launch {
-                    runCatching { repository.saveFunding(current, donate, liberapay, collective, crypto) }
-                        .onFailure { error = it.message }
-                    funding = runCatching { repository.loadFunding(current) }.getOrNull()
-                    developerPage = "overview"
-                }
+            repository = repository,
+            session = current,
+            active = active,
+            onSaved = { savedFunding ->
+                funding = savedFunding
+                developerPage = "overview"
+                Toast.makeText(context, fundingSaved, Toast.LENGTH_SHORT).show()
             }
         )
         return
@@ -210,7 +245,7 @@ fun DeveloperScreen(
     LazyColumn(
         Modifier.fillMaxSize().padding(horizontal = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(bottom = 88.dp)
+        contentPadding = PaddingValues(bottom = 16.dp)
     ) {
         item {
             Row(
@@ -221,19 +256,14 @@ fun DeveloperScreen(
                 TextButton(onClick = {
                     scope.launch {
                         runCatching { repository.signOut() }
-                            .onFailure { error = it.message ?: signOutError }
+                            .onFailure { error = developerFailureMessage(it, R.string.sign_out_failed) }
                     }
                 }) { Text(stringResource(R.string.sign_out)) }
             }
         }
         item {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                AsyncImage(
-                    model = profile?.avatarUrl,
-                    contentDescription = profile?.displayName,
-                    modifier = Modifier.size(72.dp).clip(MaterialTheme.shapes.extraLarge),
-                    contentScale = ContentScale.Crop
-                )
+                DeveloperAvatar(profile?.avatarUrl, profile?.displayName ?: current.email.orEmpty(), 72.dp)
                 Column(Modifier.weight(1f)) {
                     Text(profile?.displayName?.takeIf { it.isNotBlank() } ?: stringResource(R.string.developer_area), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                     Text(current.email ?: current.userId, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -280,7 +310,7 @@ fun DeveloperScreen(
                 if (unread > 0) Text(stringResource(R.string.unread_notifications, unread), color = MaterialTheme.colorScheme.primary)
             }
         }
-        error?.let { message -> item { Text(message, color = MaterialTheme.colorScheme.error) } }
+        error?.let { message -> item { Text(stringResource(message), color = MaterialTheme.colorScheme.error) } }
         if (loading && data == null) item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { CircularProgressIndicator() }
         }
@@ -296,8 +326,8 @@ fun DeveloperScreen(
                             {
                                 scope.launch {
                                     runCatching { repository.markNotificationRead(n.id) }
-                                        .onFailure { error = it.message ?: notificationError }
-                                    reload(current)
+                                        .onSuccess { reload(current) }
+                                        .onFailure { error = developerFailureMessage(it, R.string.notification_update_failed) }
                                 }
                             }
                         } else null
@@ -323,199 +353,62 @@ fun DeveloperScreen(
                         onSave = { submission, name, shortDescription, description, version, versionCode, changelog, repoUrl ->
                             scope.launch {
                                 runCatching { repository.updateSubmission(submission, name, shortDescription, description, version, versionCode, changelog, repoUrl) }
-                                    .onFailure { error = it.message ?: submissionUpdateError }
-                                reload(current)
+                                    .onSuccess { reload(current) }
+                                    .onFailure { error = developerFailureMessage(it, R.string.submission_update_failed) }
                             }
                         },
                         onArtifactAdd = { submission, platform, packageType, downloadUrl, repoUrl ->
                             scope.launch {
                                 runCatching { repository.addPlatformArtifact(submission, platform, packageType, downloadUrl, repoUrl) }
-                                    .onFailure { error = it.message ?: artifactAddError }
-                                reload(current)
+                                    .onSuccess { reload(current) }
+                                    .onFailure { error = developerFailureMessage(it, R.string.artifact_add_failed) }
                             }
                         },
                         onArtifactRemove = { submission, platform, packageType ->
                             scope.launch {
                                 runCatching { repository.removePlatformArtifact(submission, platform, packageType) }
-                                    .onFailure { error = it.message ?: artifactRemoveError }
-                                reload(current)
+                                    .onSuccess { reload(current) }
+                                    .onFailure { error = developerFailureMessage(it, R.string.artifact_remove_failed) }
                             }
                         },
                         onPlatformSave = { submission, platform, title, shortDescription, fullDescription, changelog, repoUrl, downloadUrl, screenshots ->
                             scope.launch {
                                 runCatching { repository.updatePlatformMetadata(submission, platform, title, shortDescription, fullDescription, changelog, repoUrl, downloadUrl, screenshots) }
-                                    .onFailure { error = it.message ?: platformUpdateError }
-                                reload(current)
+                                    .onSuccess { reload(current) }
+                                    .onFailure { error = developerFailureMessage(it, R.string.platform_update_failed) }
                             }
                         },
                         onRemove = { submission ->
                             scope.launch {
                                 runCatching { repository.removeSubmission(submission) }
-                                    .onFailure { error = it.message ?: submissionRemoveError }
-                                reload(current)
+                                    .onSuccess { reload(current) }
+                                    .onFailure { error = developerFailureMessage(it, R.string.submission_remove_failed) }
                             }
                         }
                     )
                 }
             }
         }
-        item { Spacer(Modifier.height(88.dp)) }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun DeveloperProfileEditor(initial: DeveloperProfileSettings?, session: DeveloperSession, repository: DeveloperRepository, onBack: () -> Unit, bottomNavigationPadding: Dp, onSave: suspend (String, String, String, String, String, String) -> Unit) {
-    var name by remember(initial) { mutableStateOf(initial?.displayName.orEmpty()) }
-    var bio by remember(initial) { mutableStateOf(initial?.bio.orEmpty()) }
-    var website by remember(initial) { mutableStateOf(initial?.websiteUrl.orEmpty()) }
-    var github by remember(initial) { mutableStateOf(initial?.githubUrl.orEmpty()) }
-    var gitlab by remember(initial) { mutableStateOf(initial?.gitlabUrl.orEmpty()) }
-    var avatar by remember(initial) { mutableStateOf(initial?.avatarUrl.orEmpty()) }
-    var avatarUploading by remember { mutableStateOf(false) }
-    var avatarError by remember { mutableStateOf<String?>(null) }
-    var saving by remember { mutableStateOf(false) }
-    var saveError by remember { mutableStateOf<String?>(null) }
-    val imageReadError = stringResource(R.string.profile_image_read_failed)
-    val imageSizeError = stringResource(R.string.profile_image_too_large)
-    val imageFormatError = stringResource(R.string.profile_image_unsupported)
-    val uploadError = stringResource(R.string.profile_image_upload_failed)
-    val profileSaveError = stringResource(R.string.profile_save_failed)
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri != null) scope.launch {
-            avatarUploading = true
-            avatarError = null
-            try {
-                avatar = withContext(Dispatchers.IO) {
-                    val extension = when (context.contentResolver.getType(uri)) {
-                        "image/jpeg" -> "jpg"
-                        "image/png" -> "png"
-                        "image/webp" -> "webp"
-                        else -> error(imageFormatError)
-                    }
-                    val bytes = context.contentResolver.openInputStream(uri)?.use {
-                        val output = java.io.ByteArrayOutputStream()
-                        val buffer = ByteArray(8192)
-                        while (true) {
-                            val count = it.read(buffer)
-                            if (count == -1) break
-                            require(output.size() + count <= 5 * 1024 * 1024) { imageSizeError }
-                            output.write(buffer, 0, count)
-                        }
-                        output.toByteArray()
-                    } ?: error(imageReadError)
-                    require(bytes.isNotEmpty()) { imageReadError }
-                    repository.uploadAvatar(session, bytes, extension)
-                }
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (failure: Exception) {
-                avatarError = "$uploadError\n${failure.message.orEmpty()}"
-            } finally {
-                avatarUploading = false
-            }
-        }
-    }
-    Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.developer_profile)) }, navigationIcon = { TextButton(onClick = onBack) { Text(stringResource(R.string.back)) } }) }) { padding ->
-        LazyColumn(
-            Modifier.fillMaxSize().padding(padding).imePadding().padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            // Scaffold already reserves system bars; only add the uncovered overlay height.
-            contentPadding = PaddingValues(
-                top = 16.dp,
-                bottom = 16.dp + (bottomNavigationPadding - padding.calculateBottomPadding()).coerceAtLeast(0.dp)
-            )
-        ) {
-            item {
-                if (avatar.isNotBlank()) AsyncImage(model = avatar, contentDescription = null, modifier = Modifier.size(96.dp).clip(MaterialTheme.shapes.extraLarge), contentScale = ContentScale.Crop)
-                OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.developer_name)) }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(bio, { bio = it }, label = { Text(stringResource(R.string.developer_bio)) }, modifier = Modifier.fillMaxWidth(), minLines = 3)
-                OutlinedButton(onClick = { avatarPicker.launch("image/*") }, enabled = !avatarUploading && !saving, modifier = Modifier.fillMaxWidth()) {
-                    if (avatarUploading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) else Text(stringResource(R.string.choose_profile_image))
-                }
-                avatarError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                OutlinedTextField(avatar, { avatar = it }, label = { Text(stringResource(R.string.profile_image_url)) }, enabled = !avatarUploading && !saving, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(website, { website = it }, label = { Text(stringResource(R.string.website)) }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(github, { github = it }, label = { Text("GitHub") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(gitlab, { gitlab = it }, label = { Text("GitLab") }, modifier = Modifier.fillMaxWidth())
-                saveError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                Button(
-                    onClick = {
-                        saving = true
-                        saveError = null
-                        scope.launch {
-                            try {
-                                onSave(name, bio, website, github, gitlab, avatar)
-                            } catch (cancelled: CancellationException) {
-                                throw cancelled
-                            } catch (failure: Exception) {
-                                saveError = "$profileSaveError\n${failure.message.orEmpty()}"
-                            } finally {
-                                saving = false
-                            }
-                        }
-                    },
-                    enabled = name.isNotBlank() && !avatarUploading && !saving,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (saving) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                    else Text(stringResource(R.string.save))
-                }
-            }
-        }
-    }
-}
-
-private val developerCryptoOptions = listOf(
+internal val developerCryptoOptions = listOf(
     "bitcoin::Bitcoin", "ethereum::Ethereum", "tether::Ethereum (ERC-20)", "tether::TRON (TRC-20)", "tether::BNB Smart Chain (BEP-20)", "tether::Solana", "tether::Polygon", "tether::Avalanche C-Chain", "tether::Arbitrum", "tether::Optimism",
     "usdc::Ethereum (ERC-20)", "usdc::Solana", "usdc::Base", "usdc::Arbitrum", "usdc::Optimism", "usdc::Polygon", "usdc::Avalanche C-Chain", "bnb::BNB Smart Chain (BEP-20)", "solana::Solana", "cardano::Cardano", "dogecoin::Dogecoin", "tron::TRON", "polkadot::Polkadot", "avalanche::Avalanche C-Chain", "avalanche::Avalanche P-Chain", "chainlink::Ethereum (ERC-20)", "chainlink::BNB Smart Chain (BEP-20)", "chainlink::Polygon", "chainlink::Arbitrum", "chainlink::Optimism", "polygon::Polygon", "polygon::Ethereum (ERC-20)", "litecoin::Litecoin", "bitcoin_cash::Bitcoin Cash", "stellar::Stellar", "monero::Monero", "toncoin::TON", "shiba_inu::Ethereum (ERC-20)", "shiba_inu::Shibarium"
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DeveloperFundingEditor(initial: DeveloperFundingSettings?, onBack: () -> Unit, bottomNavigationPadding: Dp, onSave: (String, String, String, Map<String, String>) -> Unit) {
-    var donate by remember(initial) { mutableStateOf(initial?.donateUrl.orEmpty()) }
-    var liberapay by remember(initial) { mutableStateOf(initial?.liberapay.orEmpty()) }
-    var collective by remember(initial) { mutableStateOf(initial?.opencollective.orEmpty()) }
-    val crypto = remember(initial) { mutableStateMapOf<String, String>().apply { initial?.cryptoAddresses?.forEach { (k, v) -> put(k, v.jsonPrimitive.contentOrNull.orEmpty()) } } }
-    Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.developer_funding)) }, navigationIcon = { TextButton(onClick = onBack) { Text(stringResource(R.string.back)) } }) }) { padding ->
-        LazyColumn(
-            Modifier.fillMaxSize().padding(padding).imePadding().padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            // Scaffold already reserves system bars; only add the uncovered overlay height.
-            contentPadding = PaddingValues(
-                top = 16.dp,
-                bottom = 16.dp + (bottomNavigationPadding - padding.calculateBottomPadding()).coerceAtLeast(0.dp)
-            )
-        ) {
-            item {
-                OutlinedTextField(donate, { donate = it }, label = { Text(stringResource(R.string.donation_url)) }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(liberapay, { liberapay = it }, label = { Text(stringResource(R.string.liberapay)) }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(collective, { collective = it }, label = { Text(stringResource(R.string.open_collective)) }, modifier = Modifier.fillMaxWidth())
-                Text(stringResource(R.string.crypto_wallets), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-            }
-            items(developerCryptoOptions, key = { it }) { key ->
-                OutlinedTextField(crypto[key].orEmpty(), { crypto[key] = it }, label = { Text(key.replace("::", " · ")) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-            }
-            item { Button(onClick = { onSave(donate, liberapay, collective, crypto.toMap()) }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.save)) } }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
 private fun DeveloperAnalyticsScreen(submission: DeveloperSubmission, stats: DeveloperDownloadStats?, onBack: () -> Unit) {
     Scaffold(topBar = { TopAppBar(title = { Text(submission.name) }, navigationIcon = { TextButton(onClick = onBack) { Text(stringResource(R.string.back)) } }) }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { Text("Analytics", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold) }
-            if (stats == null) item { Text("No download analytics available yet.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            item { Text(stringResource(R.string.analytics), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold) }
+            if (stats == null) item { Text(stringResource(R.string.no_download_analytics), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             else {
-                item { DeveloperMetricCard("Today", stats.today.toString(), Modifier.fillMaxWidth()) }
-                item { DeveloperMetricCard("This month", stats.thisMonth.toString(), Modifier.fillMaxWidth()) }
-                item { DeveloperMetricCard("This year", stats.thisYear.toString(), Modifier.fillMaxWidth()) }
-                item { DeveloperMetricCard("Total", stats.total.toString(), Modifier.fillMaxWidth()) }
+                item { DeveloperMetricCard(stringResource(R.string.metric_today), stats.today.toString(), Modifier.fillMaxWidth()) }
+                item { DeveloperMetricCard(stringResource(R.string.metric_month), stats.thisMonth.toString(), Modifier.fillMaxWidth()) }
+                item { DeveloperMetricCard(stringResource(R.string.metric_year), stats.thisYear.toString(), Modifier.fillMaxWidth()) }
+                item { DeveloperMetricCard(stringResource(R.string.metric_total), stats.total.toString(), Modifier.fillMaxWidth()) }
             }
         }
     }
@@ -625,7 +518,7 @@ private fun SubmissionCard(
                     Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)) {
                         Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                             Text(artifact.platform + (artifact.packageType?.let { " · $it" } ?: ""), fontWeight = FontWeight.SemiBold)
-                            artifact.fileSizeMb?.let { Text(stringResource(R.string.artifact_size, "%.2f MB".format(it)), style = MaterialTheme.typography.bodySmall) }
+                            artifact.fileSizeMb?.let { Text(stringResource(R.string.artifact_size, stringResource(R.string.file_size_mb_precise, it)), style = MaterialTheme.typography.bodySmall) }
                             artifact.artifactVerifiedAt?.let { Text(stringResource(R.string.artifact_verified, it), style = MaterialTheme.typography.bodySmall) }
                             artifact.sha256?.let { Text(stringResource(R.string.sha256_value, it), style = MaterialTheme.typography.labelSmall) }
                             artifact.repoUrl?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) }
@@ -748,7 +641,7 @@ private fun PlatformMetadataEditor(
         if (shortDescription.isNotBlank()) Text(shortDescription, style = MaterialTheme.typography.bodySmall)
         if (fullDescription.isNotBlank()) Text(fullDescription, style = MaterialTheme.typography.bodySmall, maxLines = 4)
         if (changelog.isNotBlank()) Text(changelog, style = MaterialTheme.typography.bodySmall, maxLines = 3)
-        if (screenshotValues.isNotEmpty()) Text(stringResource(R.string.screenshots_urls) + ": " + screenshotValues.size, style = MaterialTheme.typography.labelSmall)
+        if (screenshotValues.isNotEmpty()) Text(stringResource(R.string.screenshot_urls_count, screenshotValues.size), style = MaterialTheme.typography.labelSmall)
         if (editable) TextButton(onClick = { editing = true }) { Text(stringResource(R.string.edit_platform_metadata, artifact.platform)) }
     } else {
         OutlinedTextField(title, { title = it }, label = { Text(stringResource(R.string.app_name)) }, modifier = Modifier.fillMaxWidth())
@@ -775,6 +668,8 @@ private fun localizedSubmissionStatus(status: String): String = when (status) {
     "Approved" -> stringResource(R.string.status_approved)
     "Rejected" -> stringResource(R.string.status_rejected)
     "Changes Requested" -> stringResource(R.string.status_changes_requested)
+    "Pending" -> stringResource(R.string.status_pending)
+    "Draft" -> stringResource(R.string.status_draft)
     else -> status
 }
 

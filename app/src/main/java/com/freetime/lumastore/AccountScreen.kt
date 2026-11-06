@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -61,6 +62,7 @@ fun AccountScreen(repository: DeveloperRepository, onOpenApp: (String) -> Unit =
     var favoritePendingDelete by remember { mutableStateOf<FavoriteApp?>(null) }
     var favorites by remember { mutableStateOf<List<FavoriteApp>>(emptyList()) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         runCatching { repository.savedSession() }
@@ -119,14 +121,14 @@ fun AccountScreen(repository: DeveloperRepository, onOpenApp: (String) -> Unit =
         } else if (session == null) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Luma Store account", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                    Text("Sign in directly with Luma Store. No Google, GitHub or GitLab account is required.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    OutlinedTextField(email, { email = it }, label = { Text("Email") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(password, { password = it }, label = { Text("Password") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    Button(onClick = { scope.launch { working = true; error = null; accountMessage = null; runCatching { repository.signInWithEmail(email, password) }.onFailure { error = it.message }.also { working = false } } }, enabled = !working && email.isNotBlank() && password.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Sign in") }
-                    OutlinedButton(onClick = { scope.launch { working = true; error = null; accountMessage = null; runCatching { repository.signUpWithEmail(email, password) }.onSuccess { accountMessage = "Account created. Check your email if confirmation is required." }.onFailure { error = it.message }.also { working = false } } }, enabled = !working && email.isNotBlank() && password.length >= 6, modifier = Modifier.fillMaxWidth()) { Text("Create Luma Store account") }
+                    Text(stringResource(R.string.luma_store_account), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.luma_store_account_description), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedTextField(email, { email = it }, label = { Text(stringResource(R.string.email)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(password, { password = it }, label = { Text(stringResource(R.string.password)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    Button(onClick = { scope.launch { working = true; error = null; accountMessage = null; runCatching { repository.signInWithEmail(email, password) }.onFailure { error = it.message }.also { working = false } } }, enabled = !working && email.isNotBlank() && password.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.sign_in)) }
+                    OutlinedButton(onClick = { scope.launch { working = true; error = null; accountMessage = null; runCatching { repository.signUpWithEmail(email, password) }.onSuccess { accountMessage = context.getString(R.string.account_created) }.onFailure { error = it.message }.also { working = false } } }, enabled = !working && email.isNotBlank() && password.length >= 6, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.create_luma_store_account)) }
                     accountMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
-                    Text("Or use an external provider", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.external_sign_in_provider), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             item {
@@ -137,7 +139,7 @@ fun AccountScreen(repository: DeveloperRepository, onOpenApp: (String) -> Unit =
                             error = null
                             runCatching { repository.signInWithGoogle() }
                                 .onFailure {
-                                    error = it.message ?: "Google sign in failed."
+                                    error = it.message ?: context.getString(R.string.google_sign_in_failed)
                                     working = false
                                 }
                         }
@@ -158,7 +160,7 @@ fun AccountScreen(repository: DeveloperRepository, onOpenApp: (String) -> Unit =
                                 error = null
                                 runCatching { repository.signOut() }
                                     .onFailure {
-                                        error = it.message ?: "Sign out failed."
+                                        error = it.message ?: context.getString(R.string.sign_out_failed)
                                         working = false
                                     }
                             }
@@ -216,14 +218,14 @@ fun AccountScreen(repository: DeveloperRepository, onOpenApp: (String) -> Unit =
                 ) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(review.appName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                        Text("★".repeat(review.rating) + "☆".repeat(5 - review.rating), color = MaterialTheme.colorScheme.primary)
+                        Text(stringResource(R.string.symbol_star_filled).repeat(review.rating) + stringResource(R.string.symbol_star_outline).repeat(5 - review.rating), color = MaterialTheme.colorScheme.primary)
                         review.updatedAt?.take(10)?.let { Text(stringResource(R.string.review_updated, it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                         review.reviewText?.let { Text(it) }
                         if (editingReview?.appId == review.appId) {
                             Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                                 (1..5).forEach { star ->
                                     TextButton(onClick = { editRating = star }) {
-                                        Text(if (star <= editRating) "★" else "☆", color = MaterialTheme.colorScheme.primary)
+                                        Text(stringResource(if (star <= editRating) R.string.symbol_star_filled else R.string.symbol_star_outline), color = MaterialTheme.colorScheme.primary)
                                     }
                                 }
                             }
@@ -231,7 +233,7 @@ fun AccountScreen(repository: DeveloperRepository, onOpenApp: (String) -> Unit =
                                 value = editText,
                                 onValueChange = { if (it.length <= 2000) editText = it },
                                 label = { Text(stringResource(R.string.review_optional)) },
-                                supportingText = { Text("${editText.length}/2000") },
+                                supportingText = { Text(stringResource(R.string.character_count, editText.length, 2000)) },
                                 modifier = Modifier.fillMaxWidth()
                             )
                             Button(

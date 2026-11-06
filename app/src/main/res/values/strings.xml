@@ -519,4 +519,114 @@
     <string name="support_developer">Support developer</string>
     <string name="donation_url">Donation URL</string>
     <string name="copy">Copy</string>
+
+    <!-- Editor navigation and profile image lifecycle -->
+    <string name="editor_discard_title">Discard changes?</string>
+    <string
+        name="editor_discard_message"
+    >Your changes have not been saved. Leave this editor and discard them?</string>
+    <string name="editor_discard">Discard</string>
+    <string name="editor_retry">Retry</string>
+    <string name="editor_keep_editing">Keep editing</string>
+    <string
+        name="editor_wait_for_save"
+    >Please wait until the current image or save operation has finished.</string>
+    <string name="profile_saved">Profile saved.</string>
+    <string name="funding_saved">Funding settings saved.</string>
+    <string
+        name="funding_save_failed"
+    >Funding settings could not be saved. Your changes are still here.</string>
+    <string
+        name="profile_image_draft_hint"
+    >Crop a square image before saving. The 512 × 512 JPEG is uploaded only when you press Save.</string>
+    <string name="profile_remove">Remove profile image</string>
+    <string name="profile_remove_title">Remove profile image?</string>
+    <string
+        name="profile_remove_message"
+    >Your initials will replace the image. The change and deletion of the stored image take effect when you press Save.</string>
+    <string
+        name="profile_saved_cleanup_failed"
+    >Your profile was saved, but the previous image could not be deleted. Retry to finish removing the stored image.</string>
+    <string name="profile_retry_cleanup">Retry image deletion</string>
+    <string
+        name="developer_error_session"
+    >Your session has expired. Sign in again, then retry.</string>
+    <string
+        name="developer_error_access"
+    >Supabase denied access. The project administrator must check the storage and profile permissions for your account.</string>
+    <string
+        name="developer_error_bucket"
+    >The profile-image storage bucket is missing. Ask the project administrator to configure developer-avatars.</string>
+    <string
+        name="developer_error_format"
+    >The server does not allow this image format. JPEG must be enabled for the profile-image bucket.</string>
+    <string
+        name="developer_error_size"
+    >The server rejected the image size. Check the profile-image bucket limit.</string>
+    <string
+        name="developer_error_network"
+    >Could not reach Supabase. Check your connection and retry. Your changes are still here.</string>
+
+    <string name="profile_crop_title">Crop profile image</string>
+    <string
+        name="profile_crop_instructions"
+    >Drag the image to position it. Use the zoom slider to adjust the square crop.</string>
+    <string
+        name="profile_crop_preview"
+    >Square profile image crop preview</string>
+    <string name="profile_crop_zoom">Zoom</string>
+    <string name="profile_crop_confirm">Use image</string>
+    <string name="profile_crop_cancel">Cancel</string>
+    <string
+        name="profile_crop_load_error"
+    >This image could not be opened. Cancel and choose another image.</string>
+    <string
+        name="profile_crop_save_error"
+    >The cropped image could not be saved. Please try again.</string>
+
+    <!-- Account and developer UI -->
+    <string name="luma_store_account">Luma Store account</string>
+    <string
+        name="luma_store_account_description"
+    >Sign in directly with Luma Store. No Google, GitHub or GitLab account is required.</string>
+    <string name="password">Password</string>
+    <string name="sign_in">Sign in</string>
+    <string
+        name="account_created"
+    >Account created. Check your email if confirmation is required.</string>
+    <string name="create_luma_store_account">Create Luma Store account</string>
+    <string
+        name="external_sign_in_provider"
+    >Or use an external provider</string>
+    <string name="github" translatable="false">GitHub</string>
+    <string name="gitlab" translatable="false">GitLab</string>
+    <string name="analytics">Analytics</string>
+    <string
+        name="no_download_analytics"
+    >No download analytics available yet.</string>
+    <string name="metric_year">This year</string>
+    <string name="metric_total">Total</string>
+    <string name="status_pending">Pending</string>
+    <string name="status_draft">Draft</string>
+
+    <!-- Display formats and accessibility -->
+    <string name="character_count">%1$d/%2$d</string>
+    <string name="file_size_bytes">%1$d B</string>
+    <string name="file_size_kb">%1$.1f KB</string>
+    <string name="file_size_mb">%1$.1f MB</string>
+    <string name="file_size_gb">%1$.1f GB</string>
+    <string name="file_size_mb_precise">%1$.2f MB</string>
+    <string name="relative_age_one_day">1 day ago</string>
+    <string name="relative_age_days">%1$d days ago</string>
+    <string name="relative_age_one_month">1 month ago</string>
+    <string name="relative_age_months">%1$d months ago</string>
+    <string name="relative_age_one_year">1 year ago</string>
+    <string name="relative_age_years">%1$d years ago</string>
+    <string name="rating_stars_value">%1$.1f ★</string>
+    <string name="rating_out_of_five">%1$d out of 5 stars</string>
+    <string name="metric_millions_plus">%1$dM+</string>
+    <string name="metric_thousands_plus">%1$dK+</string>
+    <string name="screenshot_urls_count">Screenshot URLs: %1$d</string>
+    <string name="symbol_star_filled" translatable="false">★</string>
+    <string name="symbol_star_outline" translatable="false">☆</string>
 </resources>

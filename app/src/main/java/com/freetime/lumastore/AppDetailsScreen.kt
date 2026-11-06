@@ -474,10 +474,10 @@ fun AppDetailsScreen(
                     DetailsExpandableSection(stringResource(R.string.developer_contact)) {
                         developerProfile?.let { developer ->
                             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                AsyncImage(model = developer.avatarUrl, contentDescription = developer.displayName, modifier = Modifier.size(52.dp).clip(MaterialTheme.shapes.large), contentScale = ContentScale.Crop)
+                                DeveloperAvatar(developer.avatarUrl, developer.displayName, 52.dp)
                                 Column(Modifier.weight(1f)) {
                                     Text(developer.displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                                    if (developer.verified) Text("Verified developer", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                                    if (developer.verified) Text(stringResource(R.string.verified_developer), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                                 }
                             }
                         } ?: app.authorName?.let { DetailValueRow(stringResource(R.string.author), it) }
@@ -522,40 +522,38 @@ fun AppDetailsScreen(
 
                 AppRatingSection(app.id)
 
-                Spacer(Modifier.height(96.dp))
+                Spacer(Modifier.height(16.dp))
             }
         }
         }
     }
 }
 
+@Composable
 private fun formatFileSize(bytes: Long): String = when {
-    bytes >= 1_073_741_824L -> String.format("%.1f GB", bytes / 1_073_741_824.0)
-    bytes >= 1_048_576L -> String.format("%.1f MB", bytes / 1_048_576.0)
-    bytes >= 1024L -> String.format("%.1f KB", bytes / 1024.0)
-    else -> "$bytes B"
+    bytes >= 1_073_741_824L -> stringResource(R.string.file_size_gb, bytes / 1_073_741_824.0)
+    bytes >= 1_048_576L -> stringResource(R.string.file_size_mb, bytes / 1_048_576.0)
+    bytes >= 1024L -> stringResource(R.string.file_size_kb, bytes / 1024.0)
+    else -> stringResource(R.string.file_size_bytes, bytes)
 }
 
+@Composable
 private fun formatRelativeAge(timestamp: Long): String {
     val age = (System.currentTimeMillis() - timestamp).coerceAtLeast(0L)
     val days = age / 86_400_000L
     return when {
-        days == 0L -> "Today"
-        days == 1L -> "1 day ago"
-        days < 30L -> "$days days ago"
-        days < 365L -> "${days / 30L} months ago"
-        else -> "${days / 365L} years ago"
+        days == 0L -> stringResource(R.string.metric_today)
+        days == 1L -> stringResource(R.string.relative_age_one_day)
+        days < 30L -> stringResource(R.string.relative_age_days, days)
+        days < 60L -> stringResource(R.string.relative_age_one_month)
+        days < 365L -> stringResource(R.string.relative_age_months, days / 30L)
+        days < 730L -> stringResource(R.string.relative_age_one_year)
+        else -> stringResource(R.string.relative_age_years, days / 365L)
     }
 }
 
-private fun formatBytes(bytes: Long): String {
-    if (bytes < 1024) return "$bytes B"
-    val units = arrayOf("KB", "MB", "GB")
-    var value = bytes.toDouble()
-    var unit = -1
-    while (value >= 1024 && unit < units.lastIndex) { value /= 1024; unit++ }
-    return "%.1f %s".format(value, units[unit.coerceAtLeast(0)])
-}
+@Composable
+private fun formatBytes(bytes: Long): String = formatFileSize(bytes)
 
 private fun fundingUrl(base: String, value: String): String {
     val trimmed = value.trim()
@@ -615,7 +613,7 @@ private fun AppDetailsHeader(
     ) {
         rating?.takeIf { it.count > 0 }?.let {
             DetailMetric(
-                value = String.format("%.1f ★", it.average),
+                value = stringResource(R.string.rating_stars_value, it.average),
                 label = stringResource(R.string.ratings_count, it.count),
                 modifier = Modifier.weight(1f)
             )
@@ -688,9 +686,10 @@ private fun DetailMetric(value: String, label: String, modifier: Modifier = Modi
     }
 }
 
+@Composable
 private fun formatCompactMetric(value: Long): String = when {
-    value >= 1_000_000L -> "${value / 1_000_000L}M+"
-    value >= 1_000L -> "${value / 1_000L}K+"
+    value >= 1_000_000L -> stringResource(R.string.metric_millions_plus, value / 1_000_000L)
+    value >= 1_000L -> stringResource(R.string.metric_thousands_plus, value / 1_000L)
     else -> value.toString()
 }
 
@@ -908,7 +907,7 @@ private fun AppRatingSection(identifier: String) {
                     (1..5).forEach { value ->
                         Icon(
                             imageVector = if (value <= (myRating ?: 0)) Icons.Filled.Star else Icons.Outlined.Star,
-                            contentDescription = value.toString(),
+                            contentDescription = stringResource(R.string.rating_out_of_five, value),
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(36.dp).clickable { myRating = value }
                         )
@@ -918,7 +917,7 @@ private fun AppRatingSection(identifier: String) {
                     value = reviewText,
                     onValueChange = { if (it.length <= 2000) reviewText = it },
                     label = { Text(stringResource(R.string.review_optional)) },
-                    supportingText = { Text("${reviewText.length}/2000") },
+                    supportingText = { Text(stringResource(R.string.character_count, reviewText.length, 2000)) },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 3,
                     maxLines = 6

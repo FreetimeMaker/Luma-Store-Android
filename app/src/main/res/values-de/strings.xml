@@ -20,4 +20,112 @@
     <string
         name="profile_save_failed"
     >Das Profil konnte nicht gespeichert werden. Deine Änderungen bleiben erhalten.</string>
+
+    <!-- Editor-Navigation und Profilbilder -->
+    <string name="editor_discard_title">Änderungen verwerfen?</string>
+    <string
+        name="editor_discard_message"
+    >Deine Änderungen sind noch nicht gespeichert. Möchtest du die Bearbeitung verlassen und sie verwerfen?</string>
+    <string name="editor_discard">Verwerfen</string>
+    <string name="editor_retry">Erneut versuchen</string>
+    <string name="editor_keep_editing">Weiter bearbeiten</string>
+    <string
+        name="editor_wait_for_save"
+    >Bitte warte, bis die laufende Bildverarbeitung oder Speicherung abgeschlossen ist.</string>
+    <string name="profile_saved">Profil gespeichert.</string>
+    <string
+        name="funding_saved"
+    >Finanzierungseinstellungen gespeichert.</string>
+    <string
+        name="funding_save_failed"
+    >Die Finanzierungseinstellungen konnten nicht gespeichert werden. Deine Änderungen bleiben erhalten.</string>
+    <string
+        name="profile_image_draft_hint"
+    >Schneide das Bild vor dem Speichern quadratisch zu. Das JPEG mit 512 × 512 Pixeln wird erst mit „Speichern“ hochgeladen.</string>
+    <string name="profile_remove">Profilbild entfernen</string>
+    <string name="profile_remove_title">Profilbild entfernen?</string>
+    <string
+        name="profile_remove_message"
+    >Deine Initialen ersetzen das Bild. Die Änderung und das Löschen des gespeicherten Bildes werden mit „Speichern“ wirksam.</string>
+    <string
+        name="profile_saved_cleanup_failed"
+    >Dein Profil wurde gespeichert, das vorherige Bild konnte aber nicht gelöscht werden. Versuche es erneut, um auch die gespeicherte Bilddatei zu entfernen.</string>
+    <string name="profile_retry_cleanup">Bildlöschung wiederholen</string>
+    <string
+        name="developer_error_session"
+    >Deine Sitzung ist abgelaufen. Melde dich erneut an und versuche es noch einmal.</string>
+    <string
+        name="developer_error_access"
+    >Supabase hat den Zugriff verweigert. Die Projektadministration muss die Speicher- und Profilberechtigungen für dein Konto prüfen.</string>
+    <string
+        name="developer_error_bucket"
+    >Der Speicher-Bucket für Profilbilder fehlt. Bitte die Projektadministration, developer-avatars einzurichten.</string>
+    <string
+        name="developer_error_format"
+    >Der Server erlaubt dieses Bildformat nicht. Im Profilbild-Bucket muss JPEG freigegeben sein.</string>
+    <string
+        name="developer_error_size"
+    >Der Server hat die Bildgröße abgelehnt. Bitte prüfe das Größenlimit des Profilbild-Buckets.</string>
+    <string
+        name="developer_error_network"
+    >Supabase ist nicht erreichbar. Prüfe deine Verbindung und versuche es erneut. Deine Änderungen bleiben erhalten.</string>
+
+    <string name="profile_crop_title">Profilbild zuschneiden</string>
+    <string
+        name="profile_crop_instructions"
+    >Verschiebe das Bild, um es zu positionieren. Passe den quadratischen Ausschnitt mit dem Zoomregler an.</string>
+    <string
+        name="profile_crop_preview"
+    >Vorschau des quadratischen Profilbildausschnitts</string>
+    <string name="profile_crop_zoom">Zoom</string>
+    <string name="profile_crop_confirm">Bild verwenden</string>
+    <string name="profile_crop_cancel">Abbrechen</string>
+    <string
+        name="profile_crop_load_error"
+    >Dieses Bild konnte nicht geöffnet werden. Brich ab und wähle ein anderes Bild.</string>
+    <string
+        name="profile_crop_save_error"
+    >Das zugeschnittene Bild konnte nicht gespeichert werden. Bitte versuche es erneut.</string>
+
+    <!-- Konto und Entwicklerbereich -->
+    <string name="luma_store_account">Luma-Store-Konto</string>
+    <string
+        name="luma_store_account_description"
+    >Melde dich direkt bei Luma Store an. Ein Google-, GitHub- oder GitLab-Konto ist nicht erforderlich.</string>
+    <string name="password">Passwort</string>
+    <string name="sign_in">Anmelden</string>
+    <string
+        name="account_created"
+    >Konto erstellt. Prüfe deine E-Mails, falls eine Bestätigung erforderlich ist.</string>
+    <string name="create_luma_store_account">Luma-Store-Konto erstellen</string>
+    <string
+        name="external_sign_in_provider"
+    >Oder einen externen Anbieter verwenden</string>
+    <string name="analytics">Statistiken</string>
+    <string
+        name="no_download_analytics"
+    >Noch keine Downloadstatistiken verfügbar.</string>
+    <string name="metric_year">Dieses Jahr</string>
+    <string name="metric_total">Gesamt</string>
+    <string name="status_pending">Ausstehend</string>
+    <string name="status_draft">Entwurf</string>
+
+    <!-- Anzeigeformate und Barrierefreiheit -->
+    <string name="character_count">%1$d/%2$d</string>
+    <string name="file_size_bytes">%1$d B</string>
+    <string name="file_size_kb">%1$.1f KB</string>
+    <string name="file_size_mb">%1$.1f MB</string>
+    <string name="file_size_gb">%1$.1f GB</string>
+    <string name="file_size_mb_precise">%1$.2f MB</string>
+    <string name="relative_age_one_day">Vor 1 Tag</string>
+    <string name="relative_age_days">Vor %1$d Tagen</string>
+    <string name="relative_age_one_month">Vor 1 Monat</string>
+    <string name="relative_age_months">Vor %1$d Monaten</string>
+    <string name="relative_age_one_year">Vor 1 Jahr</string>
+    <string name="relative_age_years">Vor %1$d Jahren</string>
+    <string name="rating_stars_value">%1$.1f ★</string>
+    <string name="rating_out_of_five">%1$d von 5 Sternen</string>
+    <string name="metric_millions_plus">%1$d Mio.+</string>
+    <string name="metric_thousands_plus">%1$d Tsd.+</string>
+    <string name="screenshot_urls_count">Screenshot-URLs: %1$d</string>
 </resources>

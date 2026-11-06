@@ -80,7 +80,20 @@ class DeveloperRepository(context: Context) {
     suspend fun currentSession(): DeveloperSession? = supabase.auth.currentSessionOrNull()?.toDeveloperSession()
     suspend fun signOut() { supabase.auth.signOut() }
 
-    suspend fun uploadAvatar(session: DeveloperSession, bytes: ByteArray, extension: String): String {
+    fun newAvatarUrl(session: DeveloperSession, extension: String): String {
+        val safeExtension = if (extension.lowercase() == "jpeg") "jpg" else extension.lowercase()
+        require(safeExtension in setOf("jpg", "png", "webp")) { "Unsupported profile image format." }
+        return supabase.storage["developer-avatars"].publicUrl(
+            "${session.userId}/avatar-${java.util.UUID.randomUUID()}.$safeExtension"
+        )
+    }
+
+    suspend fun uploadAvatar(
+        session: DeveloperSession,
+        bytes: ByteArray,
+        extension: String,
+        avatarUrl: String = newAvatarUrl(session, extension)
+    ): String {
         require(bytes.isNotEmpty() && bytes.size <= 5 * 1024 * 1024) { "Profile image must be between 1 byte and 5 MB." }
         val imageType = when (extension.lowercase()) {
             "jpg", "jpeg" -> ContentType.Image.JPEG
@@ -88,15 +101,21 @@ class DeveloperRepository(context: Context) {
             "webp" -> ContentType("image", "webp")
             else -> error("Unsupported profile image format. Choose JPEG, PNG or WebP.")
         }
-        val safeExtension = if (extension.lowercase() == "jpeg") "jpg" else extension.lowercase()
-        val path = "${session.userId}/avatar.$safeExtension"
         val bucket = supabase.storage["developer-avatars"]
+        val path = requireNotNull(ownedAvatarPath(bucket.publicUrl(""), session.userId, avatarUrl)) {
+            "Avatar access denied"
+        }
         bucket.upload(path, bytes) {
-            upsert = true
             contentType = imageType
         }
-        // Replacing the same object must invalidate image-loader and public CDN caches.
-        return "${bucket.publicUrl(path)}?v=${System.currentTimeMillis()}"
+        return avatarUrl
+    }
+
+    /** Call only after the profile no longer references this avatar. Failures propagate. */
+    suspend fun removeAvatar(session: DeveloperSession, avatarUrl: String) {
+        val bucket = supabase.storage["developer-avatars"]
+        val path = ownedAvatarPath(bucket.publicUrl(""), session.userId, avatarUrl) ?: return
+        bucket.delete(listOf(path))
     }
 
     suspend fun loadProfile(session: DeveloperSession): DeveloperProfileSettings? =
@@ -346,4 +365,23 @@ class DeveloperRepository(context: Context) {
     companion object {
         private const val OAUTH_REDIRECT_URL = "lumastore://auth"
     }
+}
+
+/** Accepts canonical UUID upload names and legacy fixed avatar names only. */
+internal fun ownedAvatarPath(publicBucketUrl: String, userId: String, avatarUrl: String): String? {
+    val base = java.net.URI(publicBucketUrl.trimEnd('/') + "/")
+    val url = try { java.net.URI(avatarUrl) } catch (_: java.net.URISyntaxException) { return null }
+    if (url.scheme != base.scheme || url.rawAuthority != base.rawAuthority) return null
+    val prefix = base.rawPath
+    if (!url.rawPath.orEmpty().startsWith(prefix)) return null
+    val path = url.rawPath.removePrefix(prefix)
+    // No decoding: encoded separators, dot segments and double encoding must never
+    // turn an untrusted URL into a different storage key on the server.
+    require(userId.matches(Regex("[A-Za-z0-9_-]+"))) { "Invalid avatar owner." }
+    require(path.substringBefore('/') == userId) { "Avatar access denied: different owner." }
+    val filename = path.removePrefix("$userId/")
+    require(Regex("avatar(?:-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?\\.(jpg|png|webp)").matches(filename)) {
+        "Avatar access denied: non-canonical object path."
+    }
+    return path
 }
