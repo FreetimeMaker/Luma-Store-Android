@@ -1,15 +1,9 @@
-• Updated to Freetime-Core 3.0.0 with Material 3 Expressive and Material You
-• Added the new floating Liquid Glass bottom navigation
-• Expanded Discover with trending, recommended, recently viewed, new and updated collections
-• Added advanced app filters, sorting, ratings and download metrics
-• Added full collection views instead of limiting “Show all” to carousel items
-• Added public developer profiles with avatar and verified status
-• Added developer profile and funding management
-• Added developer donation links and supported crypto networks to developer and app details
-• Added app-specific developer analytics for today, month, year and total downloads
-• Added developer profile image selection and Supabase Storage upload
-• Improved App Details with developer information, ratings, downloads and update information
-• Improved developer dashboard metrics and app-specific statistics
-• Fixed Supabase profile, funding and avatar upload compatibility
-• Added direct Luma Store email/password accounts without requiring a social login provider
-• Added repository privacy documentation and expanded Linux usage guidance
+• Added dedicated developer profile and funding editors
+• Added profile image cropping, zoom and 512 × 512 JPEG compression
+• Added profile image removal with initials as a fallback
+• Added unsaved-change warnings and save confirmations
+• Improved avatar uploads, replacement and cleanup recovery
+• Fixed content being hidden behind the floating navigation
+• Added clearer Supabase error messages
+• Centralized UI strings and expanded German translations
+• Updated build tools and dependencies
