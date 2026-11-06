@@ -1,9 +1,7 @@
-• Added dedicated developer profile and funding editors
-• Added profile image cropping, zoom and 512 × 512 JPEG compression
-• Added profile image removal with initials as a fallback
-• Added unsaved-change warnings and save confirmations
-• Improved avatar uploads, replacement and cleanup recovery
-• Fixed content being hidden behind the floating navigation
-• Added clearer Supabase error messages
-• Centralized UI strings and expanded German translations
-• Updated build tools and dependencies
+• Fixed Luma download counts, including self-updates, after APK validation
+• Kept exact APK URLs; F-Droid downloads remain excluded from Luma statistics
+• Tracking failures no longer block installation; preserved offline catalogue fallback
+• Verify the current Supabase session and developer ID before saving
+• Store profile images at <user-id>/avatar.jpg with cache refresh
+• Set verified=false only for new profiles
+• Show actual Supabase error details for profile saves and image cleanup

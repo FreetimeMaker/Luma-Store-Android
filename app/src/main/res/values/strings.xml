@@ -629,4 +629,5 @@
     <string name="screenshot_urls_count">Screenshot URLs: %1$d</string>
     <string name="symbol_star_filled" translatable="false">★</string>
     <string name="symbol_star_outline" translatable="false">☆</string>
+    <string name="developer_error_details">Supabase error:\n%1$s</string>
 </resources>

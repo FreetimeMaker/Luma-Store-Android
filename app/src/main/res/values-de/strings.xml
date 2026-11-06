@@ -128,4 +128,5 @@
     <string name="metric_millions_plus">%1$d Mio.+</string>
     <string name="metric_thousands_plus">%1$d Tsd.+</string>
     <string name="screenshot_urls_count">Screenshot-URLs: %1$d</string>
+    <string name="developer_error_details">Supabase-Fehler:\n%1$s</string>
 </resources>

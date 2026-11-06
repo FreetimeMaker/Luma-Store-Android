@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import com.freetime.lumastore.data.DeveloperFundingSettings
 import com.freetime.lumastore.data.DeveloperRepository
 import com.freetime.lumastore.data.DeveloperSession
+import com.freetime.lumastore.data.developerFailureDetails
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +27,8 @@ internal class DeveloperFundingDraft(initial: DeveloperFundingSettings?) {
     var saving by mutableStateOf(false)
         internal set
     var error by mutableStateOf<Int?>(null)
+        internal set
+    var errorDetails by mutableStateOf<String?>(null)
         internal set
     var saved by mutableStateOf(false)
         internal set
@@ -49,6 +52,7 @@ internal class DeveloperFundingDraft(initial: DeveloperFundingSettings?) {
         collective = baselineFields[2]
         crypto = baselineCrypto.toMap()
         error = null
+        errorDetails = null
     }
 }
 
@@ -68,6 +72,7 @@ internal class DeveloperFundingEditorState : ViewModel() {
         val crypto = draft.normalizedCrypto()
         draft.saving = true
         draft.error = null
+        draft.errorDetails = null
         scope.launch {
             try {
                 repository.saveFunding(session, fields[0], fields[1], fields[2], crypto)
@@ -76,6 +81,7 @@ internal class DeveloperFundingEditorState : ViewModel() {
                 throw cancelled
             } catch (failure: Exception) {
                 draft.error = developerFailureMessage(failure, R.string.funding_save_failed)
+                draft.errorDetails = developerFailureDetails(failure)
             } finally {
                 draft.saving = false
             }

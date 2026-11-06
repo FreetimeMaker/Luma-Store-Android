@@ -7,6 +7,21 @@ import java.util.Collections
 import java.util.IdentityHashMap
 import java.util.concurrent.CancellationException
 
+/** Show backend diagnostics, not RestException.message (which also contains request metadata). */
+fun developerFailureDetails(failure: Throwable): String? {
+    val seen = Collections.newSetFromMap(IdentityHashMap<Throwable, Boolean>())
+    val causes = generateSequence(failure) { it.cause }.takeWhile { seen.add(it) }.toList()
+    causes.filterIsInstance<CancellationException>().firstOrNull()?.let { throw it }
+    val rest = causes.filterIsInstance<RestException>().firstOrNull() ?: return null
+    return supabaseFailureDetails(rest.statusCode, rest.error, rest.description)
+}
+
+internal fun supabaseFailureDetails(status: Int, error: String, description: String?): String =
+    listOf("HTTP $status", error.trim(), description.orEmpty().trim())
+        .filter(String::isNotBlank).distinct().joinToString("\n")
+
+internal class DeveloperSessionRequiredException(message: String) : IllegalStateException(message)
+
 enum class DeveloperFailureKind {
     SESSION_EXPIRED, ACCESS_DENIED, BUCKET_MISSING, IMAGE_FORMAT, IMAGE_TOO_LARGE, NETWORK, UNKNOWN
 }
@@ -16,6 +31,7 @@ fun classifyDeveloperFailure(failure: Throwable): DeveloperFailureKind {
     val seen = Collections.newSetFromMap(IdentityHashMap<Throwable, Boolean>())
     val causes = generateSequence(failure) { it.cause }.takeWhile { seen.add(it) }.toList()
     causes.filterIsInstance<CancellationException>().firstOrNull()?.let { throw it }
+    if (causes.any { it is DeveloperSessionRequiredException }) return DeveloperFailureKind.SESSION_EXPIRED
     for (cause in causes) {
         val rest = cause as? RestException ?: continue
         val code = rest.error.lowercase()

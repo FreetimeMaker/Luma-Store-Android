@@ -24,9 +24,11 @@ internal class DeveloperProfileEditorState(
     var cropUri by mutableStateOf<String?>(null)
     var busy by mutableStateOf(false); private set
     var error by mutableStateOf<Int?>(null); private set
+    var errorDetails by mutableStateOf<String?>(null); private set
     var saved by mutableStateOf(false); private set
     var cleanupPending by mutableStateOf(false); private set
     var cleanupFailure by mutableStateOf<Int?>(null); private set
+    var cleanupFailureDetails by mutableStateOf<String?>(null); private set
     var cleanupRunning by mutableStateOf(false); private set
     private var initialized = false
     val dirty get() = values.map(String::trim) != baseline || draftFile != null || cropUri != null
@@ -93,6 +95,7 @@ internal class DeveloperProfileEditorState(
                 throw cancelled
             } catch (failure: Exception) {
                 error = developerFailureMessage(failure, R.string.profile_crop_save_error)
+                errorDetails = developerFailureDetails(failure)
             } finally {
                 staged?.delete()
                 busy = false
@@ -113,6 +116,7 @@ internal class DeveloperProfileEditorState(
         draftFile = null
         cropUri = null
         error = null
+        errorDetails = null
         saved = false
         initialized = false
         // Remote cleanup is deliberately independent of the discardable draft.
@@ -132,7 +136,8 @@ internal class DeveloperProfileEditorState(
 
     private fun matchesProfile(profile: DeveloperProfileSettings, target: List<String>): Boolean {
         val current = fields(profile)
-        return current.take(5) == target.take(5) && sameAvatar(current[5], target[5])
+        // Cache-version suffixes are part of the saved URL, even though cleanup compares object paths.
+        return current == target
     }
 
     private fun refreshCleanupPending() {
@@ -142,6 +147,7 @@ internal class DeveloperProfileEditorState(
 
     private suspend fun runCleanup() {
         cleanupFailure = null
+        cleanupFailureDetails = null
         try {
             withTimeout(20_000) { cleanup() }
         } catch (_: TimeoutCancellationException) {
@@ -150,6 +156,7 @@ internal class DeveloperProfileEditorState(
             throw cancelled
         } catch (failure: Exception) {
             cleanupFailure = developerFailureMessage(failure, R.string.profile_saved_cleanup_failed)
+            cleanupFailureDetails = developerFailureDetails(failure)
         } finally {
             refreshCleanupPending()
         }
@@ -182,6 +189,7 @@ internal class DeveloperProfileEditorState(
             } catch (cancelled: CancellationException) { throw cancelled
             } catch (failure: Exception) {
                 cleanupFailure = developerFailureMessage(failure, R.string.profile_saved_cleanup_failed)
+                cleanupFailureDetails = developerFailureDetails(failure)
             }
         }
         for (url in queued()) {
@@ -199,6 +207,7 @@ internal class DeveloperProfileEditorState(
             } catch (cancelled: CancellationException) { throw cancelled
             } catch (failure: Exception) {
                 cleanupFailure = developerFailureMessage(failure, R.string.profile_saved_cleanup_failed)
+                cleanupFailureDetails = developerFailureDetails(failure)
             }
         }
     }
@@ -207,6 +216,7 @@ internal class DeveloperProfileEditorState(
         if (busy || saved || cleanupRunning) return
         busy = true
         error = null
+        errorDetails = null
         val submitted = values.map(String::trim)
         scope.launch {
             var attempted: List<String>? = null
@@ -240,6 +250,7 @@ internal class DeveloperProfileEditorState(
                     } else {
                         error = if (failure is CancellationException) R.string.profile_save_failed
                             else developerFailureMessage(failure, R.string.profile_save_failed)
+                        errorDetails = if (failure is CancellationException) null else developerFailureDetails(failure)
                     }
                 }
                 if (failure is CancellationException) throw failure

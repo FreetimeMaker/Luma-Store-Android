@@ -425,7 +425,8 @@ class MainActivity : ComponentActivity() {
                 app.expectedSha256,
                 { runOnUiThread { onProgress(it) } },
                 { runOnUiThread(onReady) },
-                { error -> runOnUiThread { onError(error) } }
+                { error -> runOnUiThread { onError(error) } },
+                onDownloadVerified = { com.freetime.lumastore.data.LumaDownloadTracking.record(app) }
             )
         }
 

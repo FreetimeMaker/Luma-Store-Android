@@ -12,7 +12,7 @@ Signed-in features can store data you intentionally create, including favorites,
 
 ## Download statistics
 
-Luma Store records aggregate download statistics used for store metrics and developer analytics. These statistics are not sold to advertisers or data brokers.
+Luma Store records aggregate download statistics used for store metrics and developer analytics. For apps downloaded from the Luma catalogue, the Android client reports the store app identifier, platform (Android) and package type (APK) after the downloaded APK passes validation. This report does not include account credentials or a device identifier. Downloads selected from F-Droid sources do not send this Luma statistics report. Infrastructure providers can still process technical request data as described below. These statistics are not sold to advertisers or data brokers.
 
 ## Storage and infrastructure
 
@@ -31,4 +31,4 @@ Developer profile images uploaded through the Android app are stored in Luma Sto
 
 The website also publishes the current privacy statement at https://luma.free-time.me/privacy.
 
-Last updated: September 28, 2026.
+Last updated: November 6, 2026.

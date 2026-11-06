@@ -10,6 +10,7 @@ class DeveloperBackendTest {
 
     @Test fun canonicalAvatarsAndCacheSuffix() {
         for (ext in listOf("jpg", "png", "webp")) {
+            assertEquals("owner/avatar.$ext", ownedAvatarPath(base, "owner", "${base}owner/avatar.$ext"))
             assertEquals("owner/avatar.$ext", ownedAvatarPath(base, "owner", "${base}owner/avatar.$ext?v=123"))
         }
     }
@@ -54,7 +55,8 @@ class DeveloperBackendTest {
         for (path in listOf(
             "other/avatar.jpg", "owner-extra/avatar.jpg", "owner/../other/avatar.jpg",
             "owner/%2e%2e/avatar.jpg", "owner%2fother/avatar.jpg", "owner/%252e%252e/avatar.jpg",
-            "owner/avatar.jpg/extra", "owner/unrelated.png", "owner//avatar.png", "owner/avatar%2ejpg"
+            "owner/avatar.jpg/extra", "owner/unrelated.png", "owner//avatar.png", "owner/avatar%2ejpg",
+            "owner/avatar.jpeg", "owner/avatar.JPG", "owner/avatar.jpg#fragment"
         )) {
             assertThrows(IllegalArgumentException::class.java) { ownedAvatarPath(base, "owner", base + path) }
         }
@@ -91,6 +93,28 @@ class DeveloperBackendTest {
         }
         assertEquals(DeveloperFailureKind.UNKNOWN,
             classifyDeveloperFailure(IllegalStateException("MIME type image/heic was detected; operation is not supported")))
+    }
+
+    @Test fun backendDiagnosticsKeepTheActualCauseAndStatus() {
+        assertEquals("HTTP 400\n23502\nnull value in column display_name violates not-null constraint",
+            supabaseFailureDetails(400, "23502", "null value in column display_name violates not-null constraint"))
+        assertEquals("HTTP 403\n42501\nnew row violates row-level security policy",
+            supabaseFailureDetails(403, "42501", "new row violates row-level security policy"))
+        assertEquals("HTTP 404\nBucket not found", supabaseFailureDetails(404, "Bucket not found", null))
+        assertEquals("HTTP 500\nUnexpected failure", supabaseFailureDetails(500, "Unexpected failure", "Unexpected failure"))
+        assertNull(developerFailureDetails(IllegalStateException("local validation failure")))
+    }
+
+    @Test fun localSessionGuardsAreNotMisreportedAsPermissionErrors() {
+        assertEquals(DeveloperFailureKind.SESSION_EXPIRED,
+            classifyDeveloperFailure(DeveloperSessionRequiredException("localized session message")))
+    }
+
+    @Test fun diagnosticExtractionPreservesCancellation() {
+        val cancellation = CancellationException("cancelled")
+        assertSame(cancellation, assertThrows(CancellationException::class.java) {
+            developerFailureDetails(RuntimeException("wrapper", cancellation))
+        })
     }
 
     @Test fun cancellationIsNeverClassifiedEvenWhenWrapped() {

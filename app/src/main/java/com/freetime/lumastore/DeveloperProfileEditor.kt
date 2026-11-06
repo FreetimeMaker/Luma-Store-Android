@@ -137,7 +137,10 @@ internal fun DeveloperProfileEditor(
             item { OutlinedTextField(website, { website = it }, enabled = editable, label = { Text(stringResource(R.string.website)) }, modifier = Modifier.fillMaxWidth()) }
             item { OutlinedTextField(github, { github = it }, enabled = editable, label = { Text(stringResource(R.string.github)) }, modifier = Modifier.fillMaxWidth()) }
             item { OutlinedTextField(gitlab, { gitlab = it }, enabled = editable, label = { Text(stringResource(R.string.gitlab)) }, modifier = Modifier.fillMaxWidth()) }
-            error?.let { message -> item { Text(stringResource(message), color = MaterialTheme.colorScheme.error) } }
+            error?.let { message -> item {
+                Text(stringResource(message), color = MaterialTheme.colorScheme.error)
+                state.errorDetails?.let { Text(stringResource(R.string.developer_error_details, it), color = MaterialTheme.colorScheme.error) }
+            } }
             if (state.cleanupPending) {
                 if (state.saved) {
                     item { Text(stringResource(R.string.profile_saved_cleanup_failed), color = MaterialTheme.colorScheme.error) }
@@ -147,6 +150,9 @@ internal fun DeveloperProfileEditor(
                         item { Text(stringResource(message), color = MaterialTheme.colorScheme.error) }
                     }
                 }
+                state.cleanupFailureDetails?.let { details -> item {
+                    Text(stringResource(R.string.developer_error_details, details), color = MaterialTheme.colorScheme.error)
+                } }
                 item {
                     OutlinedButton(
                         onClick = state::retryCleanup,

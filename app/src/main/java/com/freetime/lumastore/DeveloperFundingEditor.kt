@@ -83,7 +83,10 @@ internal fun DeveloperFundingEditor(
                 OutlinedTextField(draft.crypto[key].orEmpty(), { value -> draft.crypto = draft.crypto + (key to value) },
                     enabled = editable, label = { Text(key.replace("::", " · ")) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
             }
-            draft.error?.let { message -> item { Text(stringResource(message), color = MaterialTheme.colorScheme.error) } }
+            draft.error?.let { message -> item {
+                Text(stringResource(message), color = MaterialTheme.colorScheme.error)
+                draft.errorDetails?.let { Text(stringResource(R.string.developer_error_details, it), color = MaterialTheme.colorScheme.error) }
+            } }
             item {
                 Button(
                     enabled = draft.dirty && editable,
