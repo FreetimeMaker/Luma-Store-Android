@@ -1,6 +1,5 @@
 package com.freetime.lumastore
 
-
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -385,7 +384,7 @@ fun SettingsScreen(repository: AppRepository, onBack: () -> Unit, onSourcesChang
                 Text(it, style = MaterialTheme.typography.bodySmall)
             }
 
-            Spacer(Modifier.height(96.dp))
+            Spacer(Modifier.height(16.dp))
         }
     }
 

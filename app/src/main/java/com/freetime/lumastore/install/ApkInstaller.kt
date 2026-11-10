@@ -25,7 +25,8 @@ object ApkInstaller {
         expectedSha256: String? = null,
         onProgress: (Int) -> Unit,
         onReady: () -> Unit,
-        onError: (Throwable) -> Unit
+        onError: (Throwable) -> Unit,
+        onDownloadVerified: () -> Unit = {}
     ): DownloadHandle {
         val handle = DownloadHandle()
         Thread {
@@ -83,6 +84,14 @@ object ApkInstaller {
 
                 verifyDownloadedApk(context, packageName, target)
                 verifyUpdateSignature(context, packageName, target)
+                if (handle.cancelled) throw InterruptedException(context.getString(R.string.download_cancelled))
+
+                // Finish reporting before opening the installer: a self-update can kill
+                // this process. Metrics failures must never prevent a valid installation.
+                runCatching(onDownloadVerified).onFailure {
+                    android.util.Log.w("ApkInstaller", "Could not record verified download for $packageName", it)
+                }
+                if (handle.cancelled) throw InterruptedException(context.getString(R.string.download_cancelled))
 
                 val uri: Uri = FileProvider.getUriForFile(
                     context,

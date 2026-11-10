@@ -1,7 +1,6 @@
 package com.freetime.lumastore
 
 import org.junit.Test
-
 import org.junit.Assert.*
 
 /**

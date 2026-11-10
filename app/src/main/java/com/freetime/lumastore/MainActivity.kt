@@ -6,7 +6,6 @@ import com.freetime.design.FloatingBottomNavigationItem
 import com.freetime.warn.FreetimeWarn
 import com.freetime.warn.FreetimeWarnFrequency
 import com.freetime.warn.rememberFreetimeWarnState
-
 import android.app.job.JobInfo
 import android.app.job.JobScheduler
 import android.content.ComponentName
@@ -38,6 +37,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material.icons.Icons
@@ -56,6 +57,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -72,6 +74,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.freetime.lumastore.data.AppRepository
@@ -117,6 +121,10 @@ class MainActivity : ComponentActivity() {
                     }
                 )
             }
+            val navigationGuard = remember { EditorNavigationGuard() }
+            fun navigate(target: MainScreen) {
+                if (target != screen) navigationGuard.request { screen = target }
+            }
             var searchMounted by rememberSaveable { mutableStateOf(screen == MainScreen.SEARCH) }
             var myAppsMounted by rememberSaveable { mutableStateOf(screen == MainScreen.MY_APPS) }
             var sourcesMounted by rememberSaveable { mutableStateOf(screen == MainScreen.SOURCES) }
@@ -159,17 +167,21 @@ class MainActivity : ComponentActivity() {
                     versionCode = packageManager.getPackageInfo(packageName, 0).longVersionCode,
                     frequency = FreetimeWarnFrequency.ONCE_PER_VERSION
                 )
+                CompositionLocalProvider(LocalEditorNavigationGuard provides navigationGuard) {
                 FloatingBottomNavigationGlassRoot {
                 BoxWithConstraints(
                     modifier = Modifier.fillMaxSize()
                 ) {
                 val wideWindow = maxWidth >= 840.dp
+                val density = LocalDensity.current
+                var bottomNavigationHeight by remember { mutableStateOf(0.dp) }
                 val compactNavigation = maxWidth < 430.dp
                 Box(Modifier.fillMaxSize()) {
                     Box(
-                        Modifier.fillMaxSize().then(
-                            if (wideWindow) Modifier.padding(start = 104.dp) else Modifier
-                        )
+                        // Reserve the measured overlay once for every destination, including dialogs' owners.
+                        Modifier.fillMaxSize()
+                            .padding(start = if (wideWindow) 104.dp else 0.dp, bottom = if (wideWindow) 0.dp else bottomNavigationHeight)
+                            .consumeWindowInsets(PaddingValues(bottom = if (wideWindow) 0.dp else bottomNavigationHeight))
                     ) {
                         PersistentScreen(visible = screen == MainScreen.DISCOVER) {
                             key(currentSourcesRevision) {
@@ -224,7 +236,7 @@ class MainActivity : ComponentActivity() {
                             PersistentScreen(visible = screen == MainScreen.SOURCES) {
                                 SettingsScreen(
                                     repository = repository,
-                                    onBack = { screen = MainScreen.DISCOVER },
+                                    onBack = { navigate(MainScreen.DISCOVER) },
                                     onSourcesChanged = { sourcesRevision.intValue++ }
                                 )
                             }
@@ -234,7 +246,7 @@ class MainActivity : ComponentActivity() {
                             PersistentScreen(visible = screen == MainScreen.DEVELOPER) {
                                 DeveloperScreen(
                                     repository = developerRepository,
-                                    onBack = { screen = MainScreen.DISCOVER },
+                                    onBack = { navigate(MainScreen.DISCOVER) },
                                     active = screen == MainScreen.DEVELOPER
                                 )
                             }
@@ -247,7 +259,7 @@ class MainActivity : ComponentActivity() {
                                     onOpenApp = { appId ->
                                         accountRequestedAppId = appId
                                         searchMounted = true
-                                        screen = MainScreen.SEARCH
+                                        navigate(MainScreen.SEARCH)
                                     }
                                 )
                             }
@@ -264,12 +276,12 @@ class MainActivity : ComponentActivity() {
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(5.dp)
                         ) {
-                            FdroidRailItem(screen == MainScreen.DISCOVER, { screen = MainScreen.DISCOVER }, stringResource(R.string.discover)) { Icon(Icons.Filled.Explore, contentDescription = null) }
-                            FdroidRailItem(screen == MainScreen.SEARCH, { screen = MainScreen.SEARCH }, stringResource(R.string.search)) { Icon(Icons.Filled.Search, contentDescription = null) }
-                            FdroidRailItem(screen == MainScreen.MY_APPS, { screen = MainScreen.MY_APPS }, stringResource(R.string.my_apps), availableUpdateCount) { Icon(Icons.Filled.Apps, contentDescription = null) }
-                            FdroidRailItem(screen == MainScreen.SOURCES, { screen = MainScreen.SOURCES }, stringResource(R.string.sources)) { Icon(Icons.Filled.Storage, contentDescription = null) }
-                            FdroidRailItem(screen == MainScreen.DEVELOPER, { screen = MainScreen.DEVELOPER }, stringResource(R.string.developer)) { Icon(Icons.Filled.Code, contentDescription = null) }
-                            FdroidRailItem(screen == MainScreen.ACCOUNT, { screen = MainScreen.ACCOUNT }, stringResource(R.string.account)) { Icon(Icons.Filled.AccountCircle, contentDescription = null) }
+                            FdroidRailItem(screen == MainScreen.DISCOVER, { navigate(MainScreen.DISCOVER) }, stringResource(R.string.discover)) { Icon(Icons.Filled.Explore, contentDescription = null) }
+                            FdroidRailItem(screen == MainScreen.SEARCH, { navigate(MainScreen.SEARCH) }, stringResource(R.string.search)) { Icon(Icons.Filled.Search, contentDescription = null) }
+                            FdroidRailItem(screen == MainScreen.MY_APPS, { navigate(MainScreen.MY_APPS) }, stringResource(R.string.my_apps), availableUpdateCount) { Icon(Icons.Filled.Apps, contentDescription = null) }
+                            FdroidRailItem(screen == MainScreen.SOURCES, { navigate(MainScreen.SOURCES) }, stringResource(R.string.sources)) { Icon(Icons.Filled.Storage, contentDescription = null) }
+                            FdroidRailItem(screen == MainScreen.DEVELOPER, { navigate(MainScreen.DEVELOPER) }, stringResource(R.string.developer)) { Icon(Icons.Filled.Code, contentDescription = null) }
+                            FdroidRailItem(screen == MainScreen.ACCOUNT, { navigate(MainScreen.ACCOUNT) }, stringResource(R.string.account)) { Icon(Icons.Filled.AccountCircle, contentDescription = null) }
                         }
                     } else {
                         val primaryScreens = listOf(
@@ -295,18 +307,21 @@ class MainActivity : ComponentActivity() {
                         FloatingBottomNavigationBar(
                             items = navItems,
                             selectedItemIndex = primaryScreens.indexOf(screen).coerceAtLeast(0),
-                            onItemSelected = { index -> screen = primaryScreens[index] },
+                            onItemSelected = { index -> navigate(primaryScreens[index]) },
                             searchItem = FloatingBottomNavigationItem(stringResource(R.string.search)) {
                                 Icon(Icons.Filled.Search, contentDescription = null)
                             },
                             searchSelected = screen == MainScreen.SEARCH,
-                            onSearchSelected = { screen = MainScreen.SEARCH },
-                            modifier = Modifier.align(Alignment.BottomCenter)
+                            onSearchSelected = { navigate(MainScreen.SEARCH) },
+                            modifier = Modifier.align(Alignment.BottomCenter).onSizeChanged {
+                                bottomNavigationHeight = with(density) { it.height.toDp() }
+                            }
                         )
                     }
                 }
                 }
                 FreetimeWarn(state = warnState)
+                }
                 }
             }
         }
@@ -410,7 +425,8 @@ class MainActivity : ComponentActivity() {
                 app.expectedSha256,
                 { runOnUiThread { onProgress(it) } },
                 { runOnUiThread(onReady) },
-                { error -> runOnUiThread { onError(error) } }
+                { error -> runOnUiThread { onError(error) } },
+                onDownloadVerified = { com.freetime.lumastore.data.LumaDownloadTracking.record(app) }
             )
         }
 

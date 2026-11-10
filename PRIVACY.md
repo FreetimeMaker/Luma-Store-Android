@@ -6,13 +6,13 @@ Luma Store can be browsed without an account. Public app listings, app details a
 
 Luma Store supports direct email/password accounts through Supabase Auth. When you create an account, the authentication service stores the account identifier, email address and authentication data required to operate the account. Passwords are handled by Supabase Auth and are not stored by the Luma Store application itself.
 
-Optional external sign-in providers may also be offered. If you choose one, that provider processes the authentication under its own privacy policy. A Google, GitHub or GitLab account is not required to create a direct Luma Store account.
+Optional external sign-in providers may also be offered. If you choose one, that provider processes the authentication under its own privacy policy. A Google, GitHub, GitLab or Codeberg account is not required to create a direct Luma Store account.
 
 Signed-in features can store data you intentionally create, including favorites, ratings and review text. Developer features can additionally store developer profile information, submissions, app metadata, funding settings, release information and developer analytics associations.
 
 ## Download statistics
 
-Luma Store records aggregate download statistics used for store metrics and developer analytics. These statistics are not sold to advertisers or data brokers.
+Luma Store records aggregate download statistics used for store metrics and developer analytics. For apps downloaded from the Luma catalogue, the Android client reports the store app identifier, platform (Android) and package type (APK) after the downloaded APK passes validation. This report does not include account credentials or a device identifier. Downloads selected from F-Droid sources do not send this Luma statistics report. Infrastructure providers can still process technical request data as described below. These statistics are not sold to advertisers or data brokers.
 
 ## Storage and infrastructure
 
@@ -31,4 +31,4 @@ Developer profile images uploaded through the Android app are stored in Luma Sto
 
 The website also publishes the current privacy statement at https://luma.free-time.me/privacy.
 
-Last updated: September 28, 2026.
+Last updated: November 6, 2026.

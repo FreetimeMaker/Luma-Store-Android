@@ -1,11 +1,8 @@
 package com.freetime.lumastore
 
-
 import android.content.Intent
 import android.content.Context
-
 import android.os.Build
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -240,7 +237,7 @@ fun FdroidDiscoverScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
-                contentPadding = PaddingValues(bottom = 88.dp)
+                contentPadding = PaddingValues(bottom = 16.dp)
             ) {
                 if (usingCachedData) {
                     item("offline_status") {
@@ -551,7 +548,7 @@ fun FdroidSearchScreen(
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(bottom = 88.dp)
+            contentPadding = PaddingValues(bottom = 16.dp)
         ) {
             if (query.isBlank()) {
                 if (matchingCategories.isNotEmpty()) {
@@ -670,7 +667,7 @@ private fun CollectionScreen(
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(bottom = 96.dp)
+            contentPadding = PaddingValues(bottom = 16.dp)
         ) {
             items(apps, key = { it.id }) { app ->
                 BrowseAppRow(app = app, rating = ratings[app.id], onClick = { onAppSelected(app) })

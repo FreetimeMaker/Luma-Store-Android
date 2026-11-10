@@ -60,7 +60,8 @@ data class StoreApp(
     val nativeCode: List<String> = emptyList(),
     val signerSha256: List<String> = emptyList(),
     val permissions: List<String> = emptyList(),
-    val versions: List<StoreVersion> = emptyList()
+    val versions: List<StoreVersion> = emptyList(),
+    val lumaAppId: String? = null
 )
 
 enum class SourceType { FDROID_V1, LUMA_API }
@@ -257,7 +258,7 @@ class AppRepository(context: Context) {
     }
 
     fun clearAppCache() {
-        cachePreferences.edit().remove(CACHE_KEY_APPS).remove(CACHE_KEY_TIMESTAMP).apply()
+        cachePreferences.edit().remove(CACHE_KEY_APPS).remove(LEGACY_CACHE_KEY_APPS).remove(CACHE_KEY_TIMESTAMP).apply()
         memoryApps = null
     }
 
@@ -369,7 +370,9 @@ class AppRepository(context: Context) {
     }
 
     fun loadCachedApps(): List<StoreApp> {
-        val raw = cachePreferences.getString(CACHE_KEY_APPS, null) ?: return emptyList()
+        val raw = cachePreferences.getString(CACHE_KEY_APPS, null)
+            ?: cachePreferences.getString(LEGACY_CACHE_KEY_APPS, null)
+            ?: return emptyList()
         val enabled = enabledSources().mapTo(mutableSetOf()) { it.name }
         return runCatching { parseCachedApps(raw) }.getOrDefault(emptyList()).filter { it.sourceName in enabled }
     }
@@ -400,7 +403,8 @@ class AppRepository(context: Context) {
     }
 
     fun loadApps(forceRefresh: Boolean = false): Result<List<StoreApp>> = runCatching {
-        if (!forceRefresh) {
+        // Preserve the old catalogue offline, but refresh it once to obtain tracking IDs.
+        if (!forceRefresh && cachePreferences.contains(CACHE_KEY_APPS)) {
             memoryApps?.let { return@runCatching it }
             val cached = loadCachedApps()
             if (cached.isNotEmpty()) return@runCatching cached.also { memoryApps = it }
@@ -1046,7 +1050,8 @@ class AppRepository(context: Context) {
                     license = item.optNullableString("license_type") ?: item.optNullableString("license"),
                     antiFeatures = jsonStringList(item.optJSONArray("ant_features")).ifEmpty { jsonStringList(item.optJSONArray("anti_features")) },
                     closedSource = item.optBoolean("closed_source", false),
-                    downloadCount = item.optLong("download_count", -1L).takeIf { it >= 0 }
+                    downloadCount = item.optLong("download_count", -1L).takeIf { it >= 0 },
+                    lumaAppId = item.optNullableString("id")
                 ))
             }
         }
@@ -1099,6 +1104,7 @@ class AppRepository(context: Context) {
             put("version", app.version); put("versionCode", app.versionCode); put("iconUrl", app.iconUrl); put("iconUrls", JSONArray(app.iconUrls))
             put("screenshotUrls", JSONArray(app.screenshotUrls)); put("categories", JSONArray(app.categories))
             put("apkUrl", app.apkUrl); put("sourceName", app.sourceName); put("authorName", app.authorName); put("developerId", app.developerId)
+            put("lumaAppId", app.lumaAppId)
             put("authorEmail", app.authorEmail); put("authorWebsite", app.authorWebsite); put("websiteUrl", app.websiteUrl)
             put("sourceCodeUrl", app.sourceCodeUrl); put("issueTrackerUrl", app.issueTrackerUrl); put("translationUrl", app.translationUrl)
             put("changelogUrl", app.changelogUrl); put("donationUrls", JSONArray(app.donationUrls)); put("liberapay", app.liberapay)
@@ -1153,7 +1159,8 @@ class AppRepository(context: Context) {
                                 ))
                             }
                         }
-                    }.orEmpty()
+                    }.orEmpty(),
+                    lumaAppId = item.optNullableString("lumaAppId")
                 ))
             }
         }
@@ -1187,7 +1194,8 @@ class AppRepository(context: Context) {
         private const val SOURCE_PREFERENCES = "app_sources"
         private const val APP_SOURCE_PREFERENCES = "luma_store_source_preferences"
         private const val APP_SOURCE_KEY_PREFIX = "source_"
-        private const val CACHE_KEY_APPS = "apps_validated_download_urls_v10"
+        private const val CACHE_KEY_APPS = "apps_download_tracking_v11"
+        private const val LEGACY_CACHE_KEY_APPS = "apps_validated_download_urls_v10"
         private const val CACHE_KEY_TIMESTAMP = "timestamp"
         private const val CUSTOM_SOURCES_KEY = "custom_sources"
     }

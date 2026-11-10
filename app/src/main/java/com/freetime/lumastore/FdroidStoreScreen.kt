@@ -1,8 +1,6 @@
 package com.freetime.lumastore
 
 import android.content.Intent
-
-
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

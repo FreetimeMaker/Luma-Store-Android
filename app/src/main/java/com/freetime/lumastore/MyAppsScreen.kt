@@ -1,7 +1,6 @@
 package com.freetime.lumastore
 
 import android.content.Intent
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -167,7 +166,7 @@ fun MyAppsScreen(
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(bottom = 88.dp)
+            contentPadding = PaddingValues(bottom = 16.dp)
         ) {
             if (updates.isNotEmpty()) {
                 item {

@@ -8,15 +8,19 @@ import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.providers.Gitlab
 import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.status.SessionStatus
+import io.github.jan.supabase.exceptions.RestException
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.storage.storage
+import io.ktor.http.ContentType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -38,7 +42,7 @@ import java.util.TimeZone
 @Serializable data class DeveloperDownloadStats(@SerialName("app_id") val appId: String, val total: Long = 0, val today: Long = 0, @SerialName("this_month") val thisMonth: Long = 0, @SerialName("this_year") val thisYear: Long = 0)
 @Serializable data class DeveloperProfileSettings(@SerialName("developer_id") val developerId: String, @SerialName("display_name") val displayName: String? = null, val bio: String? = null, @SerialName("website_url") val websiteUrl: String? = null, @SerialName("github_url") val githubUrl: String? = null, @SerialName("gitlab_url") val gitlabUrl: String? = null, @SerialName("avatar_url") val avatarUrl: String? = null, val verified: Boolean = false)
 @Serializable data class DeveloperFundingSettings(@SerialName("developer_id") val developerId: String, @SerialName("donate_url") val donateUrl: String? = null, val liberapay: String? = null, val opencollective: String? = null, @SerialName("crypto_addresses") val cryptoAddresses: JsonObject = JsonObject(emptyMap()))
-@Serializable private data class DeveloperProfileUpdate(
+@Serializable internal data class DeveloperProfileUpdate(
     @SerialName("developer_id") val developerId: String,
     @SerialName("display_name") val displayName: String,
     val bio: String? = null,
@@ -79,23 +83,52 @@ class DeveloperRepository(context: Context) {
     suspend fun currentSession(): DeveloperSession? = supabase.auth.currentSessionOrNull()?.toDeveloperSession()
     suspend fun signOut() { supabase.auth.signOut() }
 
-    suspend fun uploadAvatar(session: DeveloperSession, bytes: ByteArray, extension: String): String {
-        val safeExtension = extension.lowercase().takeIf { it in setOf("jpg", "jpeg", "png", "webp") } ?: "jpg"
-        val path = "${session.userId}/avatar.$safeExtension"
-        val bucket = supabase.storage["developer-avatars"]
-        bucket.upload(path, bytes) {
-            upsert = true
-        }
-        return bucket.publicUrl(path)
+    fun newAvatarUrl(session: DeveloperSession, extension: String): String {
+        requireJpegAvatar(extension)
+        return versionedAvatarUrl(supabase.storage["developer-avatars"].publicUrl(""), session.userId)
     }
 
-    suspend fun loadProfile(session: DeveloperSession): DeveloperProfileSettings? =
-        supabase.from("luma_developer_profiles")
+    suspend fun uploadAvatar(
+        session: DeveloperSession,
+        bytes: ByteArray,
+        extension: String,
+        avatarUrl: String = newAvatarUrl(session, extension)
+    ): String {
+        require(bytes.isNotEmpty() && bytes.size <= 5 * 1024 * 1024) { "Profile image must be between 1 byte and 5 MB." }
+        requireJpegAvatar(extension)
+        requireCurrentUser(session)
+        val bucket = supabase.storage["developer-avatars"]
+        val path = requireNotNull(ownedAvatarPath(bucket.publicUrl(""), session.userId, avatarUrl)) {
+            "Avatar access denied"
+        }
+        require(path == "${session.userId}/avatar.jpg") { "Avatar access denied: upload requires the fixed JPEG object path." }
+        bucket.upload(path, bytes) {
+            contentType = ContentType.Image.JPEG
+            upsert = true
+            // Storage 3.9 exposes cache control through request overrides, not a cacheControl property.
+            httpOverride { headers["Cache-Control"] = "max-age=60" }
+        }
+        return avatarUrl
+    }
+
+    /** Call only after the profile no longer references this avatar. Failures propagate. */
+    suspend fun removeAvatar(session: DeveloperSession, avatarUrl: String) {
+        requireCurrentUser(session)
+        val bucket = supabase.storage["developer-avatars"]
+        val path = ownedAvatarPath(bucket.publicUrl(""), session.userId, avatarUrl) ?: return
+        bucket.delete(listOf(path))
+    }
+
+    suspend fun loadProfile(session: DeveloperSession): DeveloperProfileSettings? {
+        requireCurrentUser(session)
+        return supabase.from("luma_developer_profiles")
             .select { filter { eq("developer_id", session.userId) }; limit(1) }
             .decodeList<DeveloperProfileSettings>().firstOrNull()
+    }
 
     suspend fun saveProfile(session: DeveloperSession, displayName: String, bio: String, websiteUrl: String, githubUrl: String, gitlabUrl: String, avatarUrl: String) {
-        supabase.from("luma_developer_profiles").upsert(
+        val existing = loadProfile(session)
+        val payload = developerProfilePayload(
             DeveloperProfileUpdate(
                 developerId = session.userId,
                 displayName = displayName.trim(),
@@ -104,17 +137,28 @@ class DeveloperRepository(context: Context) {
                 githubUrl = githubUrl.trim().ifBlank { null },
                 gitlabUrl = gitlabUrl.trim().ifBlank { null },
                 avatarUrl = avatarUrl.trim().ifBlank { null }
-            )) {
-            onConflict = "developer_id"
+            ), creating = existing == null)
+        // Recheck after the profile lookup: the user may have signed out or switched accounts.
+        requireCurrentUser(session)
+        if (existing == null) {
+            supabase.from("luma_developer_profiles").insert(payload)
+        } else {
+            supabase.from("luma_developer_profiles").update(payload) {
+                select()
+                filter { eq("developer_id", session.userId) }
+            }.decodeSingle<DeveloperProfileSettings>()
         }
     }
 
-    suspend fun loadFunding(session: DeveloperSession): DeveloperFundingSettings? =
-        supabase.from("luma_developer_funding")
+    suspend fun loadFunding(session: DeveloperSession): DeveloperFundingSettings? {
+        requireCurrentUser(session)
+        return supabase.from("luma_developer_funding")
             .select { filter { eq("developer_id", session.userId) }; limit(1) }
             .decodeList<DeveloperFundingSettings>().firstOrNull()
+    }
 
     suspend fun saveFunding(session: DeveloperSession, donateUrl: String, liberapay: String, openCollective: String, cryptoAddresses: Map<String, String>) {
+        requireCurrentUser(session)
         val cleaned = JsonObject(cryptoAddresses.filterValues { it.isNotBlank() }.mapValues { JsonPrimitive(it.value.trim()) })
         supabase.from("luma_developer_funding").upsert(
             DeveloperFundingUpdate(
@@ -328,6 +372,31 @@ class DeveloperRepository(context: Context) {
     private suspend fun loadComments(submissionIds: List<String>): List<DeveloperComment> = supabase.from("luma_review_comments").select(columns = Columns.list("id", "submission_id", "body", "created_at", "user_id")) { filter { isIn("submission_id", submissionIds) }; order("created_at", Order.DESCENDING) }.decodeList()
     private suspend fun loadNotifications(session: DeveloperSession): List<DeveloperNotification> = supabase.from("luma_developer_notifications").select(columns = Columns.list("id", "submission_id", "type", "title", "message", "created_at", "read_at")) { filter { eq("user_id", session.userId); exact("read_at", null) }; order("created_at", Order.DESCENDING); limit(100) }.decodeList()
 
+    private suspend fun requireCurrentUser(expected: DeveloperSession) {
+        val auth = supabase.auth
+        auth.awaitInitialization()
+        fun checkCurrentUser() {
+            if (!developerIdentityMatches(expected.userId, auth.currentSessionOrNull()?.user?.id)) {
+                throw DeveloperSessionRequiredException(appContext.getString(R.string.developer_error_session))
+            }
+        }
+        checkCurrentUser()
+        // Never import or send the editor's captured access/refresh tokens.
+        val serverUser = try {
+            auth.retrieveUserForCurrentSession(false)
+        } catch (failure: RestException) {
+            if (failure.statusCode != 401) throw failure
+            checkCurrentUser()
+            auth.refreshCurrentSession()
+            checkCurrentUser()
+            auth.retrieveUserForCurrentSession(false)
+        }
+        checkCurrentUser()
+        if (!developerIdentityMatches(expected.userId, serverUser.id)) {
+            throw DeveloperSessionRequiredException(appContext.getString(R.string.developer_error_session))
+        }
+    }
+
     private fun io.github.jan.supabase.auth.user.UserSession.toDeveloperSession(): DeveloperSession {
         val currentUser = user ?: error(appContext.getString(R.string.supabase_session_missing_user))
         return DeveloperSession(accessToken, refreshToken, currentUser.id, currentUser.email)
@@ -336,4 +405,44 @@ class DeveloperRepository(context: Context) {
     companion object {
         private const val OAUTH_REDIRECT_URL = "lumastore://auth"
     }
+}
+
+internal fun developerIdentityMatches(expectedUserId: String, actualUserId: String?): Boolean =
+    expectedUserId.isNotBlank() && expectedUserId == actualUserId
+
+private val developerProfileJson = Json { encodeDefaults = true }
+
+internal fun developerProfilePayload(update: DeveloperProfileUpdate, creating: Boolean): JsonObject {
+    val fields = developerProfileJson.encodeToJsonElement(update).jsonObject
+    // An insert racing another create must fail, not upsert and reset a verified row.
+    return if (creating) JsonObject(fields + ("verified" to JsonPrimitive(false))) else fields
+}
+
+internal fun requireJpegAvatar(extension: String) {
+    require(extension.lowercase(Locale.ROOT) in setOf("jpg", "jpeg")) { "Unsupported profile image format. Choose JPEG." }
+}
+
+internal fun versionedAvatarUrl(publicBucketUrl: String, userId: String): String {
+    require(userId.matches(Regex("[A-Za-z0-9_-]+"))) { "Invalid avatar owner." }
+    return "${publicBucketUrl.trimEnd('/')}/$userId/avatar.jpg?v=${java.util.UUID.randomUUID()}"
+}
+
+/** Accepts fixed and legacy UUID avatar paths for cleanup; uploads enforce the fixed JPEG path separately. */
+internal fun ownedAvatarPath(publicBucketUrl: String, userId: String, avatarUrl: String): String? {
+    val base = java.net.URI(publicBucketUrl.trimEnd('/') + "/")
+    val url = try { java.net.URI(avatarUrl) } catch (_: java.net.URISyntaxException) { return null }
+    if (url.scheme != base.scheme || url.rawAuthority != base.rawAuthority) return null
+    val prefix = base.rawPath
+    if (!url.rawPath.orEmpty().startsWith(prefix)) return null
+    val path = url.rawPath.removePrefix(prefix)
+    // No decoding: encoded separators, dot segments and double encoding must never
+    // turn an untrusted URL into a different storage key on the server.
+    require(userId.matches(Regex("[A-Za-z0-9_-]+"))) { "Invalid avatar owner." }
+    require(path.substringBefore('/') == userId) { "Avatar access denied: different owner." }
+    val filename = path.removePrefix("$userId/")
+    require(Regex("avatar(?:-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?\\.(jpg|png|webp)").matches(filename) &&
+        url.rawFragment == null && url.rawUserInfo == null) {
+        "Avatar access denied: non-canonical object path."
+    }
+    return path
 }

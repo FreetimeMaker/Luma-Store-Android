@@ -1,6 +1,5 @@
 package com.freetime.lumastore
 
-
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -57,6 +56,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Shapes
+import androidx.compose.material3.Typography
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -118,437 +119,441 @@ fun AppDetailsScreen(
     similarApps: List<StoreApp> = emptyList(),
     onSimilarAppSelected: (StoreApp) -> Unit = {}
 ) {
-    val topAppBarState = rememberTopAppBarState()
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(topAppBarState)
-    val scrollState = rememberScrollState()
-    val glassShape = MaterialTheme.shapes.large
-    val actionShape = MaterialTheme.shapes.extraLarge
-    var favorite by remember(app.id) { mutableStateOf(false) }
-    var favoriteSignedIn by remember(app.id) { mutableStateOf(false) }
-    var favoriteWorking by remember(app.id) { mutableStateOf(false) }
-    var favoriteError by remember(app.id) { mutableStateOf<String?>(null) }
-    val favoriteScope = rememberCoroutineScope()
-    var headerRating by remember(app.id) { mutableStateOf<com.freetime.lumastore.data.AppRatingSummary?>(null) }
-    var developerProfile by remember(app.developerId) { mutableStateOf<com.freetime.lumastore.data.PublicDeveloperProfile?>(null) }
-    val developerFunding = developerProfile?.funding
+    // Keep the classic detail layout independent of the app-wide expressive theme.
+    MaterialTheme(
+        colorScheme = MaterialTheme.colorScheme,
+        shapes = Shapes(),
+        typography = Typography()
+    ) {
+        val topAppBarState = rememberTopAppBarState()
+        val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(topAppBarState)
+        val scrollState = rememberScrollState()
+        val sectionShape = MaterialTheme.shapes.medium
+        val actionShape = MaterialTheme.shapes.extraLarge
+        var favorite by remember(app.id) { mutableStateOf(false) }
+        var favoriteSignedIn by remember(app.id) { mutableStateOf(false) }
+        var favoriteWorking by remember(app.id) { mutableStateOf(false) }
+        var favoriteError by remember(app.id) { mutableStateOf<String?>(null) }
+        val favoriteScope = rememberCoroutineScope()
+        var headerRating by remember(app.id) { mutableStateOf<com.freetime.lumastore.data.AppRatingSummary?>(null) }
+        var developerProfile by remember(app.developerId) { mutableStateOf<com.freetime.lumastore.data.PublicDeveloperProfile?>(null) }
+        val developerFunding = developerProfile?.funding
 
-    LaunchedEffect(app.id) {
-        headerRating = runCatching { LumaStoreApi.ratings(app.id) }.getOrNull()
-    }
-    LaunchedEffect(app.developerId) {
-        developerProfile = app.developerId?.let { runCatching { LumaStoreApi.developerProfile(it) }.getOrNull() }
-    }
-
-    LaunchedEffect(app.id) {
-        supabase.auth.awaitInitialization()
-        supabase.auth.sessionStatus.collect {
-            favoriteSignedIn = supabase.auth.currentSessionOrNull() != null
-            favorite = if (favoriteSignedIn) runCatching { LumaStoreApi.isFavorite(app.id) }.getOrDefault(false) else false
+        LaunchedEffect(app.id) {
+            headerRating = runCatching { LumaStoreApi.ratings(app.id) }.getOrNull()
         }
-    }
-
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-    val wideDetails = maxWidth >= 840.dp
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        contentColor = MaterialTheme.colorScheme.onBackground,
-        modifier = Modifier
-            .fillMaxSize()
-            .then(if (wideDetails) Modifier.padding(start = maxWidth * 0.42f) else Modifier)
-            .nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        app.name,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                },
-                navigationIcon = {
-                    TextButton(onClick = onBack) {
-                        Text(stringResource(R.string.symbol_back_chevron), style = MaterialTheme.typography.headlineSmall)
-                    }
-                },
-                actions = {
-                    TextButton(
-                        onClick = {
-                            if (favoriteSignedIn && !favoriteWorking) {
-                                val previous = favorite
-                                favorite = !previous
-                                favoriteWorking = true
-                                favoriteError = null
-                                favoriteScope.launch {
-                                    runCatching {
-                                        if (previous) LumaStoreApi.removeFavorite(app.id) else LumaStoreApi.addFavorite(app.id)
-                                    }.onFailure {
-                                        favorite = previous
-                                        favoriteError = it.message
-                                    }
-                                    favoriteWorking = false
-                                }
-                            }
-                        },
-                        enabled = favoriteSignedIn && !favoriteWorking
-                    ) {
-                        Icon(
-                            imageVector = if (favorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                            contentDescription = stringResource(if (favorite) R.string.remove_favorite else R.string.add_favorite),
-                            tint = if (favorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                scrollBehavior = scrollBehavior,
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent)
-            )
+        LaunchedEffect(app.developerId) {
+            developerProfile = app.developerId?.let { runCatching { LumaStoreApi.developerProfile(it) }.getOrNull() }
         }
-    ) { innerPadding ->
-        Column(
+
+        LaunchedEffect(app.id) {
+            supabase.auth.awaitInitialization()
+            supabase.auth.sessionStatus.collect {
+                favoriteSignedIn = supabase.auth.currentSessionOrNull() != null
+                favorite = if (favoriteSignedIn) runCatching { LumaStoreApi.isFavorite(app.id) }.getOrDefault(false) else false
+            }
+        }
+
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+        val wideDetails = maxWidth >= 840.dp
+        Scaffold(
+            containerColor = MaterialTheme.colorScheme.background,
+            contentColor = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(scrollState)
-                .padding(
-                    start = 0.dp,
-                    end = 0.dp,
-                    top = innerPadding.calculateTopPadding(),
-                    bottom = innerPadding.calculateBottomPadding()
-                )
-        ) {
-            favoriteError?.let {
-                Text(
-                    text = it,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+                .nestedScroll(scrollBehavior.nestedScrollConnection),
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            app.name,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    },
+                    navigationIcon = {
+                        TextButton(onClick = onBack) {
+                            Text(stringResource(R.string.symbol_back_chevron), style = MaterialTheme.typography.headlineSmall)
+                        }
+                    },
+                    actions = {
+                        TextButton(
+                            onClick = {
+                                if (favoriteSignedIn && !favoriteWorking) {
+                                    val previous = favorite
+                                    favorite = !previous
+                                    favoriteWorking = true
+                                    favoriteError = null
+                                    favoriteScope.launch {
+                                        runCatching {
+                                            if (previous) LumaStoreApi.removeFavorite(app.id) else LumaStoreApi.addFavorite(app.id)
+                                        }.onFailure {
+                                            favorite = previous
+                                            favoriteError = it.message
+                                        }
+                                        favoriteWorking = false
+                                    }
+                                }
+                            },
+                            enabled = favoriteSignedIn && !favoriteWorking
+                        ) {
+                            Icon(
+                                imageVector = if (favorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                contentDescription = stringResource(if (favorite) R.string.remove_favorite else R.string.add_favorite),
+                                tint = if (favorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    },
+                    scrollBehavior = scrollBehavior,
+                    colors = TopAppBarDefaults.topAppBarColors()
                 )
             }
-
-            AppDetailsHeader(
-                app = app,
-                variants = variants,
-                installedVersionName = installedVersionName,
-                actionLabel = actionLabel,
-                showAction = !(app.id == "com.freetime.lumastore" && installedVersionName != null && actionLabel == stringResource(R.string.open)),
-                installing = installing,
-                progress = progress,
-                onAction = onAction,
-                onSourceSelected = onSourceSelected,
-                onDeveloperSelected = onDeveloperSelected,
-                rating = headerRating,
-                actionShape = actionShape
-            )
-
-            if (signatureConflict) {
-                ElevatedCard(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
-                    shape = glassShape,
-                    colors = CardDefaults.elevatedCardColors(containerColor = Color.Transparent),
-                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
-                ) {
-                    Text(stringResource(R.string.signature_conflict), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 4.dp))
-                    Text(stringResource(R.string.signature_conflict_description), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 14.dp))
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
+                    .padding(
+                        start = 0.dp,
+                        end = 0.dp,
+                        top = innerPadding.calculateTopPadding(),
+                        bottom = innerPadding.calculateBottomPadding()
+                    )
+            ) {
+                favoriteError?.let {
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+                    )
                 }
-            } else if (verifiedMetadata) {
-                ElevatedCard(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
-                    shape = glassShape,
-                    colors = CardDefaults.elevatedCardColors(containerColor = Color.Transparent),
-                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
-                ) {
-                    Text(stringResource(R.string.verified_metadata), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 4.dp))
-                    Text(stringResource(R.string.verified_metadata_description), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 14.dp))
-                }
-            }
 
-            AppRatingSection(app.id)
+                AppDetailsHeader(
+                    app = app,
+                    variants = variants,
+                    installedVersionName = installedVersionName,
+                    actionLabel = actionLabel,
+                    showAction = !(app.id == "com.freetime.lumastore" && installedVersionName != null && actionLabel == stringResource(R.string.open)),
+                    installing = installing,
+                    progress = progress,
+                    onAction = onAction,
+                    onSourceSelected = onSourceSelected,
+                    onDeveloperSelected = onDeveloperSelected,
+                    rating = headerRating,
+                    actionShape = actionShape
+                )
 
-            DetailsExpandableSection(stringResource(R.string.app_information)) {
-                DetailValueRow(stringResource(R.string.version), app.version)
-                DetailValueRow(stringResource(R.string.package_name), app.id)
-                DetailValueRow(stringResource(R.string.source), app.sourceName)
-                app.license?.takeIf { it.isNotBlank() }?.let { DetailValueRow(stringResource(R.string.license), it) }
-                app.minSdk?.let { DetailValueRow(stringResource(R.string.minimum_android_sdk), it.toString()) }
-                app.targetSdk?.let { DetailValueRow(stringResource(R.string.target_android_sdk), it.toString()) }
-                app.downloadSize?.let { DetailValueRow(stringResource(R.string.download_size), formatFileSize(it)) }
-                app.downloadCount?.let { DetailValueRow(stringResource(R.string.downloads), it.toString()) }
-                if (app.nativeCode.isNotEmpty()) DetailValueRow(stringResource(R.string.architectures), app.nativeCode.joinToString())
-                app.lastUpdatedTimestamp?.let { DetailValueRow(stringResource(R.string.last_updated), formatRelativeAge(it)) }
-                if (installedVersionName != null && actionLabel == stringResource(R.string.update)) {
-                    TextButton(onClick = onIgnoreUpdateToggle, modifier = Modifier.fillMaxWidth()) {
-                        Text(if (isUpdateIgnored) stringResource(R.string.stop_ignoring_update) else stringResource(R.string.ignore_update))
+                if (signatureConflict) {
+                    ElevatedCard(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        shape = sectionShape,
+                        colors = CardDefaults.elevatedCardColors(),
+                        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
+                    ) {
+                        Text(stringResource(R.string.signature_conflict), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 4.dp))
+                        Text(stringResource(R.string.signature_conflict_description), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 14.dp))
+                    }
+                } else if (verifiedMetadata) {
+                    ElevatedCard(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        shape = sectionShape,
+                        colors = CardDefaults.elevatedCardColors(),
+                        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
+                    ) {
+                        Text(stringResource(R.string.verified_metadata), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 4.dp))
+                        Text(stringResource(R.string.verified_metadata_description), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 14.dp))
                     }
                 }
-            }
 
-            app.versionChangelog?.takeIf { it.isNotBlank() }?.let { changelog ->
-                ElevatedCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                        ,
-                    shape = glassShape,
-                    colors = CardDefaults.elevatedCardColors(containerColor = Color.Transparent),
-                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
-                ) {
-                    Text(
-                        stringResource(R.string.whats_new_version, app.version),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 6.dp)
-                    )
-                    Text(
-                        changelog,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 14.dp)
-                    )
+                if (app.screenshotUrls.isNotEmpty()) {
+                    if (dataSaver) {
+                        Text(
+                            stringResource(R.string.screenshots_hidden_data_saver),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    } else {
+                        DetailsScreenshots(app, onScreenshotSelected)
+                    }
                 }
-            }
 
-            if (similarApps.isNotEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(vertical = 8.dp)) {
-                    Text(
-                        stringResource(R.string.similar_apps),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                if (app.antiFeatures.isNotEmpty()) {
+                    ElevatedCard(
+                        colors = CardDefaults.elevatedCardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
-                        items(similarApps.take(if (wideDetails) 8 else 6), key = { it.id }) { similar ->
-                            ElevatedCard(
-                                onClick = { onSimilarAppSelected(similar) },
-                                modifier = Modifier.width(if (wideDetails) 220.dp else 188.dp),
-                                colors = CardDefaults.elevatedCardColors(containerColor = Color.Transparent),
-                                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
-                            ) {
-                                Row(
-                                    Modifier.padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                                ) {
-                                    DetailsAppIcon(similar, if (wideDetails) 52 else 46)
-                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                        Text(similar.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        Text(similar.summary.ifBlank { similar.id }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                                        Text(similar.sourceName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            stringResource(R.string.anti_features),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                        Column(
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 14.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            app.antiFeatures.forEach { antiFeature ->
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(
+                                        antiFeature,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    app.antiFeatureReasons[antiFeature]?.takeIf { it.isNotBlank() }?.let { reason ->
+                                        Text(
+                                            reason,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.92f)
+                                        )
                                     }
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            if (app.screenshotUrls.isNotEmpty()) {
-                if (dataSaver) {
-                    Text(
-                        stringResource(R.string.screenshots_hidden_data_saver),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-                } else {
-                    DetailsScreenshots(app, onScreenshotSelected)
+                ExpandableDescription(app)
+
+                DetailsExpandableSection(stringResource(R.string.app_information)) {
+                    DetailValueRow(stringResource(R.string.version), app.version)
+                    DetailValueRow(stringResource(R.string.package_name), app.id)
+                    DetailValueRow(stringResource(R.string.source), app.sourceName)
+                    app.license?.takeIf { it.isNotBlank() }?.let { DetailValueRow(stringResource(R.string.license), it) }
+                    app.minSdk?.let { DetailValueRow(stringResource(R.string.minimum_android_sdk), it.toString()) }
+                    app.targetSdk?.let { DetailValueRow(stringResource(R.string.target_android_sdk), it.toString()) }
+                    app.downloadSize?.let { DetailValueRow(stringResource(R.string.download_size), formatFileSize(it)) }
+                    app.downloadCount?.let { DetailValueRow(stringResource(R.string.downloads), it.toString()) }
+                    if (app.nativeCode.isNotEmpty()) DetailValueRow(stringResource(R.string.architectures), app.nativeCode.joinToString())
+                    app.lastUpdatedTimestamp?.let { DetailValueRow(stringResource(R.string.last_updated), formatRelativeAge(it)) }
+                    if (installedVersionName != null && actionLabel == stringResource(R.string.update)) {
+                        TextButton(onClick = onIgnoreUpdateToggle, modifier = Modifier.fillMaxWidth()) {
+                            Text(if (isUpdateIgnored) stringResource(R.string.stop_ignoring_update) else stringResource(R.string.ignore_update))
+                        }
+                    }
                 }
-            }
 
-            if (app.antiFeatures.isNotEmpty()) {
-                ElevatedCard(
-                    colors = CardDefaults.elevatedCardColors(containerColor = Color.Transparent),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                        
-                ) {
-                    Text(
-                        stringResource(R.string.anti_features),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-                    Column(
-                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 14.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                app.versionChangelog?.takeIf { it.isNotBlank() }?.let { changelog ->
+                    ElevatedCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        shape = sectionShape,
+                        colors = CardDefaults.elevatedCardColors(),
+                        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
                     ) {
-                        app.antiFeatures.forEach { antiFeature ->
-                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text(
-                                    antiFeature,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                app.antiFeatureReasons[antiFeature]?.takeIf { it.isNotBlank() }?.let { reason ->
-                                    Text(
-                                        reason,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.92f)
-                                    )
+                        Text(
+                            stringResource(R.string.whats_new_version, app.version),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 6.dp)
+                        )
+                        Text(
+                            changelog,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 14.dp)
+                        )
+                    }
+                }
+
+                if (similarApps.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(vertical = 8.dp)) {
+                        Text(
+                            stringResource(R.string.similar_apps),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(similarApps.take(if (wideDetails) 8 else 6), key = { it.id }) { similar ->
+                                ElevatedCard(
+                                    onClick = { onSimilarAppSelected(similar) },
+                                    modifier = Modifier.width(if (wideDetails) 220.dp else 188.dp),
+                                    colors = CardDefaults.elevatedCardColors(),
+                                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
+                                ) {
+                                    Row(
+                                        Modifier.padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        DetailsAppIcon(similar, if (wideDetails) 52 else 46)
+                                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                            Text(similar.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                            Text(similar.summary.ifBlank { similar.id }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                            Text(similar.sourceName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            ExpandableDescription(app)
-
-            if (
-                app.donationUrls.isNotEmpty() ||
-                !app.liberapay.isNullOrBlank() ||
-                !app.openCollective.isNullOrBlank() ||
-                !app.bitcoin.isNullOrBlank() ||
-                !app.litecoin.isNullOrBlank() ||
-                developerFunding != null
-            ) {
-                ElevatedCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                        ,
-                    shape = glassShape,
-                    colors = CardDefaults.elevatedCardColors(containerColor = Color.Transparent),
-                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
+                if (
+                    app.donationUrls.isNotEmpty() ||
+                    !app.liberapay.isNullOrBlank() ||
+                    !app.openCollective.isNullOrBlank() ||
+                    !app.bitcoin.isNullOrBlank() ||
+                    !app.litecoin.isNullOrBlank() ||
+                    developerFunding != null
                 ) {
-                    Text(
-                        stringResource(R.string.donations),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
+                    ElevatedCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        shape = sectionShape,
+                        colors = CardDefaults.elevatedCardColors(),
+                        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
+                    ) {
+                        Text(
+                            stringResource(R.string.donations),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                        LazyRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            items(app.donationUrls, key = { it }) { url -> DetailActionItem(stringResource(R.string.donation_link), Icons.Filled.Favorite) { onOpenUri(url) } }
+                            app.liberapay?.let { value -> item("liberapay") {
+                                val url = fundingUrl("https://liberapay.com/", value)
+                                DetailActionItem(stringResource(R.string.liberapay), Icons.Filled.Paid) { onOpenUri(url) } } }
+                            app.openCollective?.let { value -> item("opencollective") {
+                                val url = fundingUrl("https://opencollective.com/", value)
+                                DetailActionItem(stringResource(R.string.open_collective), Icons.Filled.Groups) { onOpenUri(url) } } }
+                            app.bitcoin?.let { value -> item("bitcoin") { DetailActionItem(stringResource(R.string.bitcoin), Icons.Filled.CurrencyBitcoin) { onOpenUri(cryptoUri("bitcoin", value)) } } }
+                            app.litecoin?.let { value -> item("litecoin") { DetailActionItem(stringResource(R.string.litecoin), Icons.Filled.AttachMoney) { onOpenUri(cryptoUri("litecoin", value)) } } }
+                            developerFunding?.donateUrl?.let { value -> item("developer_donate") { DetailActionItem(stringResource(R.string.donation_link), Icons.Filled.Favorite) { onOpenUri(value) } } }
+                            developerFunding?.liberapay?.let { value -> item("developer_liberapay") { DetailActionItem(stringResource(R.string.liberapay), Icons.Filled.Paid) { onOpenUri(value) } } }
+                            developerFunding?.openCollective?.let { value -> item("developer_opencollective") { DetailActionItem(stringResource(R.string.open_collective), Icons.Filled.Groups) { onOpenUri(value) } } }
+
+                        }
+                        developerFunding?.cryptoAddresses?.takeIf { it.isNotEmpty() }?.let { addresses ->
+                            HorizontalDivider(Modifier.padding(horizontal = 16.dp))
+                            Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                addresses.forEach { (method, address) ->
+                                    DetailCryptoAddress(method = method, address = address)
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                    }
+                }
+
+                DetailsExpandableSection(stringResource(R.string.links)) {
                     LazyRow(
                         modifier = Modifier.fillMaxWidth(),
                         contentPadding = PaddingValues(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
                         verticalAlignment = Alignment.Top
                     ) {
-                        items(app.donationUrls, key = { it }) { url -> DetailActionItem(stringResource(R.string.donation_link), Icons.Filled.Favorite) { onOpenUri(url) } }
-                        app.liberapay?.let { value -> item("liberapay") {
-                            val url = fundingUrl("https://liberapay.com/", value)
-                            DetailActionItem(stringResource(R.string.liberapay), Icons.Filled.Paid) { onOpenUri(url) } } }
-                        app.openCollective?.let { value -> item("opencollective") {
-                            val url = fundingUrl("https://opencollective.com/", value)
-                            DetailActionItem(stringResource(R.string.open_collective), Icons.Filled.Groups) { onOpenUri(url) } } }
-                        app.bitcoin?.let { value -> item("bitcoin") { DetailActionItem(stringResource(R.string.bitcoin), Icons.Filled.CurrencyBitcoin) { onOpenUri(cryptoUri("bitcoin", value)) } } }
-                        app.litecoin?.let { value -> item("litecoin") { DetailActionItem(stringResource(R.string.litecoin), Icons.Filled.AttachMoney) { onOpenUri(cryptoUri("litecoin", value)) } } }
-                        developerFunding?.donateUrl?.let { value -> item("developer_donate") { DetailActionItem(stringResource(R.string.donation_link), Icons.Filled.Favorite) { onOpenUri(value) } } }
-                        developerFunding?.liberapay?.let { value -> item("developer_liberapay") { DetailActionItem(stringResource(R.string.liberapay), Icons.Filled.Paid) { onOpenUri(value) } } }
-                        developerFunding?.openCollective?.let { value -> item("developer_opencollective") { DetailActionItem(stringResource(R.string.open_collective), Icons.Filled.Groups) { onOpenUri(value) } } }
-                    
+                        app.websiteUrl?.let { url -> item("website") { DetailActionItem(stringResource(R.string.website), Icons.Filled.Language) { onOpenUri(url) } } }
+                        app.issueTrackerUrl?.let { url -> item("issues") { DetailActionItem(stringResource(R.string.issue_tracker), Icons.Filled.BugReport) { onOpenUri(url) } } }
+                        app.changelogUrl?.let { url -> item("changelog") { DetailActionItem(stringResource(R.string.changelog), Icons.Filled.History) { onOpenUri(url) } } }
+                        app.translationUrl?.let { url -> item("translation") { DetailActionItem(stringResource(R.string.translation), Icons.Filled.Translate) { onOpenUri(url) } } }
+                        app.sourceCodeUrl?.let { url -> item("source") { DetailActionItem(stringResource(R.string.source_code), Icons.Filled.Code) { onOpenUri(url) } } }
+                        item("share") { DetailActionItem(stringResource(R.string.share), Icons.Filled.Share) { onShare(app) } }
                     }
-                    developerFunding?.cryptoAddresses?.takeIf { it.isNotEmpty() }?.let { addresses ->
-                        HorizontalDivider(Modifier.padding(horizontal = 16.dp))
-                        Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            addresses.forEach { (method, address) ->
-                                DetailCryptoAddress(method = method, address = address)
+                    app.license?.let { DetailValueRow(stringResource(R.string.license), it) }
+                }
+
+                if (!app.authorName.isNullOrBlank() || !app.authorEmail.isNullOrBlank() || !app.authorWebsite.isNullOrBlank()) {
+                    DetailsExpandableSection(stringResource(R.string.developer_contact)) {
+                        developerProfile?.let { developer ->
+                            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                DeveloperAvatar(developer.avatarUrl, developer.displayName, 52.dp)
+                                Column(Modifier.weight(1f)) {
+                                    Text(developer.displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                                    if (developer.verified) Text(stringResource(R.string.verified_developer), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                                }
                             }
+                        } ?: app.authorName?.let { DetailValueRow(stringResource(R.string.author), it) }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            app.authorWebsite?.let { DetailActionItem(stringResource(R.string.author_website), Icons.Filled.Language) { onOpenUri(it) } }
+                            app.authorEmail?.let { DetailActionItem(stringResource(R.string.email), Icons.Filled.Email) { onOpenUri("mailto:$it") } }
                         }
                     }
-                    Spacer(Modifier.height(8.dp))
                 }
-            }
 
-            DetailsExpandableSection(stringResource(R.string.links)) {
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
-                    verticalAlignment = Alignment.Top
-                ) {
-                    app.websiteUrl?.let { url -> item("website") { DetailActionItem(stringResource(R.string.website), Icons.Filled.Language) { onOpenUri(url) } } }
-                    app.issueTrackerUrl?.let { url -> item("issues") { DetailActionItem(stringResource(R.string.issue_tracker), Icons.Filled.BugReport) { onOpenUri(url) } } }
-                    app.changelogUrl?.let { url -> item("changelog") { DetailActionItem(stringResource(R.string.changelog), Icons.Filled.History) { onOpenUri(url) } } }
-                    app.translationUrl?.let { url -> item("translation") { DetailActionItem(stringResource(R.string.translation), Icons.Filled.Translate) { onOpenUri(url) } } }
-                    app.sourceCodeUrl?.let { url -> item("source") { DetailActionItem(stringResource(R.string.source_code), Icons.Filled.Code) { onOpenUri(url) } } }
-                    item("share") { DetailActionItem(stringResource(R.string.share), Icons.Filled.Share) { onShare(app) } }
-                }
-                app.license?.let { DetailValueRow(stringResource(R.string.license), it) }
-            }
-
-            if (!app.authorName.isNullOrBlank() || !app.authorEmail.isNullOrBlank() || !app.authorWebsite.isNullOrBlank()) {
-                DetailsExpandableSection(stringResource(R.string.developer_contact)) {
-                    developerProfile?.let { developer ->
-                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            AsyncImage(model = developer.avatarUrl, contentDescription = developer.displayName, modifier = Modifier.size(52.dp).clip(MaterialTheme.shapes.large), contentScale = ContentScale.Crop)
-                            Column(Modifier.weight(1f)) {
-                                Text(developer.displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                                if (developer.verified) Text("Verified developer", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                            }
+                DetailsExpandableSection(stringResource(R.string.technical_info)) {
+                    DetailValueRow(stringResource(R.string.package_label, app.id), app.id)
+                    DetailValueRow(stringResource(R.string.version_with_code, app.version, app.versionCode), app.version)
+                    DetailValueRow(stringResource(R.string.source), app.sourceName)
+                    DetailValueRow(
+                        stringResource(R.string.app_information),
+                        if (app.closedSource) stringResource(R.string.closed_source) else stringResource(R.string.open_source)
+                    )
+                    app.lastUpdatedTimestamp?.let { DetailValueRow(stringResource(R.string.last_updated), formatRelativeAge(it)) }
+                    app.downloadSize?.let { DetailValueRow(stringResource(R.string.download_size), formatBytes(it)) }
+                    app.minSdk?.let { DetailValueRow(stringResource(R.string.minimum_android_sdk), it.toString()) }
+                    app.targetSdk?.let { DetailValueRow(stringResource(R.string.target_android_sdk), it.toString()) }
+                    if (app.nativeCode.isNotEmpty()) DetailValueRow(stringResource(R.string.supported_architectures), app.nativeCode.joinToString(", "))
+                    DetailValueRow(
+                        stringResource(R.string.security_status),
+                        when {
+                            app.signerSha256.isNotEmpty() && !app.expectedSha256.isNullOrBlank() ->
+                                stringResource(R.string.signature_available) + " • " + stringResource(R.string.hash_available)
+                            app.signerSha256.isNotEmpty() -> stringResource(R.string.signature_available)
+                            !app.expectedSha256.isNullOrBlank() -> stringResource(R.string.hash_available)
+                            else -> stringResource(R.string.no_verification_metadata)
                         }
-                    } ?: app.authorName?.let { DetailValueRow(stringResource(R.string.author), it) }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        app.authorWebsite?.let { DetailActionItem(stringResource(R.string.author_website), Icons.Filled.Language) { onOpenUri(it) } }
-                        app.authorEmail?.let { DetailActionItem(stringResource(R.string.email), Icons.Filled.Email) { onOpenUri("mailto:$it") } }
-                    }
+                    )
+                    if (app.signerSha256.isNotEmpty()) DetailValueRow(stringResource(R.string.signing_certificate), app.signerSha256.joinToString("\n"))
+                    if (app.expectedSha256 != null) DetailValueRow(stringResource(R.string.apk_sha256), app.expectedSha256)
+                    if (app.permissions.isNotEmpty()) DetailValueRow(stringResource(R.string.permissions), app.permissions.sorted().joinToString("\n"))
                 }
-            }
 
-            DetailsExpandableSection(stringResource(R.string.technical_info)) {
-                DetailValueRow(stringResource(R.string.package_label, app.id), app.id)
-                DetailValueRow(stringResource(R.string.version_with_code, app.version, app.versionCode), app.version)
-                DetailValueRow(stringResource(R.string.source), app.sourceName)
-                DetailValueRow(
-                    stringResource(R.string.app_information),
-                    if (app.closedSource) stringResource(R.string.closed_source) else stringResource(R.string.open_source)
-                )
-                app.lastUpdatedTimestamp?.let { DetailValueRow(stringResource(R.string.last_updated), formatRelativeAge(it)) }
-                app.downloadSize?.let { DetailValueRow(stringResource(R.string.download_size), formatBytes(it)) }
-                app.minSdk?.let { DetailValueRow(stringResource(R.string.minimum_android_sdk), it.toString()) }
-                app.targetSdk?.let { DetailValueRow(stringResource(R.string.target_android_sdk), it.toString()) }
-                if (app.nativeCode.isNotEmpty()) DetailValueRow(stringResource(R.string.supported_architectures), app.nativeCode.joinToString(", "))
-                DetailValueRow(
-                    stringResource(R.string.security_status),
-                    when {
-                        app.signerSha256.isNotEmpty() && !app.expectedSha256.isNullOrBlank() ->
-                            stringResource(R.string.signature_available) + " • " + stringResource(R.string.hash_available)
-                        app.signerSha256.isNotEmpty() -> stringResource(R.string.signature_available)
-                        !app.expectedSha256.isNullOrBlank() -> stringResource(R.string.hash_available)
-                        else -> stringResource(R.string.no_verification_metadata)
-                    }
-                )
-                if (app.signerSha256.isNotEmpty()) DetailValueRow(stringResource(R.string.signing_certificate), app.signerSha256.joinToString("\n"))
-                if (app.expectedSha256 != null) DetailValueRow(stringResource(R.string.apk_sha256), app.expectedSha256)
-                if (app.permissions.isNotEmpty()) DetailValueRow(stringResource(R.string.permissions), app.permissions.sorted().joinToString("\n"))
-            }
+                AppRatingSection(app.id)
 
-            Spacer(Modifier.height(96.dp))
+                Spacer(Modifier.height(16.dp))
+            }
+        }
         }
     }
-    }
 }
 
+@Composable
 private fun formatFileSize(bytes: Long): String = when {
-    bytes >= 1_073_741_824L -> String.format("%.1f GB", bytes / 1_073_741_824.0)
-    bytes >= 1_048_576L -> String.format("%.1f MB", bytes / 1_048_576.0)
-    bytes >= 1024L -> String.format("%.1f KB", bytes / 1024.0)
-    else -> "$bytes B"
+    bytes >= 1_073_741_824L -> stringResource(R.string.file_size_gb, bytes / 1_073_741_824.0)
+    bytes >= 1_048_576L -> stringResource(R.string.file_size_mb, bytes / 1_048_576.0)
+    bytes >= 1024L -> stringResource(R.string.file_size_kb, bytes / 1024.0)
+    else -> stringResource(R.string.file_size_bytes, bytes)
 }
 
+@Composable
 private fun formatRelativeAge(timestamp: Long): String {
     val age = (System.currentTimeMillis() - timestamp).coerceAtLeast(0L)
     val days = age / 86_400_000L
     return when {
-        days == 0L -> "Today"
-        days == 1L -> "1 day ago"
-        days < 30L -> "$days days ago"
-        days < 365L -> "${days / 30L} months ago"
-        else -> "${days / 365L} years ago"
+        days == 0L -> stringResource(R.string.metric_today)
+        days == 1L -> stringResource(R.string.relative_age_one_day)
+        days < 30L -> stringResource(R.string.relative_age_days, days)
+        days < 60L -> stringResource(R.string.relative_age_one_month)
+        days < 365L -> stringResource(R.string.relative_age_months, days / 30L)
+        days < 730L -> stringResource(R.string.relative_age_one_year)
+        else -> stringResource(R.string.relative_age_years, days / 365L)
     }
 }
 
-private fun formatBytes(bytes: Long): String {
-    if (bytes < 1024) return "$bytes B"
-    val units = arrayOf("KB", "MB", "GB")
-    var value = bytes.toDouble()
-    var unit = -1
-    while (value >= 1024 && unit < units.lastIndex) { value /= 1024; unit++ }
-    return "%.1f %s".format(value, units[unit.coerceAtLeast(0)])
-}
+@Composable
+private fun formatBytes(bytes: Long): String = formatFileSize(bytes)
 
 private fun fundingUrl(base: String, value: String): String {
     val trimmed = value.trim()
@@ -580,18 +585,12 @@ private fun AppDetailsHeader(
     rating: com.freetime.lumastore.data.AppRatingSummary?,
     actionShape: androidx.compose.ui.graphics.Shape
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp)
-            .padding(16.dp)
-    ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        DetailsAppIcon(app = app, size = 82)
+        DetailsAppIcon(app = app, size = 64)
         Column(modifier = Modifier.weight(1f)) {
             Text(app.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
             app.authorName?.takeIf { it.isNotBlank() }?.let { author ->
@@ -608,14 +607,13 @@ private fun AppDetailsHeader(
         }
     }
     if (app.summary.isNotBlank()) Text(app.summary, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-    }
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         rating?.takeIf { it.count > 0 }?.let {
             DetailMetric(
-                value = String.format("%.1f ★", it.average),
+                value = stringResource(R.string.rating_stars_value, it.average),
                 label = stringResource(R.string.ratings_count, it.count),
                 modifier = Modifier.weight(1f)
             )
@@ -658,12 +656,15 @@ private fun AppDetailsHeader(
             if (progress > 0) LinearProgressIndicator(progress = { progress / 100f }, modifier = Modifier.fillMaxWidth()) else LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         }
     } else if (showAction) {
-        Button(
-            onClick = onAction,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-            shape = actionShape
-        ) {
-            Text(actionLabel, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        val modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+        if (actionLabel == stringResource(R.string.open)) {
+            OutlinedButton(onClick = onAction, modifier = modifier, shape = actionShape) {
+                Text(actionLabel)
+            }
+        } else {
+            Button(onClick = onAction, modifier = modifier, shape = actionShape) {
+                Text(actionLabel)
+            }
         }
     }
 }
@@ -672,8 +673,7 @@ private fun AppDetailsHeader(
 private fun DetailMetric(value: String, label: String, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier,
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainer
+        color = Color.Transparent
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 12.dp),
@@ -686,9 +686,10 @@ private fun DetailMetric(value: String, label: String, modifier: Modifier = Modi
     }
 }
 
+@Composable
 private fun formatCompactMetric(value: Long): String = when {
-    value >= 1_000_000L -> "${value / 1_000_000L}M+"
-    value >= 1_000L -> "${value / 1_000L}K+"
+    value >= 1_000_000L -> stringResource(R.string.metric_millions_plus, value / 1_000_000L)
+    value >= 1_000L -> stringResource(R.string.metric_thousands_plus, value / 1_000L)
     else -> value.toString()
 }
 
@@ -718,11 +719,11 @@ private fun ExpandableDescription(app: StoreApp) {
 private fun DetailsExpandableSection(title: String, content: @Composable ColumnScope.() -> Unit) {
     var expanded by rememberSaveable(title) { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        val shape = MaterialTheme.shapes.large
+        val shape = MaterialTheme.shapes.medium
         ElevatedCard(
             modifier = Modifier.fillMaxWidth(),
             shape = shape,
-            colors = CardDefaults.elevatedCardColors(containerColor = Color.Transparent),
+            colors = CardDefaults.elevatedCardColors(),
             elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
         ) {
             Row(modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -893,7 +894,7 @@ private fun AppRatingSection(identifier: String) {
     }
 
     ElevatedCard(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
     ) {
@@ -906,7 +907,7 @@ private fun AppRatingSection(identifier: String) {
                     (1..5).forEach { value ->
                         Icon(
                             imageVector = if (value <= (myRating ?: 0)) Icons.Filled.Star else Icons.Outlined.Star,
-                            contentDescription = value.toString(),
+                            contentDescription = stringResource(R.string.rating_out_of_five, value),
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(36.dp).clickable { myRating = value }
                         )
@@ -916,7 +917,7 @@ private fun AppRatingSection(identifier: String) {
                     value = reviewText,
                     onValueChange = { if (it.length <= 2000) reviewText = it },
                     label = { Text(stringResource(R.string.review_optional)) },
-                    supportingText = { Text("${reviewText.length}/2000") },
+                    supportingText = { Text(stringResource(R.string.character_count, reviewText.length, 2000)) },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 3,
                     maxLines = 6
