@@ -972,11 +972,16 @@ class AppRepository(context: Context) {
     }
 
     private fun loadLumaApiSource(source: AppSource): List<StoreApp> {
-        val raw = httpGet(source.indexUrl).trim()
-        val apps = when {
-            raw.startsWith("[") -> JSONArray(raw)
-            raw.startsWith("{") -> JSONObject(raw).optJSONArray("apps") ?: JSONArray()
-            else -> JSONArray()
+        // This repository exposes a blocking loader; bridge only the Supabase fallback.
+        val apps = kotlinx.coroutines.runBlocking {
+            withStoreReadFallback(primary = {
+                val raw = httpGet(source.indexUrl).trim()
+                when {
+                    raw.startsWith("[") -> JSONArray(raw)
+                    raw.startsWith("{") -> JSONObject(raw).optJSONArray("apps") ?: JSONArray()
+                    else -> JSONArray()
+                }
+            }, fallback = { loadSupabaseStoreApps() })
         }
 
         return buildList {
@@ -1184,7 +1189,9 @@ class AppRepository(context: Context) {
         }
         return try {
             val code = connection.responseCode
-            check(code in 200..299) { appContext.getString(R.string.http_request_failed, code, url) }
+            if (code !in 200..299) {
+                throw LumaApiHttpException(code, appContext.getString(R.string.http_request_failed, code, url))
+            }
             connection.inputStream.bufferedReader().use { it.readText() }
         } finally { connection.disconnect() }
     }

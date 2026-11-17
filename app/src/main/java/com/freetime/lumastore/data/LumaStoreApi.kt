@@ -22,10 +22,16 @@ data class PublicDeveloperProfile(val developerId: String, val displayName: Stri
 object LumaStoreApi {
     private const val BASE_URL = "https://api.free-time.me/v2/lumastore"
 
-    suspend fun appDetails(identifier: String): JSONObject = request("GET", "/apps/${encode(identifier)}")
+    suspend fun appDetails(identifier: String): JSONObject = withStoreReadFallback(
+            primary = { request("GET", "/apps/${encode(identifier)}") },
+            fallback = { loadSupabaseAppDetails(identifier) }
+        )
 
     suspend fun developerProfile(identifier: String): PublicDeveloperProfile {
-        val json = request("GET", "/developers/" + encode(identifier))
+        val json = withStoreReadFallback(
+                    primary = { request("GET", "/developers/" + encode(identifier)) },
+                    fallback = { loadSupabaseDeveloperProfile(identifier) }
+                )
         val rows = json.optJSONArray("apps") ?: JSONArray()
         val apps = buildList {
             for (index in 0 until rows.length()) {
@@ -94,9 +100,13 @@ object LumaStoreApi {
     }
 
     suspend fun setMyRating(identifier: String, rating: Int, reviewText: String? = null): MyAppRating {
-        require(rating in 1..5)
-        val body = JSONObject().put("rating", rating).put("review_text", reviewText?.trim().orEmpty())
-        val json = request("PUT", "/apps/${encode(identifier)}/rating/me", body.toString(), authenticated = true)
+        val review = normalizedStoreReview(rating, reviewText)
+        val body = JSONObject().put("rating", rating).put("review_text", review).toString()
+        // Retrying an ambiguous PUT is safe: both paths upsert the same rating/review.
+        val json = withStoreReadFallback(
+            primary = { request("PUT", "/apps/${encode(identifier)}/rating/me", body, authenticated = true) },
+            fallback = { saveSupabaseStoreRating(identifier, rating, review) }
+        )
         return MyAppRating(json.optInt("rating"), json.optString("review_text").takeIf { it.isNotBlank() }, json.optString("updated_at").takeIf { it.isNotBlank() })
     }
 
@@ -115,11 +125,17 @@ object LumaStoreApi {
         request("GET", "/apps/${encode(identifier)}/favorite/me", authenticated = true).optBoolean("favorite", false)
 
     suspend fun addFavorite(identifier: String) {
-        request("PUT", "/apps/${encode(identifier)}/favorite/me", authenticated = true)
+        withStoreReadFallback(
+            primary = { request("PUT", "/apps/${encode(identifier)}/favorite/me", authenticated = true); Unit },
+            fallback = { writeSupabaseStoreFavorite(identifier, saved = true) }
+        )
     }
 
     suspend fun removeFavorite(identifier: String) {
-        request("DELETE", "/apps/${encode(identifier)}/favorite/me", authenticated = true, allowEmpty = true)
+        withStoreReadFallback(
+            primary = { request("DELETE", "/apps/${encode(identifier)}/favorite/me", authenticated = true, allowEmpty = true); Unit },
+            fallback = { writeSupabaseStoreFavorite(identifier, saved = false) }
+        )
     }
 
     suspend fun myFavorites(): List<FavoriteApp> {
@@ -140,7 +156,10 @@ object LumaStoreApi {
     }
 
     suspend fun deleteMyRating(identifier: String) {
-        request("DELETE", "/apps/${encode(identifier)}/rating/me", authenticated = true, allowEmpty = true)
+        withStoreReadFallback(
+            primary = { request("DELETE", "/apps/${encode(identifier)}/rating/me", authenticated = true, allowEmpty = true); Unit },
+            fallback = { deleteSupabaseStoreEntry(identifier, "store_app_ratings") }
+        )
     }
 
     private suspend fun requestArray(method: String, path: String, authenticated: Boolean = false): JSONArray = withContext(Dispatchers.IO) {
@@ -157,7 +176,7 @@ object LumaStoreApi {
             }
             val code = connection.responseCode
             val text = (if (code in 200..299) connection.inputStream else connection.errorStream)?.bufferedReader()?.use { it.readText() }.orEmpty()
-            if (code !in 200..299) error(runCatching { JSONObject(text).optString("message") }.getOrNull()?.takeIf { it.isNotBlank() } ?: "Luma Store API request failed ($code)")
+            if (code !in 200..299) throw LumaApiHttpException(code, runCatching { JSONObject(text).optString("message") }.getOrNull()?.takeIf { it.isNotBlank() } ?: "Luma Store API request failed ($code)")
             JSONArray(text)
         } finally { connection.disconnect() }
     }
@@ -185,7 +204,7 @@ object LumaStoreApi {
             val text = (if (code in 200..299) connection.inputStream else connection.errorStream)?.bufferedReader()?.use { it.readText() }.orEmpty()
             if (code !in 200..299) {
                 val message = runCatching { JSONObject(text).optString("message") }.getOrNull()
-                error(message?.takeIf { it.isNotBlank() } ?: "Luma Store API request failed ($code)")
+                throw LumaApiHttpException(code, message?.takeIf { it.isNotBlank() } ?: "Luma Store API request failed ($code)")
             }
             if (text.isBlank() && allowEmpty) JSONObject() else JSONObject(text)
         } finally { connection.disconnect() }

@@ -33,11 +33,9 @@ androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 
-freetime-core = { module = "com.github.FreetimeMaker.Freetime-Core:Core", version.ref = "freetime" }
-freetime-design = { module = "com.github.FreetimeMaker.Freetime-Core:Design", version.ref = "freetime" }
-freetime-browser = { module = "com.github.FreetimeMaker.Freetime-Core:Browser", version.ref = "freetime" }
-freetime-donations = { module = "com.github.FreetimeMaker.Freetime-Core:Donations", version.ref = "freetime" }
-freetime-warn = { module = "com.github.FreetimeMaker.Freetime-Core:FreetimeWarn", version.ref = "freetime" }
+freetime-core = { module = "com.freetime:Core", version.ref = "freetime" }
+freetime-design = { module = "com.freetime:Design", version.ref = "freetime" }
+freetime-warn = { module = "com.freetime:FreetimeWarn", version.ref = "freetime" }
 
 androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
 supabase-bom = { module = "io.github.jan-tennert.supabase:bom", version.ref = "supabase" }

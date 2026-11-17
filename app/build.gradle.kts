@@ -62,8 +62,6 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.freetime.core)
     implementation(libs.freetime.design)
-    implementation(libs.freetime.browser)
-    implementation(libs.freetime.donations)
     implementation(libs.freetime.warn)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 
