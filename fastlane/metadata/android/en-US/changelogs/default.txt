@@ -3,3 +3,5 @@
 • Show developer profiles even without a separate profile entry
 • Preserve legacy cryptocurrency donation addresses
 • Keep authentication and validation checks active for fallback writes
+• Remove the Liquid Glass Navigation Bar
+• Use M3-Expressive

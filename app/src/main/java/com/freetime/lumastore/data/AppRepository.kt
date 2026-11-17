@@ -1224,7 +1224,7 @@ private fun jsonStringList(array: JSONArray?): List<String> {
     return buildList { for (i in 0 until array.length()) array.optString(i).takeIf { it.isNotBlank() && it != "null" }?.let(::add) }
 }
 
-private fun JSONObject.optNullableString(name: String): String? = optString(name).takeIf { it.isNotBlank() && it != "null" }
+internal fun JSONObject.optNullableString(name: String): String? = optString(name).takeIf { it.isNotBlank() && it != "null" }
 
 private fun JSONObject.optDownloadUrl(name: String): String? {
     val value = optNullableString(name)?.trim() ?: return null
