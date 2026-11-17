@@ -1,7 +1,5 @@
-• Fixed Luma download counts, including self-updates, after APK validation
-• Kept exact APK URLs; F-Droid downloads remain excluded from Luma statistics
-• Tracking failures no longer block installation; preserved offline catalogue fallback
-• Verify the current Supabase session and developer ID before saving
-• Store profile images at <user-id>/avatar.jpg with cache refresh
-• Set verified=false only for new profiles
-• Show actual Supabase error details for profile saves and image cleanup
+• Load the app catalogue, app details and developer profiles directly from Supabase when the API is unavailable
+• Save and delete ratings and favourites through Supabase if API requests fail
+• Show developer profiles even without a separate profile entry
+• Preserve legacy cryptocurrency donation addresses
+• Keep authentication and validation checks active for fallback writes
