@@ -5,6 +5,7 @@
 
 <div align="center">
 <h1> Sponsored by </h1>
+
 [![Sponsor](https://readme.cash/i/jckra8v3p7.svg)](https://readme.cash/c/jckra8v3p7)
 </div>
 
