@@ -1,7 +1,5 @@
-• Load the app catalogue, app details and developer profiles directly from Supabase when the API is unavailable
-• Save and delete ratings and favourites through Supabase if API requests fail
-• Show developer profiles even without a separate profile entry
-• Preserve legacy cryptocurrency donation addresses
-• Keep authentication and validation checks active for fallback writes
-• Remove the Liquid Glass Navigation Bar
-• Use M3-Expressive
+• Load catalogue, app details and developer profiles from Supabase when API hosting is disabled (HTTP 402)
+• Read, save and delete ratings and favourites via Supabase when the API is unavailable
+
+• Replace Liquid Glass navigation with an opaque Material 3 bar
+• Use the M3 Expressive theme

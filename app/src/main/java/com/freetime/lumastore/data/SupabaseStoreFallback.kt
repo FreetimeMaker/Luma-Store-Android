@@ -14,14 +14,23 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 
-internal class LumaApiHttpException(val statusCode: Int, message: String) : IllegalStateException(message)
+internal class LumaApiHttpException(
+    val statusCode: Int,
+    message: String,
+    val deploymentDisabled: Boolean = false
+) : IllegalStateException(message)
+
+internal fun lumaApiHttpFailure(status: Int, responseBody: String, message: String): LumaApiHttpException =
+    LumaApiHttpException(status, message, deploymentDisabled = status == 402 &&
+        responseBody.lineSequence().any { it.trim() == "DEPLOYMENT_DISABLED" })
 
 internal suspend fun <T> withStoreReadFallback(primary: suspend () -> T, fallback: suspend () -> T): T {
     try {
         return primary()
     } catch (failure: Exception) {
         currentCoroutineContext().ensureActive()
-        if (failure !is IOException && !(failure is LumaApiHttpException && failure.statusCode in 500..599)) throw failure
+        if (failure !is IOException && !(failure is LumaApiHttpException &&
+                (failure.statusCode in 500..599 || failure.deploymentDisabled))) throw failure
         return fallback()
     }
 }

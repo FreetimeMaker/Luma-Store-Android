@@ -1190,7 +1190,8 @@ class AppRepository(context: Context) {
         return try {
             val code = connection.responseCode
             if (code !in 200..299) {
-                throw LumaApiHttpException(code, appContext.getString(R.string.http_request_failed, code, url))
+                val responseBody = connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+                throw lumaApiHttpFailure(code, responseBody, appContext.getString(R.string.http_request_failed, code, url))
             }
             connection.inputStream.bufferedReader().use { it.readText() }
         } finally { connection.disconnect() }

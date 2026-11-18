@@ -57,6 +57,14 @@ Luma Store is a modern Android application that allows you to discover, install,
 - 🔔 **Background Updates**: Automatic background sync for updates and developer notifications.
 - 👨‍💻 **Developer Area**: Integration with Supabase (GitHub/GitLab) for developers to manage their submissions.
 
+## Store API fallback
+
+Public catalogue/details/developer reads and rating/favourite reads use Supabase when the API has a network/server failure or its host returns HTTP 402 with the `DEPLOYMENT_DISABLED` marker. Ordinary payment/authentication/validation/not-found/rate-limit errors do not trigger a fallback. A plain HTTP 402 is not enough; the deployment marker must also be present.
+
+Account reads use the live Supabase session, filter by the signed-in user and reject results if the account changes while loading. Public rating totals use a separate anonymous PostgREST client, matching the API's public role rather than accidentally aggregating an account-specific RLS subset. No service-role key is used. Existing idempotent rating/favourite write fallbacks keep their authentication and validation guards.
+
+To validate an outage without modifying production data, simulate a `402 / DEPLOYMENT_DISABLED` API response and check catalogue/details, public reviews and signed-in rating/favourite reads. Unit tests cover the hosting-error classification; Android contract tests cover the JSON response shapes.
+
 ## 🛠️ Technology Stack
 
 - **Jetpack Compose**: Modern UI framework for declarative and reactive interfaces.

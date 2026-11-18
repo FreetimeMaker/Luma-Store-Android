@@ -74,12 +74,18 @@ object LumaStoreApi {
     }
 
     suspend fun ratings(identifier: String): AppRatingSummary {
-        val json = request("GET", "/apps/${encode(identifier)}/ratings")
+        val json = withStoreReadFallback(
+            primary = { request("GET", "/apps/${encode(identifier)}/ratings") },
+            fallback = { loadSupabaseRatingSummary(identifier) }
+        )
         return AppRatingSummary(json.optDouble("average", 0.0), json.optInt("count", 0))
     }
 
     suspend fun publicReviews(identifier: String, sort: String = "newest"): List<PublicAppReview> {
-        val array = requestArray("GET", "/apps/${encode(identifier)}/reviews?sort=${encode(sort)}")
+        val array = withStoreReadFallback(
+            primary = { requestArray("GET", "/apps/${encode(identifier)}/reviews?sort=${encode(sort)}") },
+            fallback = { loadSupabasePublicReviews(identifier, sort) }
+        )
         return buildList {
             for (index in 0 until array.length()) {
                 val row = array.optJSONObject(index) ?: continue
@@ -95,7 +101,10 @@ object LumaStoreApi {
     }
 
     suspend fun myRating(identifier: String): MyAppRating {
-        val json = request("GET", "/apps/${encode(identifier)}/rating/me", authenticated = true)
+        val json = withStoreReadFallback(
+            primary = { request("GET", "/apps/${encode(identifier)}/rating/me", authenticated = true) },
+            fallback = { loadSupabaseMyRating(identifier) }
+        )
         return MyAppRating(if (json.isNull("rating")) null else json.optInt("rating"), json.optString("review_text").takeIf { it.isNotBlank() }, json.optString("updated_at").takeIf { it.isNotBlank() })
     }
 
@@ -111,7 +120,10 @@ object LumaStoreApi {
     }
 
     suspend fun myRatings(): List<AccountRating> {
-        val array = requestArray("GET", "/ratings/me", authenticated = true)
+        val array = withStoreReadFallback(
+            primary = { requestArray("GET", "/ratings/me", authenticated = true) },
+            fallback = { loadSupabaseMyRatings() }
+        )
         return buildList {
             for (index in 0 until array.length()) {
                 val row = array.optJSONObject(index) ?: continue
@@ -122,7 +134,10 @@ object LumaStoreApi {
     }
 
     suspend fun isFavorite(identifier: String): Boolean =
-        request("GET", "/apps/${encode(identifier)}/favorite/me", authenticated = true).optBoolean("favorite", false)
+        withStoreReadFallback(
+            primary = { request("GET", "/apps/${encode(identifier)}/favorite/me", authenticated = true) },
+            fallback = { loadSupabaseFavorite(identifier) }
+        ).optBoolean("favorite", false)
 
     suspend fun addFavorite(identifier: String) {
         withStoreReadFallback(
@@ -139,7 +154,10 @@ object LumaStoreApi {
     }
 
     suspend fun myFavorites(): List<FavoriteApp> {
-        val array = requestArray("GET", "/favorites/me", authenticated = true)
+        val array = withStoreReadFallback(
+            primary = { requestArray("GET", "/favorites/me", authenticated = true) },
+            fallback = { loadSupabaseFavorites() }
+        )
         return buildList {
             for (index in 0 until array.length()) {
                 val row = array.optJSONObject(index) ?: continue
@@ -176,7 +194,7 @@ object LumaStoreApi {
             }
             val code = connection.responseCode
             val text = (if (code in 200..299) connection.inputStream else connection.errorStream)?.bufferedReader()?.use { it.readText() }.orEmpty()
-            if (code !in 200..299) throw LumaApiHttpException(code, runCatching { JSONObject(text).optString("message") }.getOrNull()?.takeIf { it.isNotBlank() } ?: "Luma Store API request failed ($code)")
+            if (code !in 200..299) throw lumaApiHttpFailure(code, text, runCatching { JSONObject(text).optString("message") }.getOrNull()?.takeIf { it.isNotBlank() } ?: "Luma Store API request failed ($code)")
             JSONArray(text)
         } finally { connection.disconnect() }
     }
@@ -204,7 +222,7 @@ object LumaStoreApi {
             val text = (if (code in 200..299) connection.inputStream else connection.errorStream)?.bufferedReader()?.use { it.readText() }.orEmpty()
             if (code !in 200..299) {
                 val message = runCatching { JSONObject(text).optString("message") }.getOrNull()
-                throw LumaApiHttpException(code, message?.takeIf { it.isNotBlank() } ?: "Luma Store API request failed ($code)")
+                throw lumaApiHttpFailure(code, text, message?.takeIf { it.isNotBlank() } ?: "Luma Store API request failed ($code)")
             }
             if (text.isBlank() && allowEmpty) JSONObject() else JSONObject(text)
         } finally { connection.disconnect() }

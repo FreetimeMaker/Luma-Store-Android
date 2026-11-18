@@ -1,8 +1,6 @@
 package com.freetime.lumastore
 
-import com.freetime.design.FloatingBottomNavigationBar
-import com.freetime.design.FloatingBottomNavigationGlassRoot
-import com.freetime.design.FloatingBottomNavigationItem
+
 import com.freetime.warn.FreetimeWarn
 import com.freetime.warn.FreetimeWarnFrequency
 import com.freetime.warn.rememberFreetimeWarnState
@@ -55,6 +53,8 @@ import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -168,7 +168,7 @@ class MainActivity : ComponentActivity() {
                     frequency = FreetimeWarnFrequency.ONCE_PER_VERSION
                 )
                 CompositionLocalProvider(LocalEditorNavigationGuard provides navigationGuard) {
-                FloatingBottomNavigationGlassRoot {
+                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                 BoxWithConstraints(
                     modifier = Modifier.fillMaxSize()
                 ) {
@@ -284,39 +284,45 @@ class MainActivity : ComponentActivity() {
                             FdroidRailItem(screen == MainScreen.ACCOUNT, { navigate(MainScreen.ACCOUNT) }, stringResource(R.string.account)) { Icon(Icons.Filled.AccountCircle, contentDescription = null) }
                         }
                     } else {
-                        val primaryScreens = listOf(
-                            MainScreen.DISCOVER,
-                            MainScreen.MY_APPS,
-                            MainScreen.SOURCES,
-                            MainScreen.DEVELOPER,
-                            MainScreen.ACCOUNT
-                        )
-                        val navItems = listOf(
-                            FloatingBottomNavigationItem(stringResource(R.string.discover)) { Icon(Icons.Filled.Explore, contentDescription = null) },
-                            FloatingBottomNavigationItem(stringResource(R.string.my_apps)) {
-                                if (availableUpdateCount > 0) {
-                                    BadgedBox(badge = { Badge { Text(availableUpdateCount.toString(), maxLines = 1) } }) {
-                                        Icon(Icons.Filled.Apps, contentDescription = null)
-                                    }
-                                } else Icon(Icons.Filled.Apps, contentDescription = null)
-                            },
-                            FloatingBottomNavigationItem(stringResource(R.string.sources)) { Icon(Icons.Filled.Storage, contentDescription = null) },
-                            FloatingBottomNavigationItem(stringResource(R.string.developer)) { Icon(Icons.Filled.Code, contentDescription = null) },
-                            FloatingBottomNavigationItem(stringResource(R.string.account)) { Icon(Icons.Filled.AccountCircle, contentDescription = null) }
-                        )
-                        FloatingBottomNavigationBar(
-                            items = navItems,
-                            selectedItemIndex = primaryScreens.indexOf(screen).coerceAtLeast(0),
-                            onItemSelected = { index -> navigate(primaryScreens[index]) },
-                            searchItem = FloatingBottomNavigationItem(stringResource(R.string.search)) {
-                                Icon(Icons.Filled.Search, contentDescription = null)
-                            },
-                            searchSelected = screen == MainScreen.SEARCH,
-                            onSearchSelected = { navigate(MainScreen.SEARCH) },
+                        NavigationBar(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                            tonalElevation = 0.dp,
                             modifier = Modifier.align(Alignment.BottomCenter).onSizeChanged {
                                 bottomNavigationHeight = with(density) { it.height.toDp() }
                             }
-                        )
+                        ) {
+                            MainScreen.entries.forEach { destination ->
+                                val label = stringResource(when (destination) {
+                                    MainScreen.DISCOVER -> R.string.discover
+                                    MainScreen.SEARCH -> R.string.search
+                                    MainScreen.MY_APPS -> R.string.my_apps
+                                    MainScreen.SOURCES -> R.string.sources
+                                    MainScreen.DEVELOPER -> R.string.developer
+                                    MainScreen.ACCOUNT -> R.string.account
+                                })
+                                val image = when (destination) {
+                                    MainScreen.DISCOVER -> Icons.Filled.Explore
+                                    MainScreen.SEARCH -> Icons.Filled.Search
+                                    MainScreen.MY_APPS -> Icons.Filled.Apps
+                                    MainScreen.SOURCES -> Icons.Filled.Storage
+                                    MainScreen.DEVELOPER -> Icons.Filled.Code
+                                    MainScreen.ACCOUNT -> Icons.Filled.AccountCircle
+                                }
+                                NavigationBarItem(
+                                    selected = screen == destination,
+                                    onClick = { navigate(destination) },
+                                    alwaysShowLabel = !compactNavigation,
+                                    label = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                    icon = {
+                                        if (destination == MainScreen.MY_APPS && availableUpdateCount > 0) {
+                                            BadgedBox(badge = { Badge { Text(availableUpdateCount.toString(), maxLines = 1) } }) {
+                                                Icon(image, contentDescription = label)
+                                            }
+                                        } else Icon(image, contentDescription = label)
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
                 }

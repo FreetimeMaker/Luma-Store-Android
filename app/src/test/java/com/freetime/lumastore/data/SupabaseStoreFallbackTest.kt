@@ -50,6 +50,28 @@ class SupabaseStoreFallbackTest {
         }
     }
 
+    @Test fun disabledHostingDeploymentUsesFallback() = runBlocking {
+        val body = "Payment required\n\nDEPLOYMENT_DISABLED\n\nfra1::request-id"
+        val failure = lumaApiHttpFailure(402, body, "API unavailable")
+        assertEquals(true, failure.deploymentDisabled)
+        assertEquals("database", withStoreReadFallback({ throw failure }, { "database" }))
+    }
+
+    @Test fun paymentAndAuthorizationFailuresAreNotReclassifiedAsHostingOutages() = runBlocking {
+        for (failure in listOf(
+            lumaApiHttpFailure(402, "Payment required for this feature", "Payment required"),
+            lumaApiHttpFailure(403, "DEPLOYMENT_DISABLED", "Forbidden"),
+            lumaApiHttpFailure(402, "{\"message\":\"DEPLOYMENT_DISABLED\"}", "Unknown response")
+        )) {
+            try {
+                withStoreReadFallback({ throw failure }, { error("Unexpected fallback") })
+                fail("Expected original failure")
+            } catch (actual: Exception) {
+                assertSame(failure, actual)
+            }
+        }
+    }
+
     @Test fun clientErrorsParsingErrorsAndCancellationPropagate() = runBlocking {
         for (failure in listOf(LumaApiHttpException(401, "auth"), LumaApiHttpException(403, "forbidden"), LumaApiHttpException(404, "missing"), LumaApiHttpException(429, "limited"), IllegalArgumentException("bad response"), CancellationException("cancelled"))) {
             try {
