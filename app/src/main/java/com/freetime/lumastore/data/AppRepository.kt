@@ -90,7 +90,7 @@ class AppRepository(context: Context) {
     @Volatile private var memoryApps: List<StoreApp>? = null
 
     private val defaultSources = listOf(
-        AppSource(appContext.getString(R.string.source_freetime_fdroid), "https://fdroid.free-time.me/repo/index-v2.json", enabledByDefault = false),
+        AppSource(appContext.getString(R.string.source_freetime_fdroid), "https://repo.free-time.me/repo/index-v2.json", enabledByDefault = false),
         AppSource(appContext.getString(R.string.source_fdroid), "https://f-droid.org/repo/index-v2.json", enabledByDefault = false),
         AppSource(appContext.getString(R.string.source_izzyondroid), "https://apt.izzysoft.de/fdroid/repo/index-v2.json", enabledByDefault = false),
         AppSource(appContext.getString(R.string.source_luma_store), "https://api.free-time.me/v2/lumastore/apps?platform=android", SourceType.LUMA_API)
