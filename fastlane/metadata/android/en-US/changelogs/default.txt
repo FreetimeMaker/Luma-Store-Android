@@ -1,5 +1,5 @@
-• Load catalogue, app details and developer profiles from Supabase when API hosting is disabled (HTTP 402)
-• Read, save and delete ratings and favourites via Supabase when the API is unavailable
-
-• Replace Liquid Glass navigation with an opaque Material 3 bar
-• Use the M3 Expressive theme
+• Fixed data loading when API hosting is disabled (HTTP 402)
+• Load catalogue, app details and developer profiles through Supabase during API outages
+• Load ratings, reviews and favourites through Supabase when the API is unavailable
+• Preserve authentication and validation checks for fallback operations
+• Preserve search, update badges and unsaved-change protection
