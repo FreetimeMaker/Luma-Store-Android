@@ -1,13 +1,13 @@
 [versions]
-agp = "9.5.1"
+agp = "9.5.2"
 coreKtx = "1.19.1"
 junit = "4.13.2"
 junitVersion = "1.3.0"
 espressoCore = "3.7.0"
-lifecycleRuntimeKtx = "2.11.0"
+lifecycleRuntimeKtx = "2.11.1"
 activityCompose = "1.13.0"
 kotlin = "2.4.21"
-composeBom = "2026.09.00"
+composeBom = "2026.11.01"
 freetime = "4.0.1"
 kotlinSerializationPlugin = "2.4.21"
 supabase = "3.9.0"
@@ -33,9 +33,10 @@ androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 
-freetime-core = { module = "com.freetime:Core", version.ref = "freetime" }
-freetime-design = { module = "com.freetime:Design", version.ref = "freetime" }
-freetime-warn = { module = "com.freetime:FreetimeWarn", version.ref = "freetime" }
+freetime-core = { module = "com.github.FreetimeMaker.Freetime-Core:Core", version.ref = "freetime" }
+freetime-design = { module = "com.github.FreetimeMaker.Freetime-Core:Design", version.ref = "freetime" }
+freetime-warn = { module = "com.github.FreetimeMaker.Freetime-Core:FreetimeWarn", version.ref = "freetime" }
+freetime-notifications = { module = "com.github.FreetimeMaker.Freetime-Core:Notifications", version.ref = "freetime" }
 
 androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
 supabase-bom = { module = "io.github.jan-tennert.supabase:bom", version.ref = "supabase" }
