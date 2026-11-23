@@ -194,7 +194,7 @@ object LumaStoreApi {
             }
             val code = connection.responseCode
             val text = (if (code in 200..299) connection.inputStream else connection.errorStream)?.bufferedReader()?.use { it.readText() }.orEmpty()
-            if (code !in 200..299) throw lumaApiHttpFailure(code, text, runCatching { JSONObject(text).optString("message") }.getOrNull()?.takeIf { it.isNotBlank() } ?: "Luma Store API request failed ($code)")
+            if (code !in 200..299) throw apiFailure(connection, code, text)
             JSONArray(text)
         } finally { connection.disconnect() }
     }
@@ -220,12 +220,17 @@ object LumaStoreApi {
             }
             val code = connection.responseCode
             val text = (if (code in 200..299) connection.inputStream else connection.errorStream)?.bufferedReader()?.use { it.readText() }.orEmpty()
-            if (code !in 200..299) {
-                val message = runCatching { JSONObject(text).optString("message") }.getOrNull()
-                throw lumaApiHttpFailure(code, text, message?.takeIf { it.isNotBlank() } ?: "Luma Store API request failed ($code)")
-            }
+            if (code !in 200..299) throw apiFailure(connection, code, text)
             if (text.isBlank() && allowEmpty) JSONObject() else JSONObject(text)
         } finally { connection.disconnect() }
+    }
+
+    private fun apiFailure(connection: HttpURLConnection, code: Int, text: String): LumaApiHttpException {
+        val message = runCatching { JSONObject(text).optString("message") }.getOrNull()
+        return lumaApiHttpFailure(
+            code, text, message?.takeIf { it.isNotBlank() } ?: "Luma Store API request failed ($code)",
+            hostingError = connection.getHeaderField("X-Vercel-Error")
+        )
     }
 
     private fun encode(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8.toString()).replace("+", "%20")

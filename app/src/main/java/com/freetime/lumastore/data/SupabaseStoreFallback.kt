@@ -20,9 +20,15 @@ internal class LumaApiHttpException(
     val deploymentDisabled: Boolean = false
 ) : IllegalStateException(message)
 
-internal fun lumaApiHttpFailure(status: Int, responseBody: String, message: String): LumaApiHttpException =
+internal fun lumaApiHttpFailure(
+    status: Int,
+    responseBody: String,
+    message: String,
+    hostingError: String? = null
+): LumaApiHttpException =
     LumaApiHttpException(status, message, deploymentDisabled = status == 402 &&
-        responseBody.lineSequence().any { it.trim() == "DEPLOYMENT_DISABLED" })
+        (hostingError?.trim() == "DEPLOYMENT_DISABLED" ||
+            responseBody.lineSequence().any { it.trim() == "DEPLOYMENT_DISABLED" }))
 
 internal suspend fun <T> withStoreReadFallback(primary: suspend () -> T, fallback: suspend () -> T): T {
     try {

@@ -57,6 +57,11 @@ class SupabaseStoreFallbackTest {
         assertEquals("database", withStoreReadFallback({ throw failure }, { "database" }))
     }
 
+    @Test fun disabledHostingHeaderUsesFallbackWithoutResponseBody() = runBlocking {
+        val failure = lumaApiHttpFailure(402, "", "API unavailable", hostingError = "DEPLOYMENT_DISABLED")
+        assertEquals("database", withStoreReadFallback({ throw failure }, { "database" }))
+    }
+
     @Test fun paymentAndAuthorizationFailuresAreNotReclassifiedAsHostingOutages() = runBlocking {
         for (failure in listOf(
             lumaApiHttpFailure(402, "Payment required for this feature", "Payment required"),

@@ -1191,7 +1191,10 @@ class AppRepository(context: Context) {
             val code = connection.responseCode
             if (code !in 200..299) {
                 val responseBody = connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
-                throw lumaApiHttpFailure(code, responseBody, appContext.getString(R.string.http_request_failed, code, url))
+                throw lumaApiHttpFailure(
+                                    code, responseBody, appContext.getString(R.string.http_request_failed, code, url),
+                                    hostingError = connection.getHeaderField("X-Vercel-Error")
+                                )
             }
             connection.inputStream.bufferedReader().use { it.readText() }
         } finally { connection.disconnect() }
