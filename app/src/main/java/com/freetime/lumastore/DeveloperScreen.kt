@@ -33,7 +33,6 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 @Composable
@@ -46,7 +45,7 @@ fun DeveloperScreen(
     val systemNotifications = remember(context) { SystemNotificationManager(context) }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     var session by remember { mutableStateOf<DeveloperSession?>(null) }
-    var dashboard by remember { mutableStateOf<DeveloperDashboard?>(null) }
+    var dashboard by remember(session?.userId) { mutableStateOf<DeveloperDashboard?>(null) }
     var loading by remember { mutableStateOf(false) }
     var authLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<Int?>(null) }
@@ -56,7 +55,7 @@ fun DeveloperScreen(
     var funding by remember { mutableStateOf<DeveloperFundingSettings?>(null) }
     var editorDataReady by remember(session?.userId) { mutableStateOf(false) }
     var editorDataError by remember(session?.userId) { mutableStateOf<Int?>(null) }
-    var analyticsSubmissionId by remember { mutableStateOf<String?>(null) }
+    var analyticsAppId by remember(session?.userId) { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     val profileSaved = stringResource(R.string.profile_saved)
@@ -87,7 +86,10 @@ fun DeveloperScreen(
                     }
                     systemNotifications.showNewNotifications(it.notifications)
                 }
-                .onFailure { error = developerFailureMessage(it, R.string.developer_data_load_failed) }
+                .onFailure {
+                    if (it is kotlinx.coroutines.CancellationException) throw it
+                    error = developerFailureMessage(it, R.string.developer_data_load_failed)
+                }
         } finally {
             loading = false
         }
@@ -105,7 +107,7 @@ fun DeveloperScreen(
             }
         repository.sessionFlow().collect {
             session = it
-            if (it == null) dashboard = null
+
             loggingIn = false
             authLoading = false
         }
@@ -231,13 +233,19 @@ fun DeveloperScreen(
         return
     }
     val data = dashboard
-    analyticsSubmissionId?.let { submissionId ->
-        val submission = data?.submissions?.firstOrNull { it.id == submissionId }
-        if (submission != null) {
-            val storeId = submission.storeAppId ?: data.submissionStoreIds[submission.id]
-            DeveloperAnalyticsScreen(submission, storeId?.let { data.downloadStats[it] }) { analyticsSubmissionId = null }
-            return
-        }
+    val analytics = data?.analytics
+    val publishedApps = analytics?.apps
+    val selectedApp = publishedApps?.firstOrNull { it.id == analyticsAppId }
+    if (selectedApp != null && analytics != null) {
+        DeveloperAnalyticsScreen(
+            app = selectedApp,
+            stats = analytics.stats?.get(selectedApp.id),
+            statsFailed = analytics.stats == null,
+            loading = loading,
+            onRetry = { scope.launch { reload(current) } },
+            onBack = { analyticsAppId = null }
+        )
+        return
     }
     val unread = data?.notifications?.count { it.readAt == null } ?: 0
     val comments = data?.comments?.groupBy { it.submissionId }.orEmpty()
@@ -274,25 +282,27 @@ fun DeveloperScreen(
                 OutlinedButton(onClick = { developerPage = "funding" }) { Text(stringResource(R.string.developer_funding)) }
             }
             data?.let { dashboardData ->
-                val totalDownloads = dashboardData.downloadStats.values.sumOf { stats -> stats.total }
-                val downloadsToday = dashboardData.downloadStats.values.sumOf { stats -> stats.today }
-                val downloadsMonth = dashboardData.downloadStats.values.sumOf { stats -> stats.thisMonth }
-                val approvedApps = dashboardData.submissions.count { it.status == "Approved" }
+                val totalDownloads = dashboardData.analytics.totalFor { it.total }
+                val downloadsToday = dashboardData.analytics.totalFor { it.today }
+                val downloadsMonth = dashboardData.analytics.totalFor { it.thisMonth }
                 val pendingApps = dashboardData.submissions.count { it.status in setOf("Pending", "Changes Requested") }
-                Text(
-                    stringResource(R.string.developer_total_downloads, totalDownloads),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                totalDownloads?.let {
+                    Text(
+                        stringResource(R.string.developer_total_downloads, it),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
                 Spacer(Modifier.height(10.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    DeveloperMetricCard(stringResource(R.string.metric_apps), approvedApps.toString(), Modifier.weight(1f))
-                    DeveloperMetricCard(stringResource(R.string.metric_today), downloadsToday.toString(), Modifier.weight(1f))
-                    DeveloperMetricCard(stringResource(R.string.metric_month), downloadsMonth.toString(), Modifier.weight(1f))
+                    val unavailable = stringResource(R.string.developer_metric_unavailable)
+                    DeveloperMetricCard(stringResource(R.string.metric_apps), publishedApps?.size?.toString() ?: unavailable, Modifier.weight(1f))
+                    DeveloperMetricCard(stringResource(R.string.metric_today), downloadsToday?.toString() ?: unavailable, Modifier.weight(1f))
+                    DeveloperMetricCard(stringResource(R.string.metric_month), downloadsMonth?.toString() ?: unavailable, Modifier.weight(1f))
                 }
                 if (pendingApps > 0) {
                     Text(
@@ -315,6 +325,25 @@ fun DeveloperScreen(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { CircularProgressIndicator() }
         }
         if (data != null) {
+            item { Text(stringResource(R.string.developer_published_app_analytics), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold) }
+            when {
+                publishedApps == null -> item {
+                    Text(stringResource(R.string.developer_published_apps_load_failed), color = MaterialTheme.colorScheme.error)
+                    TextButton(onClick = { scope.launch { reload(current) } }, enabled = !loading) { Text(stringResource(R.string.editor_retry)) }
+                }
+                publishedApps.isEmpty() -> item { Text(stringResource(R.string.developer_no_published_apps)) }
+                else -> {
+                    if (data.analytics.stats == null) item {
+                        Text(stringResource(R.string.developer_analytics_load_failed), color = MaterialTheme.colorScheme.error)
+                        TextButton(onClick = { scope.launch { reload(current) } }, enabled = !loading) { Text(stringResource(R.string.editor_retry)) }
+                    }
+                    items(publishedApps, key = { "analytics:${it.id}" }) { app ->
+                        OutlinedButton(onClick = { analyticsAppId = app.id }, modifier = Modifier.fillMaxWidth()) {
+                            Text(app.displayName)
+                        }
+                    }
+                }
+            }
             item { Text(stringResource(R.string.notifications), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold) }
             if (data.notifications.isEmpty()) {
                 item { Text(stringResource(R.string.no_notifications), color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -336,48 +365,21 @@ fun DeveloperScreen(
             }
             item {
                 HorizontalDivider(Modifier.padding(vertical = 6.dp))
-                Text(stringResource(R.string.my_apps), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                Text(stringResource(R.string.app_specific_analytics), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.developer_submissions), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             }
             if (data.submissions.isEmpty()) {
-                item { Text(stringResource(R.string.no_account_apps), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                item { Text(stringResource(R.string.developer_no_submissions), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             } else {
                 items(data.submissions, key = { it.id }) {
+                    val storeId = it.storeAppId ?: data.submissionStoreIds[it.id]
+                    val publishedApp = publishedApps?.firstOrNull { app -> app.id == storeId }
                     SubmissionCard(
                         submission = it,
                         comments = comments[it.id].orEmpty().map { c -> c.body },
                         artifacts = (it.storeAppId ?: data.submissionStoreIds[it.id])?.let { id -> data.artifacts[id] }.orEmpty(),
                         scan = data.scans[it.id],
-                        downloadStats = (it.storeAppId ?: data.submissionStoreIds[it.id])?.let { id -> data.downloadStats[id] },
-                        onAnalytics = { analyticsSubmissionId = it.id },
-                        onSave = { submission, name, shortDescription, description, version, versionCode, changelog, repoUrl ->
-                            scope.launch {
-                                runCatching { repository.updateSubmission(submission, name, shortDescription, description, version, versionCode, changelog, repoUrl) }
-                                    .onSuccess { reload(current) }
-                                    .onFailure { error = developerFailureMessage(it, R.string.submission_update_failed) }
-                            }
-                        },
-                        onArtifactAdd = { submission, platform, packageType, downloadUrl, repoUrl ->
-                            scope.launch {
-                                runCatching { repository.addPlatformArtifact(submission, platform, packageType, downloadUrl, repoUrl) }
-                                    .onSuccess { reload(current) }
-                                    .onFailure { error = developerFailureMessage(it, R.string.artifact_add_failed) }
-                            }
-                        },
-                        onArtifactRemove = { submission, platform, packageType ->
-                            scope.launch {
-                                runCatching { repository.removePlatformArtifact(submission, platform, packageType) }
-                                    .onSuccess { reload(current) }
-                                    .onFailure { error = developerFailureMessage(it, R.string.artifact_remove_failed) }
-                            }
-                        },
-                        onPlatformSave = { submission, platform, title, shortDescription, fullDescription, changelog, repoUrl, downloadUrl, screenshots ->
-                            scope.launch {
-                                runCatching { repository.updatePlatformMetadata(submission, platform, title, shortDescription, fullDescription, changelog, repoUrl, downloadUrl, screenshots) }
-                                    .onSuccess { reload(current) }
-                                    .onFailure { error = developerFailureMessage(it, R.string.platform_update_failed) }
-                            }
-                        },
+                        downloadStats = publishedApp?.let { app -> data.analytics.stats?.get(app.id) },
+                        onAnalytics = publishedApp?.let { app -> { analyticsAppId = app.id } },
                         onRemove = { submission ->
                             scope.launch {
                                 runCatching { repository.removeSubmission(submission) }
@@ -399,16 +401,31 @@ internal val developerCryptoOptions = listOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DeveloperAnalyticsScreen(submission: DeveloperSubmission, stats: DeveloperDownloadStats?, onBack: () -> Unit) {
-    Scaffold(topBar = { TopAppBar(title = { Text(submission.name) }, navigationIcon = { TextButton(onClick = onBack) { Text(stringResource(R.string.back)) } }) }) { padding ->
+private fun DeveloperAnalyticsScreen(
+    app: DeveloperPublishedApp,
+    stats: DeveloperDownloadStats?,
+    statsFailed: Boolean,
+    loading: Boolean,
+    onRetry: () -> Unit,
+    onBack: () -> Unit
+) {
+    androidx.activity.compose.BackHandler(onBack = onBack)
+    Scaffold(topBar = { TopAppBar(title = { Text(app.displayName) }, navigationIcon = { TextButton(onClick = onBack) { Text(stringResource(R.string.back)) } }) }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { Text(stringResource(R.string.analytics), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold) }
-            if (stats == null) item { Text(stringResource(R.string.no_download_analytics), color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            else {
-                item { DeveloperMetricCard(stringResource(R.string.metric_today), stats.today.toString(), Modifier.fillMaxWidth()) }
-                item { DeveloperMetricCard(stringResource(R.string.metric_month), stats.thisMonth.toString(), Modifier.fillMaxWidth()) }
-                item { DeveloperMetricCard(stringResource(R.string.metric_year), stats.thisYear.toString(), Modifier.fillMaxWidth()) }
-                item { DeveloperMetricCard(stringResource(R.string.metric_total), stats.total.toString(), Modifier.fillMaxWidth()) }
+            item { Text(stringResource(R.string.download_statistics), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold) }
+            when {
+                statsFailed -> item {
+                    Text(stringResource(R.string.developer_analytics_load_failed), color = MaterialTheme.colorScheme.error)
+                    TextButton(onClick = onRetry, enabled = !loading) { Text(stringResource(R.string.editor_retry)) }
+                }
+                stats == null || listOf(stats.today, stats.thisMonth, stats.thisYear, stats.total).all { it == null } ->
+                    item { Text(stringResource(R.string.no_download_analytics), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                else -> {
+                    stats.today?.let { item { DeveloperMetricCard(stringResource(R.string.metric_today), it.toString(), Modifier.fillMaxWidth()) } }
+                    stats.thisMonth?.let { item { DeveloperMetricCard(stringResource(R.string.metric_month), it.toString(), Modifier.fillMaxWidth()) } }
+                    stats.thisYear?.let { item { DeveloperMetricCard(stringResource(R.string.metric_year), it.toString(), Modifier.fillMaxWidth()) } }
+                    stats.total?.let { item { DeveloperMetricCard(stringResource(R.string.metric_total), it.toString(), Modifier.fillMaxWidth()) } }
+                }
             }
         }
     }
@@ -456,23 +473,11 @@ private fun SubmissionCard(
     artifacts: List<DeveloperPlatformArtifact>,
     scan: DeveloperSecurityScan?,
     downloadStats: DeveloperDownloadStats?,
-    onAnalytics: (DeveloperSubmission) -> Unit,
-    onSave: (DeveloperSubmission, String, String, String, String, Long?, String, String) -> Unit,
-    onArtifactAdd: (DeveloperSubmission, String, String, String, String) -> Unit,
-    onArtifactRemove: (DeveloperSubmission, String, String) -> Unit,
-    onPlatformSave: (DeveloperSubmission, String, String, String, String, String, String, String, List<String>) -> Unit,
+    onAnalytics: (() -> Unit)?,
     onRemove: (DeveloperSubmission) -> Unit
 ) {
     val shape = MaterialTheme.shapes.large
-    var editing by remember(submission.id, submission.status) { mutableStateOf(false) }
-    var name by remember(submission.id) { mutableStateOf(submission.name) }
-    var shortDescription by remember(submission.id) { mutableStateOf(submission.shortDescription.orEmpty()) }
-    var description by remember(submission.id) { mutableStateOf(submission.description.orEmpty()) }
-    var version by remember(submission.id) { mutableStateOf(submission.version.orEmpty()) }
-    var versionCode by remember(submission.id) { mutableStateOf(submission.versionCode?.toString().orEmpty()) }
-    var changelog by remember(submission.id) { mutableStateOf(submission.changelog.orEmpty()) }
-    var repoUrl by remember(submission.id) { mutableStateOf(submission.repoUrl ?: submission.link.orEmpty()) }
-    val editable = submission.status in setOf("Draft", "Rejected", "Approved", "Changes Requested")
+    val canRemove = submission.status in setOf("Draft", "Rejected", "Approved", "Changes Requested")
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -489,10 +494,13 @@ private fun SubmissionCard(
             if (downloadStats != null) {
                 HorizontalDivider()
                 Text(stringResource(R.string.download_statistics), fontWeight = FontWeight.SemiBold)
-                Text(stringResource(R.string.downloads_total, downloadStats.total))
-                Text(stringResource(R.string.downloads_today, downloadStats.today), style = MaterialTheme.typography.bodySmall)
-                Text(stringResource(R.string.downloads_month, downloadStats.thisMonth), style = MaterialTheme.typography.bodySmall)
-                Text(stringResource(R.string.downloads_year, downloadStats.thisYear), style = MaterialTheme.typography.bodySmall)
+                downloadStats.total?.let { Text(stringResource(R.string.downloads_total, it)) }
+                downloadStats.today?.let { Text(stringResource(R.string.downloads_today, it), style = MaterialTheme.typography.bodySmall) }
+                downloadStats.thisMonth?.let { Text(stringResource(R.string.downloads_month, it), style = MaterialTheme.typography.bodySmall) }
+                downloadStats.thisYear?.let { Text(stringResource(R.string.downloads_year, it), style = MaterialTheme.typography.bodySmall) }
+            }
+            if (onAnalytics != null) {
+                TextButton(onClick = onAnalytics) { Text(stringResource(R.string.analytics)) }
             }
 
             if (scan != null) {
@@ -507,10 +515,6 @@ private fun SubmissionCard(
                 }
             }
 
-            if (editable) {
-                AddPlatformArtifactEditor(submission, onArtifactAdd)
-            }
-
             if (artifacts.isNotEmpty()) {
                 HorizontalDivider()
                 Text(stringResource(R.string.platform_artifacts), fontWeight = FontWeight.SemiBold)
@@ -522,42 +526,15 @@ private fun SubmissionCard(
                             artifact.artifactVerifiedAt?.let { Text(stringResource(R.string.artifact_verified, it), style = MaterialTheme.typography.bodySmall) }
                             artifact.sha256?.let { Text(stringResource(R.string.sha256_value, it), style = MaterialTheme.typography.labelSmall) }
                             artifact.repoUrl?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) }
-                            PlatformMetadataEditor(submission, artifact, onPlatformSave)
-                            if (editable && artifact.packageType != null) {
-                                TextButton(onClick = { onArtifactRemove(submission, artifact.platform, artifact.packageType) }) {
-                                    Text(stringResource(R.string.remove_artifact), color = MaterialTheme.colorScheme.error)
-                                }
-                            }
+                            PlatformMetadata(artifact)
                         }
                     }
                 }
             }
 
-            if (editing) {
-                OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.app_name)) }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(shortDescription, { shortDescription = it }, label = { Text(stringResource(R.string.short_description)) }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(description, { description = it }, label = { Text(stringResource(R.string.description)) }, modifier = Modifier.fillMaxWidth(), minLines = 3)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(version, { version = it }, label = { Text(stringResource(R.string.version)) }, modifier = Modifier.weight(1f))
-                    OutlinedTextField(versionCode, { versionCode = it.filter(Char::isDigit) }, label = { Text(stringResource(R.string.version_code)) }, modifier = Modifier.weight(1f))
-                }
-                OutlinedTextField(changelog, { changelog = it }, label = { Text(stringResource(R.string.changelog)) }, modifier = Modifier.fillMaxWidth(), minLines = 2)
-                OutlinedTextField(repoUrl, { repoUrl = it }, label = { Text(stringResource(R.string.repository_url)) }, modifier = Modifier.fillMaxWidth())
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = {
-                        onSave(submission, name, shortDescription, description, version, versionCode.toLongOrNull(), changelog, repoUrl)
-                        editing = false
-                    }, enabled = name.isNotBlank() && version.isNotBlank() && repoUrl.isNotBlank()) {
-                        Text(stringResource(R.string.save_and_resubmit))
-                    }
-                    TextButton(onClick = { editing = false }) { Text(stringResource(android.R.string.cancel)) }
-                }
-            } else if (editable) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { editing = true }) { Text(stringResource(R.string.edit_submission)) }
-                    TextButton(onClick = { onRemove(submission) }) {
-                        Text(stringResource(if (submission.status == "Approved") R.string.archive_app else R.string.remove_submission))
-                    }
+            if (canRemove) {
+                TextButton(onClick = { onRemove(submission) }) {
+                    Text(stringResource(if (submission.status == "Approved") R.string.archive_app else R.string.remove_submission))
                 }
             }
 
@@ -576,91 +553,21 @@ private fun SubmissionCard(
 }
 
 @Composable
-private fun AddPlatformArtifactEditor(
-    submission: DeveloperSubmission,
-    onAdd: (DeveloperSubmission, String, String, String, String) -> Unit
-) {
-    var expanded by remember(submission.id) { mutableStateOf(false) }
-    var platform by remember(submission.id) { mutableStateOf("Android") }
-    var packageType by remember(submission.id, platform) { mutableStateOf(if (platform == "Android") "apk" else if (platform == "Windows") "exe" else "deb") }
-    var downloadUrl by remember(submission.id) { mutableStateOf("") }
-    var repoUrl by remember(submission.id) { mutableStateOf("") }
-    val types = when (platform) { "Android" -> listOf("apk"); "Windows" -> listOf("exe", "msi"); else -> listOf("deb", "rpm", "appimage") }
-
-    if (!expanded) {
-        OutlinedButton(onClick = { expanded = true }) { Text(stringResource(R.string.add_platform_artifact)) }
-        return
-    }
-    Text(stringResource(R.string.add_platform_artifact), fontWeight = FontWeight.SemiBold)
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        listOf("Android", "Windows", "Linux").forEach { item ->
-            FilterChip(selected = platform == item, onClick = {
-                platform = item
-                packageType = when (item) { "Android" -> "apk"; "Windows" -> "exe"; else -> "deb" }
-            }, label = { Text(item) })
-        }
-    }
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        types.forEach { item -> FilterChip(selected = packageType == item, onClick = { packageType = item }, label = { Text(item.uppercase()) }) }
-    }
-    OutlinedTextField(downloadUrl, { downloadUrl = it }, label = { Text(stringResource(R.string.download_url)) }, modifier = Modifier.fillMaxWidth())
-    OutlinedTextField(repoUrl, { repoUrl = it }, label = { Text(stringResource(R.string.repository_url)) }, modifier = Modifier.fillMaxWidth())
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Button(onClick = {
-            onAdd(submission, platform, packageType, downloadUrl, repoUrl)
-            expanded = false
-            downloadUrl = ""
-            repoUrl = ""
-        }, enabled = downloadUrl.startsWith("https://") || downloadUrl.startsWith("http://")) { Text(stringResource(R.string.add_artifact)) }
-        TextButton(onClick = { expanded = false }) { Text(stringResource(android.R.string.cancel)) }
-    }
-}
-
-@Composable
-private fun PlatformMetadataEditor(
-    submission: DeveloperSubmission,
-    artifact: DeveloperPlatformArtifact,
-    onSave: (DeveloperSubmission, String, String, String, String, String, String, String, List<String>) -> Unit
-) {
+private fun PlatformMetadata(artifact: DeveloperPlatformArtifact) {
     val metadata = artifact.listingMetadata as? JsonObject
     fun value(key: String) = metadata?.get(key)?.let { runCatching { it.jsonPrimitive.contentOrNull }.getOrNull() }.orEmpty()
     val screenshotValues = (metadata?.get("screenshots") as? JsonArray)?.mapNotNull { runCatching { it.jsonPrimitive.contentOrNull }.getOrNull() }.orEmpty()
-    var editing by remember(submission.id, artifact.id) { mutableStateOf(false) }
-    var title by remember(submission.id, artifact.id) { mutableStateOf(value("title")) }
-    var shortDescription by remember(submission.id, artifact.id) { mutableStateOf(value("shortDescription").ifBlank { value("short_description") }) }
-    var fullDescription by remember(submission.id, artifact.id) { mutableStateOf(value("fullDescription").ifBlank { value("full_description") }) }
-    var changelog by remember(submission.id, artifact.id) { mutableStateOf(value("changelog")) }
-    var repoUrl by remember(submission.id, artifact.id) { mutableStateOf(artifact.repoUrl.orEmpty()) }
-    var downloadUrl by remember(submission.id, artifact.id) { mutableStateOf(artifact.downloadUrl.orEmpty()) }
-    var screenshots by remember(submission.id, artifact.id) { mutableStateOf(screenshotValues.joinToString("\n")) }
-    val editable = submission.status in setOf("Draft", "Rejected", "Approved", "Changes Requested")
+    val title = value("title")
+    val shortDescription = value("shortDescription").ifBlank { value("short_description") }
+    val fullDescription = value("fullDescription").ifBlank { value("full_description") }
+    val changelog = value("changelog")
 
     Text(stringResource(R.string.platform_metadata, artifact.platform), style = MaterialTheme.typography.labelMedium)
-    if (!editing) {
-        Text(title.ifBlank { stringResource(R.string.no_platform_metadata) }, fontWeight = FontWeight.Medium)
-        if (shortDescription.isNotBlank()) Text(shortDescription, style = MaterialTheme.typography.bodySmall)
-        if (fullDescription.isNotBlank()) Text(fullDescription, style = MaterialTheme.typography.bodySmall, maxLines = 4)
-        if (changelog.isNotBlank()) Text(changelog, style = MaterialTheme.typography.bodySmall, maxLines = 3)
-        if (screenshotValues.isNotEmpty()) Text(stringResource(R.string.screenshot_urls_count, screenshotValues.size), style = MaterialTheme.typography.labelSmall)
-        if (editable) TextButton(onClick = { editing = true }) { Text(stringResource(R.string.edit_platform_metadata, artifact.platform)) }
-    } else {
-        OutlinedTextField(title, { title = it }, label = { Text(stringResource(R.string.app_name)) }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(shortDescription, { shortDescription = it }, label = { Text(stringResource(R.string.short_description)) }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(fullDescription, { fullDescription = it }, label = { Text(stringResource(R.string.full_description)) }, modifier = Modifier.fillMaxWidth(), minLines = 4)
-        OutlinedTextField(changelog, { changelog = it }, label = { Text(stringResource(R.string.changelog)) }, modifier = Modifier.fillMaxWidth(), minLines = 2)
-        OutlinedTextField(repoUrl, { repoUrl = it }, label = { Text(stringResource(R.string.repository_url)) }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(downloadUrl, { downloadUrl = it }, label = { Text(stringResource(R.string.download_url)) }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(screenshots, { screenshots = it }, label = { Text(stringResource(R.string.screenshots_urls)) }, modifier = Modifier.fillMaxWidth(), minLines = 3)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = {
-                onSave(submission, artifact.platform, title, shortDescription, fullDescription, changelog, repoUrl, downloadUrl, screenshots.lines().map(String::trim).filter(String::isNotBlank))
-                editing = false
-            }, enabled = title.isNotBlank() && shortDescription.isNotBlank() && fullDescription.isNotBlank() && changelog.isNotBlank() && downloadUrl.isNotBlank()) {
-                Text(stringResource(R.string.save_platform_metadata))
-            }
-            TextButton(onClick = { editing = false }) { Text(stringResource(android.R.string.cancel)) }
-        }
-    }
+    Text(title.ifBlank { stringResource(R.string.no_platform_metadata) }, fontWeight = FontWeight.Medium)
+    if (shortDescription.isNotBlank()) Text(shortDescription, style = MaterialTheme.typography.bodySmall)
+    if (fullDescription.isNotBlank()) Text(fullDescription, style = MaterialTheme.typography.bodySmall, maxLines = 4)
+    if (changelog.isNotBlank()) Text(changelog, style = MaterialTheme.typography.bodySmall, maxLines = 3)
+    if (screenshotValues.isNotEmpty()) Text(stringResource(R.string.screenshot_urls_count, screenshotValues.size), style = MaterialTheme.typography.labelSmall)
 }
 
 @Composable

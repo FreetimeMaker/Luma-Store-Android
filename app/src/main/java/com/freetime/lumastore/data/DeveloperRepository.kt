@@ -15,6 +15,7 @@ import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.storage.storage
 import io.ktor.http.ContentType
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.SerialName
@@ -22,12 +23,9 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -39,7 +37,20 @@ import java.util.TimeZone
 @Serializable data class DeveloperNotification(val id: String, @SerialName("submission_id") val submissionId: String, val type: String, val title: String, val message: String? = null, @SerialName("created_at") val createdAt: String? = null, @SerialName("read_at") val readAt: String? = null)
 @Serializable data class DeveloperPlatformArtifact(val id: String, @SerialName("app_id") val appId: String, val platform: String, @SerialName("package_type") val packageType: String? = null, @SerialName("download_url") val downloadUrl: String? = null, @SerialName("file_size_mb") val fileSizeMb: Double? = null, @SerialName("linux_package_base") val linuxPackageBase: String? = null, val sha256: String? = null, @SerialName("artifact_verified_at") val artifactVerifiedAt: String? = null, @SerialName("artifact_size_bytes") val artifactSizeBytes: Long? = null, @SerialName("repo_url") val repoUrl: String? = null, @SerialName("listing_metadata") val listingMetadata: JsonElement? = null)
 @Serializable data class DeveloperSecurityScan(val id: String, @SerialName("submission_id") val submissionId: String, val status: String, @SerialName("risk_level") val riskLevel: String, val provider: String? = null, @SerialName("malicious_count") val maliciousCount: Int? = null, @SerialName("suspicious_count") val suspiciousCount: Int? = null, @SerialName("harmless_count") val harmlessCount: Int? = null, @SerialName("undetected_count") val undetectedCount: Int? = null, @SerialName("virus_total_permalink") val virusTotalPermalink: String? = null, @SerialName("error_message") val errorMessage: String? = null, @SerialName("scanned_at") val scannedAt: String? = null)
-@Serializable data class DeveloperDownloadStats(@SerialName("app_id") val appId: String, val total: Long = 0, val today: Long = 0, @SerialName("this_month") val thisMonth: Long = 0, @SerialName("this_year") val thisYear: Long = 0)
+@Serializable data class DeveloperDownloadStats(@SerialName("app_id") val appId: String, val total: Long? = null, val today: Long? = null, @SerialName("this_month") val thisMonth: Long? = null, @SerialName("this_year") val thisYear: Long? = null)
+@Serializable data class DeveloperPublishedApp(val id: String, val name: String? = null) {
+    val displayName: String get() = name?.takeIf { it.isNotBlank() } ?: id
+}
+
+data class DeveloperAnalytics(
+    val apps: List<DeveloperPublishedApp>?,
+    val stats: Map<String, DeveloperDownloadStats>?
+) {
+    fun totalFor(metric: (DeveloperDownloadStats) -> Long?): Long? {
+        val publishedApps = apps?.takeIf { it.isNotEmpty() } ?: return null
+        return publishedApps.sumOf { app -> stats?.get(app.id)?.let(metric) ?: return null }
+    }
+}
 @Serializable data class DeveloperProfileSettings(@SerialName("developer_id") val developerId: String, @SerialName("display_name") val displayName: String? = null, val bio: String? = null, @SerialName("website_url") val websiteUrl: String? = null, @SerialName("github_url") val githubUrl: String? = null, @SerialName("gitlab_url") val gitlabUrl: String? = null, @SerialName("avatar_url") val avatarUrl: String? = null, val verified: Boolean = false)
 @Serializable data class DeveloperFundingSettings(@SerialName("developer_id") val developerId: String, @SerialName("donate_url") val donateUrl: String? = null, val liberapay: String? = null, val opencollective: String? = null, @SerialName("crypto_addresses") val cryptoAddresses: JsonObject = JsonObject(emptyMap()))
 @Serializable internal data class DeveloperProfileUpdate(
@@ -62,7 +73,7 @@ import java.util.TimeZone
 )
 @Serializable private data class DeveloperProfileRef(@SerialName("developer_id") val developerId: String)
 @Serializable private data class StoreAppSubmissionRef(val id: String? = null, @SerialName("luma_submission_id") val lumaSubmissionId: String? = null)
-data class DeveloperDashboard(val submissions: List<DeveloperSubmission>, val comments: List<DeveloperComment>, val notifications: List<DeveloperNotification>, val artifacts: Map<String, List<DeveloperPlatformArtifact>> = emptyMap(), val scans: Map<String, DeveloperSecurityScan> = emptyMap(), val downloadStats: Map<String, DeveloperDownloadStats> = emptyMap(), val submissionStoreIds: Map<String, String> = emptyMap())
+data class DeveloperDashboard(val submissions: List<DeveloperSubmission>, val comments: List<DeveloperComment>, val notifications: List<DeveloperNotification>, val artifacts: Map<String, List<DeveloperPlatformArtifact>> = emptyMap(), val scans: Map<String, DeveloperSecurityScan> = emptyMap(), val submissionStoreIds: Map<String, String> = emptyMap(), val analytics: DeveloperAnalytics)
 
 class DeveloperRepository(context: Context) {
     private val appContext = context.applicationContext
@@ -182,9 +193,46 @@ class DeveloperRepository(context: Context) {
                 .isNotEmpty()
         }.getOrDefault(false)
 
+    private suspend fun loadAnalytics(session: DeveloperSession): DeveloperAnalytics {
+        requireCurrentUser(session)
+        val apps = analyticsQuery {
+            buildList {
+                var offset = 0L
+                while (true) {
+                    val page = supabase.from("store_apps").select(Columns.list("id", "name")) {
+                        filter { eq("developer_id", session.userId); exact("archived_at", null) }
+                        order("id", Order.ASCENDING)
+                        range(offset, offset + 99)
+                    }.decodeList<DeveloperPublishedApp>()
+                    if (page.isEmpty()) break
+                    addAll(page)
+                    offset += page.size
+                }
+            }.sortedBy { it.displayName.lowercase() }
+        }
+        requireCurrentUser(session)
+        val stats = analyticsQuery {
+            supabase.postgrest.rpc("get_my_luma_download_stats")
+                .decodeList<DeveloperDownloadStats>().associateBy { it.appId }
+        }
+        requireCurrentUser(session)
+        return DeveloperAnalytics(apps, stats)
+    }
+
+    private suspend fun <T> analyticsQuery(query: suspend () -> T): T? = try {
+        query()
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (_: Exception) {
+        null
+    }
+
     suspend fun loadDashboard(session: DeveloperSession): DeveloperDashboard {
         val submissions = loadSubmissions(session)
-        if (submissions.isEmpty()) return DeveloperDashboard(emptyList(), emptyList(), loadNotifications(session))
+        val analytics = loadAnalytics(session)
+        if (submissions.isEmpty()) {
+            return DeveloperDashboard(emptyList(), emptyList(), loadNotifications(session), analytics = analytics)
+        }
         val storeRefs = runCatching {
             supabase.from("store_apps")
                 .select(columns = Columns.list("id", "luma_submission_id")) {
@@ -219,105 +267,7 @@ class DeveloperRepository(context: Context) {
                 .groupBy { it.submissionId }
                 .mapValues { it.value.first() }
         }.getOrDefault(emptyMap())
-        val stats: Map<String, DeveloperDownloadStats> = runCatching {
-            supabase.postgrest.rpc("get_my_luma_download_stats").decodeList<DeveloperDownloadStats>().associateBy { stat -> stat.appId }
-        }.getOrElse { emptyMap() }
-        return DeveloperDashboard(submissions, loadComments(submissions.map { it.id }), loadNotifications(session), artifacts, scans, stats, submissionStoreIds)
-    }
-
-    suspend fun updateSubmission(submission: DeveloperSubmission, name: String, shortDescription: String, description: String, version: String, versionCode: Long?, changelog: String, repoUrl: String) {
-        require(submission.status in setOf("Draft", "Rejected", "Approved", "Changes Requested")) { "This submission cannot be edited in its current state." }
-        val now = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }.format(Date())
-        supabase.from("luma_submissions").update({
-            set("name", name.trim())
-            set("short_description", shortDescription.trim())
-            set("description", description.trim())
-            set("version", version.trim())
-            set("version_code", versionCode)
-            set("changelog", changelog.trim())
-            set("repo_url", repoUrl.trim())
-            set("link", repoUrl.trim())
-            set("status", "Pending")
-            set("status_updated_at", now)
-        }) { filter { eq("id", submission.id); eq("user_id", supabase.auth.currentUserOrNull()?.id ?: error("Authentication required")); eq("status", submission.status) } }
-    }
-
-    suspend fun updatePlatformMetadata(submission: DeveloperSubmission, platform: String, title: String, shortDescription: String, fullDescription: String, changelog: String, repoUrl: String, downloadUrl: String, screenshots: List<String>) {
-        require(submission.status in setOf("Draft", "Rejected", "Approved", "Changes Requested")) { "This submission cannot be edited in its current state." }
-        val entries = (submission.platforms as? JsonArray)?.toMutableList() ?: mutableListOf()
-        val index = entries.indexOfFirst { runCatching { it.jsonObject["platform"]?.jsonPrimitive?.contentOrNull == platform }.getOrDefault(false) }
-        val existing = if (index >= 0) entries[index].jsonObject else JsonObject(emptyMap())
-        val metadata = JsonObject(mapOf(
-            "title" to JsonPrimitive(title.trim()),
-            "shortDescription" to JsonPrimitive(shortDescription.trim()),
-            "fullDescription" to JsonPrimitive(fullDescription.trim()),
-            "changelog" to JsonPrimitive(changelog.trim()),
-            "screenshots" to JsonArray(screenshots.filter { it.isNotBlank() }.map { JsonPrimitive(it.trim()) })
-        ))
-        val updated = JsonObject(existing.toMutableMap().apply {
-            put("platform", JsonPrimitive(platform))
-            put("repoUrl", JsonPrimitive(repoUrl.trim()))
-            put("downloadUrl", JsonPrimitive(downloadUrl.trim()))
-            put("metadata", metadata)
-        })
-        if (index >= 0) entries[index] = updated else entries.add(updated)
-        val now = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }.format(Date())
-        val userId = supabase.auth.currentUserOrNull()?.id ?: error("Authentication required")
-        supabase.from("luma_submissions").update({
-            set("platforms", JsonArray(entries))
-            set("separate_platform_repos", true)
-            set("status", "Pending")
-            set("status_updated_at", now)
-        }) { filter { eq("id", submission.id); eq("user_id", userId); eq("status", submission.status) } }
-    }
-
-    suspend fun addPlatformArtifact(submission: DeveloperSubmission, platform: String, packageType: String, downloadUrl: String, repoUrl: String) {
-        require(submission.status in setOf("Draft", "Rejected", "Approved", "Changes Requested")) { "This submission cannot be edited in its current state." }
-        val allowed = mapOf("Android" to setOf("apk"), "Windows" to setOf("exe", "msi"), "Linux" to setOf("deb", "rpm", "appimage"))
-        require(packageType in allowed[platform].orEmpty()) { "Unsupported package type for $platform." }
-        require(downloadUrl.startsWith("https://") || downloadUrl.startsWith("http://")) { "A valid download URL is required." }
-        val entries = (submission.platforms as? JsonArray)?.toMutableList() ?: mutableListOf()
-        val duplicate = entries.any { entry ->
-            runCatching {
-                val obj = entry.jsonObject
-                obj["platform"]?.jsonPrimitive?.contentOrNull == platform &&
-                    obj["packageType"]?.jsonPrimitive?.contentOrNull == packageType
-            }.getOrDefault(false)
-        }
-        require(!duplicate) { "$platform $packageType already exists." }
-        entries.add(JsonObject(buildMap {
-            put("platform", JsonPrimitive(platform))
-            put("packageType", JsonPrimitive(packageType))
-            put("downloadUrl", JsonPrimitive(downloadUrl.trim()))
-            if (repoUrl.isNotBlank()) put("repoUrl", JsonPrimitive(repoUrl.trim()))
-        }))
-        savePlatforms(submission, entries)
-    }
-
-    suspend fun removePlatformArtifact(submission: DeveloperSubmission, platform: String, packageType: String) {
-        require(submission.status in setOf("Draft", "Rejected", "Approved", "Changes Requested")) { "This submission cannot be edited in its current state." }
-        val entries = (submission.platforms as? JsonArray)?.toMutableList() ?: mutableListOf()
-        val removed = entries.removeAll { entry ->
-            runCatching {
-                val obj = entry.jsonObject
-                obj["platform"]?.jsonPrimitive?.contentOrNull == platform &&
-                    obj["packageType"]?.jsonPrimitive?.contentOrNull == packageType
-            }.getOrDefault(false)
-        }
-        require(removed) { "Platform artifact was not found." }
-        require(entries.isNotEmpty()) { "At least one platform artifact is required." }
-        savePlatforms(submission, entries)
-    }
-
-    private suspend fun savePlatforms(submission: DeveloperSubmission, entries: List<JsonElement>) {
-        val now = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }.format(Date())
-        val userId = supabase.auth.currentUserOrNull()?.id ?: error("Authentication required")
-        supabase.from("luma_submissions").update({
-            set("platforms", JsonArray(entries))
-            set("separate_platform_repos", true)
-            set("status", "Pending")
-            set("status_updated_at", now)
-        }) { filter { eq("id", submission.id); eq("user_id", userId); eq("status", submission.status) } }
+        return DeveloperDashboard(submissions, loadComments(submissions.map { it.id }), loadNotifications(session), artifacts, scans, submissionStoreIds, analytics)
     }
 
     suspend fun removeSubmission(submission: DeveloperSubmission) {

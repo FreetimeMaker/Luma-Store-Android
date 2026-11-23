@@ -1,5 +1,6 @@
 package com.freetime.lumastore.data
 
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Assert.*
@@ -9,6 +10,35 @@ import java.util.UUID
 
 class DeveloperRepositoryTest {
     private val base = "https://project.supabase.co/storage/v1/object/public/developer-avatars/"
+
+    @Test fun downloadStatsPreserveZerosAndMissingPeriods() {
+        val stats = Json.decodeFromString<DeveloperDownloadStats>(
+            """{"app_id":"published","today":0,"this_month":null,"this_year":12}"""
+        )
+        assertEquals(0L, stats.today)
+        assertNull(stats.thisMonth)
+        assertEquals(12L, stats.thisYear)
+        assertNull(stats.total)
+    }
+
+    @Test fun totalsOnlyIncludePublishedAppsAndRequireCompleteMetrics() {
+        val linked = DeveloperPublishedApp("linked", "Linked")
+        val standalone = DeveloperPublishedApp("standalone", "Without submission")
+        val analytics = DeveloperAnalytics(
+            apps = listOf(linked, standalone),
+            stats = listOf(
+                DeveloperDownloadStats(linked.id, total = 5, today = 0),
+                DeveloperDownloadStats(standalone.id, total = 7, today = 0),
+                DeveloperDownloadStats("other", total = 99, today = 99)
+            ).associateBy { it.appId }
+        )
+        assertEquals(12L, analytics.totalFor { it.total })
+        assertEquals(0L, analytics.totalFor { it.today })
+        assertNull(analytics.totalFor { it.thisYear })
+        assertNull(analytics.copy(stats = analytics.stats.orEmpty() - standalone.id).totalFor { it.total })
+        assertNull(analytics.copy(stats = null).totalFor { it.total })
+        assertNull(analytics.copy(apps = null).totalFor { it.total })
+    }
 
     @Test fun avatarVersionsChangeWithoutChangingTheObjectPath() {
         val first = versionedAvatarUrl(base, "owner")

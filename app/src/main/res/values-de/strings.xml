@@ -103,8 +103,33 @@
     >Oder einen externen Anbieter verwenden</string>
     <string name="analytics">Statistiken</string>
     <string
+        name="developer_published_app_analytics"
+    >Downloadstatistiken für veröffentlichte Apps</string>
+    <string
+        name="developer_published_apps_load_failed"
+    >Veröffentlichte Apps konnten nicht geladen werden.</string>
+    <string
+        name="developer_no_published_apps"
+    >Dieses Konto hat keine veröffentlichten Apps.</string>
+    <string
+        name="developer_analytics_load_failed"
+    >Downloadstatistiken konnten nicht geladen werden.</string>
+    <string name="developer_metric_unavailable">—</string>
+    <string name="developer_submissions">Einreichungen</string>
+    <string
+        name="developer_no_submissions"
+    >Dieses Konto hat keine Einreichungen.</string>
+    <string
         name="no_download_analytics"
     >Noch keine Downloadstatistiken verfügbar.</string>
+    <string name="download_statistics">Downloadstatistiken</string>
+    <string name="developer_total_downloads">Downloads insgesamt: %1$d</string>
+    <string name="downloads_total">Gesamt: %1$d</string>
+    <string name="downloads_today">Heute: %1$d</string>
+    <string name="downloads_month">Diesen Monat: %1$d</string>
+    <string name="downloads_year">Dieses Jahr: %1$d</string>
+    <string name="metric_today">Heute</string>
+    <string name="metric_month">Diesen Monat</string>
     <string name="metric_year">Dieses Jahr</string>
     <string name="metric_total">Gesamt</string>
     <string name="status_pending">Ausstehend</string>

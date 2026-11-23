@@ -602,6 +602,23 @@
     <string name="gitlab" translatable="false">GitLab</string>
     <string name="analytics">Analytics</string>
     <string
+        name="developer_published_app_analytics"
+    >Download analytics for published apps</string>
+    <string
+        name="developer_published_apps_load_failed"
+    >Published apps could not be loaded.</string>
+    <string
+        name="developer_no_published_apps"
+    >This account has no published apps.</string>
+    <string
+        name="developer_analytics_load_failed"
+    >Download statistics could not be loaded.</string>
+    <string name="developer_metric_unavailable">—</string>
+    <string name="developer_submissions">Submissions</string>
+    <string
+        name="developer_no_submissions"
+    >This account has no submissions.</string>
+    <string
         name="no_download_analytics"
     >No download analytics available yet.</string>
     <string name="metric_year">This year</string>
